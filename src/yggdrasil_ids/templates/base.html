@@ -16,7 +16,7 @@
     <a class="brand" href="{{ url_for('overview') }}">{{ brand() }}</a>
     <div class="nav-caption">SIKKERHED</div>
     <nav>
-    {% for endpoint,label,glyph in [('overview','Overblik','grid'),('events','SSH-hændelser','activity'),('alerts','Alarmer','shield'),('model','Machine learning','model'),('system_status','Systemstatus','server')] %}
+    {% for endpoint,label,glyph in [('overview','Overblik','grid'),('events','SSH-hændelser','activity'),('preauth','Før login','clock'),('alerts','Alarmer','shield'),('model','Machine learning','model'),('system_status','Systemstatus','server')] %}
       <a class="nav-link{% if request.endpoint == endpoint or (endpoint == 'alerts' and request.endpoint == 'alert_detail') %} active{% endif %}" href="{{ url_for(endpoint) }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ icon(glyph) }}<span>{{ label }}</span>{% if request.endpoint == endpoint %}<span class="nav-dot"></span>{% endif %}</a>
     {% endfor %}
     </nav>

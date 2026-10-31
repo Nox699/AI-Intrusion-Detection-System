@@ -424,6 +424,13 @@ def create_app(config: AppConfig | None = None) -> Flask:
             "events.html", result=result, hours=period, outcome=outcome, source=source, user=user
         )
 
+    @app.get("/preauth")
+    def preauth() -> Any:
+        period = hours()
+        read_status()
+        result = call("list_preauth", hours=period, **paging())
+        return render_template("preauth.html", result=result, hours=period)
+
     @app.get("/alerts")
     def alerts() -> Any:
         period, detector = hours(), query_text("detector", 64)

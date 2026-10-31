@@ -14,6 +14,21 @@ from typing import Any, Iterator
 from .domain import Finding, SSHEvent
 
 SCHEMA_VERSION = 1
+
+# Previously ignored trusted journal records are visible without changing schema 1.
+# Preauth disconnects are never authentication events, rule inputs or ML features.
+PREAUTH_FILTER = """
+    timestamp>=? AND timestamp<=? AND status='ignored'
+    AND CAST(json_extract(raw_json, '$._UID') AS TEXT)='0'
+    AND json_extract(raw_json, '$._COMM') IN ('sshd','sshd-session','sshd-auth')
+    AND (
+      json_extract(raw_json, '$.MESSAGE') LIKE
+        'Connection closed by authenticating user % port % [preauth]'
+      OR json_extract(raw_json, '$.MESSAGE') LIKE
+        'Connection reset by authenticating user % port % [preauth]'
+    )
+"""
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS records (
  id TEXT PRIMARY KEY, cursor TEXT NOT NULL, timestamp REAL NOT NULL,
@@ -283,6 +298,44 @@ class Repository:
             "events", " AND ".join(where), args, page, per_page, "timestamp DESC,event_id"
         )
 
+
+    def list_preauth(self, hours: int = 24, page: int = 1, per_page: int = 25) -> dict:
+        """Show trusted preauth disconnects already saved in raw journal records.
+
+        No schema migration, backfill writing, or alteration of login counts.
+        """
+        start, end = self._period(hours)
+        if (
+            type(page) is not int
+            or page < 1
+            or type(per_page) is not int
+            or not 1 <= per_page <= 100
+        ):
+            raise ValueError("Ugyldig side eller sidestørrelse")
+        with self.reader() as db:
+            total = db.execute(
+                "SELECT COUNT(*) FROM records WHERE " + PREAUTH_FILTER, (start, end)
+            ).fetchone()[0]
+            pages = max(1, math.ceil(total / per_page))
+            page = min(page, pages)
+            rows = db.execute(
+                """SELECT timestamp,
+                          CASE WHEN json_extract(raw_json, '$.MESSAGE')
+                                    LIKE 'Connection reset%'
+                               THEN 'Nulstillet' ELSE 'Lukket' END AS connection_type,
+                          SUBSTR(json_extract(raw_json, '$.MESSAGE'), 1, 4096) AS message
+                   FROM records WHERE """
+                + PREAUTH_FILTER
+                + " ORDER BY timestamp DESC,id DESC LIMIT ? OFFSET ?",
+                (start, end, per_page, (page - 1) * per_page),
+            ).fetchall()
+        return {
+            "items": [dict(row) for row in rows],
+            "total": total,
+            "page": page,
+            "pages": pages,
+        }
+
     def list_alerts(
         self, hours: int = 24, detector: str = "", page: int = 1, per_page: int = 25
     ) -> dict:
@@ -330,6 +383,9 @@ class Repository:
             )
             totals = {"success": counts.get("success", 0), "failure": counts.get("failure", 0)}
             totals["events"] = totals["success"] + totals["failure"]
+            preauth_count = db.execute(
+                "SELECT COUNT(*) FROM records WHERE " + PREAUTH_FILTER, (start, end)
+            ).fetchone()[0]
             totals["alerts"] = db.execute(
                 "SELECT COUNT(*) FROM alerts WHERE last_seen>=? AND last_seen<=?", (start, end)
             ).fetchone()[0]
@@ -357,6 +413,7 @@ class Repository:
             ]
         return {
             "totals": totals,
+            "preauth_count": preauth_count,
             "series": series,
             "top_sources": sources,
             "recent_alerts": alerts,

@@ -181,6 +181,8 @@
         const metric = document.getElementById(`metric-${key}`);
         if (metric) metric.textContent = numberFormat.format(payload.data.totals[key]);
       }
+      const preauth = document.getElementById("metric-preauth");
+      if (preauth) preauth.textContent = numberFormat.format(payload.data.preauth_count);
       document.getElementById("last-event").textContent = date(payload.data.last_event_at);
       document.getElementById("last-update").textContent = `Opdateret ${date(payload.server_time, timeFormat)}`;
       renderAlerts(payload.data.recent_alerts || []);
