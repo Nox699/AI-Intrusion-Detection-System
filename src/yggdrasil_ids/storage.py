@@ -298,7 +298,6 @@ class Repository:
             "events", " AND ".join(where), args, page, per_page, "timestamp DESC,event_id"
         )
 
-
     def list_preauth(self, hours: int = 24, page: int = 1, per_page: int = 25) -> dict:
         """Show trusted preauth disconnects already saved in raw journal records.
 

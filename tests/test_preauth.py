@@ -10,7 +10,9 @@ from yggdrasil_ids.storage import Repository
 from yggdrasil_ids.web import create_app
 
 
-def add_record(repo, index, message, uid="0", comm="sshd-session", status="ignored", timestamp=None):
+def add_record(
+    repo, index, message, uid="0", comm="sshd-session", status="ignored", timestamp=None
+):
     stamp = time.time() - 30 if timestamp is None else timestamp
     record = json.dumps({"_UID": uid, "_COMM": comm, "MESSAGE": message})
     with repo.transaction() as db:
@@ -30,7 +32,8 @@ def test_existing_schema_and_authentication_counts_are_unchanged(tmp_path):
     reader = Repository(repo.path, readonly=True)
     assert reader.list_preauth()["total"] == 2
     assert [row["connection_type"] for row in reader.list_preauth()["items"]] == [
-        "Nulstillet", "Lukket"
+        "Nulstillet",
+        "Lukket",
     ]
     data = reader.dashboard()
     assert data["preauth_count"] == 2
@@ -73,10 +76,14 @@ def test_time_range_and_pagination(tmp_path):
 
 def test_web_requires_login_and_escapes_journal_messages(tmp_path):
     credentials = tmp_path / "credentials.json"
-    credentials.write_text(json.dumps({
-        "password_hash": generate_password_hash("test-password"),
-        "secret_key": "x" * 64,
-    }))
+    credentials.write_text(
+        json.dumps(
+            {
+                "password_hash": generate_password_hash("test-password"),
+                "secret_key": "x" * 64,
+            }
+        )
+    )
     cfg = AppConfig(
         database_path=tmp_path / "events.sqlite3",
         model_path=tmp_path / "model.json",
@@ -100,9 +107,10 @@ def test_web_requires_login_and_escapes_journal_messages(tmp_path):
 
     login_page = client.get("/login")
     csrf = re.search(rb'name="csrf_token" value="([^"]+)"', login_page.data).group(1).decode()
-    assert client.post(
-        "/login", data={"csrf_token": csrf, "password": "test-password"}
-    ).status_code == 302
+    assert (
+        client.post("/login", data={"csrf_token": csrf, "password": "test-password"}).status_code
+        == 302
+    )
     rendered = client.get("/preauth")
     assert rendered.status_code == 200
     html = rendered.get_data(as_text=True)
