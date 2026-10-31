@@ -1,0 +1,273 @@
+{
+  "scope": "Targeted source-checkout browser verification of the SSH activity chart using an isolated synthetic demo and controlled API responses; not Raspberry Pi acceptance testing.",
+  "browser": {
+    "name": "Chromium",
+    "version": "140.0.7339.16"
+  },
+  "checks": [
+    "Actual browser login and 24-hour stacked bar chart",
+    "6-hour selection and axis retained after automatic polling",
+    "390px mobile chart without horizontal overflow",
+    "Injected API-only partial first/current, one-bucket and empty charts preserve counts and show integer ticks",
+    "Actual authenticated logout",
+    "Tooltip displays interval times including seconds and no raw Unix timestamp header"
+  ],
+  "charts": {
+    "desktop-24h": {
+      "hours": 24,
+      "trace_types": [
+        "bar",
+        "bar"
+      ],
+      "barmode": "stack",
+      "api_buckets": 9,
+      "plotted_buckets": 9,
+      "totals": {
+        "alerts": 8,
+        "events": 41,
+        "failure": 21,
+        "success": 20
+      },
+      "axis_span_hours": 24.0,
+      "date_ticks": [
+        "23.26<br>30.10",
+        "03.26<br>31.10",
+        "07.26<br>31.10",
+        "11.26<br>31.10",
+        "15.26<br>31.10",
+        "19.26<br>31.10",
+        "23.26<br>31.10"
+      ],
+      "y_ticks": [
+        "0",
+        "5",
+        "10"
+      ],
+      "dimensions": {
+        "viewport": 1440,
+        "scroll": 1440
+      }
+    },
+    "desktop-6h": {
+      "hours": 6,
+      "trace_types": [
+        "bar",
+        "bar"
+      ],
+      "barmode": "stack",
+      "api_buckets": 9,
+      "plotted_buckets": 9,
+      "totals": {
+        "alerts": 8,
+        "events": 41,
+        "failure": 21,
+        "success": 20
+      },
+      "axis_span_hours": 6.0,
+      "date_ticks": [
+        "17.26",
+        "18.26",
+        "19.26",
+        "20.26",
+        "21.26",
+        "22.26",
+        "23.26"
+      ],
+      "y_ticks": [
+        "0",
+        "5",
+        "10"
+      ],
+      "dimensions": {
+        "viewport": 1440,
+        "scroll": 1440
+      }
+    },
+    "desktop-6h-after-poll": {
+      "hours": 6,
+      "trace_types": [
+        "bar",
+        "bar"
+      ],
+      "barmode": "stack",
+      "api_buckets": 9,
+      "plotted_buckets": 9,
+      "totals": {
+        "alerts": 8,
+        "events": 41,
+        "failure": 21,
+        "success": 20
+      },
+      "axis_span_hours": 6.0,
+      "date_ticks": [
+        "17.26",
+        "18.26",
+        "19.26",
+        "20.26",
+        "21.26",
+        "22.26",
+        "23.26"
+      ],
+      "y_ticks": [
+        "0",
+        "5",
+        "10"
+      ],
+      "dimensions": {
+        "viewport": 1440,
+        "scroll": 1440
+      }
+    },
+    "mobile-6h": {
+      "hours": 6,
+      "trace_types": [
+        "bar",
+        "bar"
+      ],
+      "barmode": "stack",
+      "api_buckets": 9,
+      "plotted_buckets": 9,
+      "totals": {
+        "alerts": 8,
+        "events": 41,
+        "failure": 21,
+        "success": 20
+      },
+      "axis_span_hours": 6.0,
+      "date_ticks": [
+        "17.26",
+        "20.26",
+        "23.26"
+      ],
+      "y_ticks": [
+        "0",
+        "5",
+        "10"
+      ],
+      "dimensions": {
+        "viewport": 390,
+        "scroll": 390
+      }
+    },
+    "injected-partial-first-and-current": {
+      "hours": 6,
+      "trace_types": [
+        "bar",
+        "bar"
+      ],
+      "barmode": "stack",
+      "api_buckets": 2,
+      "plotted_buckets": 2,
+      "totals": {
+        "success": 1,
+        "failure": 2,
+        "events": 3,
+        "alerts": 0
+      },
+      "axis_span_hours": 6.0,
+      "date_ticks": [
+        "17.26",
+        "18.26",
+        "19.26",
+        "20.26",
+        "21.26",
+        "22.26",
+        "23.26"
+      ],
+      "y_ticks": [
+        "0",
+        "1",
+        "2"
+      ],
+      "dimensions": {
+        "viewport": 1440,
+        "scroll": 1440
+      }
+    },
+    "injected-one-bucket": {
+      "hours": 6,
+      "trace_types": [
+        "bar",
+        "bar"
+      ],
+      "barmode": "stack",
+      "api_buckets": 1,
+      "plotted_buckets": 1,
+      "totals": {
+        "success": 1,
+        "failure": 0,
+        "events": 1,
+        "alerts": 0
+      },
+      "axis_span_hours": 6.0,
+      "date_ticks": [
+        "17.26",
+        "18.26",
+        "19.26",
+        "20.26",
+        "21.26",
+        "22.26",
+        "23.26"
+      ],
+      "y_ticks": [
+        "0",
+        "1"
+      ],
+      "dimensions": {
+        "viewport": 1440,
+        "scroll": 1440
+      }
+    },
+    "injected-empty": {
+      "hours": 6,
+      "trace_types": [
+        "bar",
+        "bar"
+      ],
+      "barmode": "stack",
+      "api_buckets": 0,
+      "plotted_buckets": 0,
+      "totals": {
+        "success": 0,
+        "failure": 0,
+        "events": 0,
+        "alerts": 0
+      },
+      "axis_span_hours": 6.0,
+      "date_ticks": [
+        "17.26",
+        "18.26",
+        "19.26",
+        "20.26",
+        "21.26",
+        "22.26",
+        "23.26"
+      ],
+      "y_ticks": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "dimensions": {
+        "viewport": 1440,
+        "scroll": 1440
+      }
+    }
+  },
+  "console_errors": [],
+  "page_errors": [],
+  "external_requests": [],
+  "python_web_tests": {
+    "passed": 60,
+    "failures": 0,
+    "skipped": 0,
+    "seconds": 2.89
+  },
+  "javascript_syntax_check": "passed: node --check src/yggdrasil_ids/static/app.js",
+  "source_sha256": {
+    "src/yggdrasil_ids/static/app.js": "5a32b79a1805aa5765ba182c523d56a1caa8913a0a4f3aff84c9b0a317779bea",
+    "src/yggdrasil_ids/templates/overview.html": "4ddc904a7580ee8f41f254d8d418af0527359b5674c3c46db8e1de329937d027"
+  }
+}

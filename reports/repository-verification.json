@@ -51,7 +51,7 @@
     "scope": "GitHub-hosted Linux x86_64 runners; not a Raspberry Pi hardware acceptance test."
   },
   "target_pi_acceptance": "Not performed; see docs/TEST_ON_PI.md",
-  "browser_scope": "Browser checks apply to the original release; public preparation changes synthetic account names and documentation, not web code or assets.",
+  "browser_scope": "Initial browser checks refer to the original release. Targeted checks for the later activity-chart improvement are recorded in chart-verification.json.",
   "source_install": {
     "result": "passed",
     "method": "pip install --no-deps --no-build-isolation --target isolated-directory .",

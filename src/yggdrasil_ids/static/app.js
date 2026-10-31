@@ -25,7 +25,8 @@
   const errorMessage = document.getElementById("connection-message");
   const timeFormat = new Intl.DateTimeFormat("da-DK", { timeZone: zone, hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const fullFormat = new Intl.DateTimeFormat("da-DK", { timeZone: zone, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const shortFormat = new Intl.DateTimeFormat("da-DK", { timeZone: zone, hour: "2-digit", minute: "2-digit", ...(hours > 24 ? { day: "2-digit", month: "2-digit" } : {}) });
+  const shortFormat = new Intl.DateTimeFormat("da-DK", { timeZone: zone, hour: "2-digit", minute: "2-digit" });
+  const dayFormat = new Intl.DateTimeFormat("da-DK", { timeZone: zone, day: "2-digit", month: "2-digit" });
   const numberFormat = new Intl.NumberFormat("da-DK");
   let fetching = false;
   let firstChart = true;
@@ -71,47 +72,48 @@
   }
   function renderChart(series, serverTime) {
     if (!window.Plotly) throw new Error("Grafbiblioteket kunne ikke indlæses.");
-    const signature = `${JSON.stringify(series)}:${Math.floor(serverTime / 60)}`;
+    const compact = chart.clientWidth < 560;
+    const signature = `${JSON.stringify(series)}:${Math.floor(serverTime / 60)}:${compact}`;
     if (signature === seriesSignature && !firstChart) return;
     const rows = series.filter(row => Number.isFinite(row.timestamp) && Number.isFinite(row.success) && Number.isFinite(row.failure))
       .sort((a, b) => a.timestamp - b.timestamp);
     const bucketSeconds = hours <= 24 ? 300 : 3600;
-    const plotRows = [];
-    for (const row of rows) {
-      const previous = plotRows.at(-1);
-      if (previous && row.timestamp - previous.timestamp > bucketSeconds) {
-        // A null breaks the line. It is not a synthetic zero-count sample:
-        // absent history cannot establish whether collection was operating.
-        plotRows.push({ timestamp: previous.timestamp + bucketSeconds, success: null, failure: null });
-      }
-      plotRows.push(row);
-    }
-    const x = plotRows.map(row => row.timestamp * 1000);
-    // Numeric x data prevents date parsing/timezone ambiguity. Tick/hover text
-    // contains only locally formatted timestamps, never attacker-controlled logs.
     const end = serverTime;
     const start = end - hours * 3600;
-    const ticks = Array.from({ length: 7 }, (_value, index) => start + (end - start) * index / 6);
-    const hover = plotRows.map(row => date(row.timestamp));
-    const base = { type: "scatter", mode: "lines+markers", x, customdata: hover,
-      hovertemplate: "%{customdata}<br>%{y} forsøg<extra>%{fullData.name}</extra>",
-      connectgaps: false };
+    // Show only observed buckets. An absent bucket is not evidence that
+    // collection was operating, so it must not become a synthetic zero.
+    // Clip partial first/current buckets to the actual selected time window.
+    const plotRows = rows.map(row => ({ ...row,
+      left: Math.max(start, row.timestamp), right: Math.min(end, row.timestamp + bucketSeconds)
+    })).filter(row => row.right > row.left);
+    const x = plotRows.map(row => (row.left + row.right) * 500);
+    const widths = plotRows.map(row => (row.right - row.left) * 1000 * 0.86);
+    const showDates = hours >= 24 || dayFormat.format(new Date(start * 1000)) !== dayFormat.format(new Date(end * 1000));
+    const tickCount = compact ? 3 : 7;
+    const ticks = Array.from({ length: tickCount }, (_value, index) => start + (end - start) * index / (tickCount - 1));
+    const intervalLabel = (timestamp) => `${date(timestamp, dayFormat)} ${date(timestamp, timeFormat)}`;
+    const hover = plotRows.map(row => `${intervalLabel(row.left)}–${intervalLabel(row.right)}`);
+    const maxTotal = Math.max(0, ...plotRows.map(row => row.success + row.failure));
+    // Numeric x data avoids date parsing/timezone ambiguity. Hover text comes
+    // only from formatted timestamps; log messages never become chart HTML.
+    const base = { type: "bar", x, width: widths, customdata: hover,
+      hovertemplate: "%{customdata}<br>%{y} registrerede forsøg<extra>%{fullData.name}</extra>" };
     const traces = [
-      { ...base, name: "Vellykkede", y: plotRows.map(row => row.success), line: { color: "#68d8b6", width: 2, shape: "linear" }, marker: { color: "#68d8b6", size: 4 } },
-      { ...base, name: "Fejlede", y: plotRows.map(row => row.failure), line: { color: "#e8ad70", width: 2, shape: "linear" }, marker: { color: "#e8ad70", size: 4 } }
+      { ...base, name: "Vellykkede", y: plotRows.map(row => row.success), marker: { color: "#68d8b6", line: { width: 0 } } },
+      { ...base, name: "Fejlede", y: plotRows.map(row => row.failure), marker: { color: "#e8ad70", line: { width: 0 } } }
     ];
     const layout = {
       paper_bgcolor: "transparent", plot_bgcolor: "transparent",
       font: { family: '"Segoe UI",Arial,sans-serif', color: "#8797ad", size: 10 },
-      margin: { l: 42, r: 20, t: 15, b: 38 }, showlegend: false,
-      hovermode: "x unified", uirevision: "ssh-activity", dragmode: false,
+      margin: { l: 46, r: 24, t: 15, b: showDates ? 56 : 38 }, showlegend: false,
+      barmode: "stack", hovermode: "closest", uirevision: "ssh-activity", dragmode: false,
       xaxis: { type: "linear", range: [start * 1000, end * 1000], tickmode: "array", tickvals: ticks.map(value => value * 1000),
-        ticktext: ticks.map(value => shortFormat.format(new Date(value * 1000))),
-        showgrid: false, zeroline: false, fixedrange: true, ticks: "", tickfont: { size: 9 } },
+        ticktext: ticks.map(value => `${date(value, shortFormat)}${showDates ? `<br>${date(value, dayFormat)}` : ""}`),
+        showgrid: false, zeroline: false, fixedrange: true, ticks: "", ticklabelstandoff: 6, tickfont: { size: 11 } },
       yaxis: { rangemode: "tozero", gridcolor: "#233040", zerolinecolor: "#28394b", fixedrange: true,
-        nticks: 5, tickformat: ",d", tickfont: { size: 9 }, minallowed: 0 },
+        nticks: 5, dtick: maxTotal <= 5 ? 1 : undefined, tickformat: ",d", tickfont: { size: 11 }, minallowed: 0 },
       hoverlabel: { bgcolor: "#1b293b", bordercolor: "#3a526b", font: { color: "#e1ebf6", size: 11 } },
-      annotations: rows.length ? [] : [{ text: "Ingen hændelser i perioden", showarrow: false, xref: "paper", yref: "paper", x: 0.5, y: 0.5, font: { color: "#8b9db4", size: 12 } }]
+      annotations: plotRows.length ? [] : [{ text: "Ingen hændelser i perioden", showarrow: false, xref: "paper", yref: "paper", x: 0.5, y: 0.5, font: { color: "#8b9db4", size: 12 } }]
     };
     if (firstChart) chart.replaceChildren();
     window.Plotly.react(chart, traces, layout, { responsive: true, displayModeBar: false, scrollZoom: false, staticPlot: false });

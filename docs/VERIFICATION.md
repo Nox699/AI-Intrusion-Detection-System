@@ -94,10 +94,23 @@ periodevalgets template-kontekst og paginering. Relevante regressionstests er
 med i de 60 webtests. Det afsluttende resultat findes i
 `reports/browser-check.json`.
 
-Browserkontrollen er fra den oprindelige release. Klargøringen til det offentlige
-repository ændrer eksempelkontoen, testadresser og dokumentation; dashboardets
-kode og webressourcer er uændrede. Der er ikke kørt en ny browserkontrol af denne
-dokumentations- og dataændring.
+Denne første browserkontrol gælder den oprindelige release. Den første
+repositoryudgave ændrede eksempelkontoen, testadresser og dokumentation.
+
+### Opfølgning: aktivitetsgraf
+
+Brugerafprøvning viste, at spredte femminuttersintervaller blev til små, isolerede
+punkter i døgnvisningen. Grafen bruger nu stablede søjler for registrerede forsøg,
+tydeligere tidsmærker og datoer, når perioden krydser en dato. Den valgte
+tidsperiode bevares, og manglende intervaller udfyldes ikke med kunstige nuller.
+
+En ny Chromium-kontrol afprøvede faktisk login, 24- og 6-timersvisning, automatisk
+opdatering, skift til 390 pixels, tooltips og logout. Søjlernes tællinger blev
+sammenlignet med API'et. Kontrollerede browsersvar afprøvede også tom historik,
+ét interval, lave tællinger og delvise intervaller ved tidsvinduets grænser.
+Kontrollerne bestod uden JavaScript-fejl, konsolfejl eller eksterne forespørgsler.
+De 60 webtests bestod også. Se `reports/chart-verification.json` for den målrettede
+kontrol; den er ikke en test af Pi'ens logindsamling eller detektionskvalitet.
 
 ## Kontrolleret metodeforsøg
 
