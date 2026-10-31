@@ -1,7 +1,6 @@
 """Visibility regression tests for already recorded preauth disconnects."""
 
 import json
-import sqlite3
 import time
 
 from werkzeug.security import generate_password_hash
