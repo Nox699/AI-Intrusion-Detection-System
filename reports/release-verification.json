@@ -1,0 +1,171 @@
+{
+  "release": "0.1.0",
+  "verified_on": "2026-10-31",
+  "environment": {
+    "system": "Linux",
+    "architecture": "x86_64",
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "pytest": "9.2.0",
+    "scikit_learn": "1.8.0",
+    "flask": "3.1.3",
+    "gunicorn": "25.3.0",
+    "playwright": "1.64.1",
+    "chromium": "140.0.7339.16"
+  },
+  "tests": {
+    "total": 336,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 9.13,
+    "by_suite": {
+      "tests.test_cli": 21,
+      "tests.test_config": 29,
+      "tests.test_engine": 17,
+      "tests.test_features": 16,
+      "tests.test_lab": 17,
+      "tests.test_ml": 41,
+      "tests.test_rules": 27,
+      "tests.test_source": 18,
+      "tests.test_ssh": 67,
+      "tests.test_storage": 23,
+      "tests.test_web": 60
+    },
+    "report": "release-pytest-results.xml"
+  },
+  "lint": "ruff check passed",
+  "format": "ruff format --check passed for all 25 Python files",
+  "wheel": {
+    "name": "yggdrasil_ids-0.1.0-py3-none-any.whl",
+    "sha256": "2fb44a17ef81d66b585d2a9d121ce714505efdc8a8c8830266348ebd102149d4",
+    "installed": true,
+    "source_and_assets_byte_match": true
+  },
+  "browser": {
+    "checks": [
+      "Authenticated overview, real metrics and Plotly traces",
+      "Populated time period controls and real event pagination",
+      "Failure filter and expandable raw SSH evidence",
+      "Alarm list opens actual evidence detail",
+      "Model and system status pages render",
+      "390px mobile navigation, layout and authenticated logout"
+    ],
+    "console_errors": [],
+    "page_errors": [],
+    "external_requests": [],
+    "chart": {
+      "traces": 2,
+      "points": 15,
+      "type": "scatter"
+    },
+    "outcome_options": [
+      {
+        "value": "",
+        "text": "Alle resultater"
+      },
+      {
+        "value": "success",
+        "text": "Vellykket"
+      },
+      {
+        "value": "failure",
+        "text": "Fejlet"
+      }
+    ]
+  },
+  "arm64_python313_resolution": {
+    "status": "passed; available wheels resolved, not runtime-tested",
+    "packages": [
+      {
+        "name": "Flask",
+        "version": "3.1.3",
+        "wheel": "flask-3.1.3-py3-none-any.whl"
+      },
+      {
+        "name": "Werkzeug",
+        "version": "3.1.9",
+        "wheel": "werkzeug-3.1.9-py3-none-any.whl"
+      },
+      {
+        "name": "Jinja2",
+        "version": "3.1.6",
+        "wheel": "jinja2-3.1.6-py3-none-any.whl"
+      },
+      {
+        "name": "MarkupSafe",
+        "version": "3.0.4",
+        "wheel": "markupsafe-3.0.4-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl"
+      },
+      {
+        "name": "itsdangerous",
+        "version": "2.2.0",
+        "wheel": "itsdangerous-2.2.0-py3-none-any.whl"
+      },
+      {
+        "name": "blinker",
+        "version": "1.9.0",
+        "wheel": "blinker-1.9.0-py3-none-any.whl"
+      },
+      {
+        "name": "click",
+        "version": "8.5.0",
+        "wheel": "click-8.5.0-py3-none-any.whl"
+      },
+      {
+        "name": "gunicorn",
+        "version": "25.3.0",
+        "wheel": "gunicorn-25.3.0-py3-none-any.whl"
+      },
+      {
+        "name": "packaging",
+        "version": "26.3",
+        "wheel": "packaging-26.3-py3-none-any.whl"
+      },
+      {
+        "name": "plotly",
+        "version": "6.9.0",
+        "wheel": "plotly-6.9.0-py3-none-any.whl"
+      },
+      {
+        "name": "narwhals",
+        "version": "2.28.0",
+        "wheel": "narwhals-2.28.0-py3-none-any.whl"
+      },
+      {
+        "name": "numpy",
+        "version": "2.3.5",
+        "wheel": "numpy-2.3.5-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl"
+      },
+      {
+        "name": "scipy",
+        "version": "1.17.0",
+        "wheel": "scipy-1.17.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl"
+      },
+      {
+        "name": "scikit-learn",
+        "version": "1.8.0",
+        "wheel": "scikit_learn-1.8.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl"
+      },
+      {
+        "name": "joblib",
+        "version": "1.5.3",
+        "wheel": "joblib-1.5.3-py3-none-any.whl"
+      },
+      {
+        "name": "threadpoolctl",
+        "version": "3.6.0",
+        "wheel": "threadpoolctl-3.6.0-py3-none-any.whl"
+      }
+    ]
+  },
+  "not_verified_here": [
+    "Actual Raspberry Pi ARM64 execution",
+    "Actual OpenSSH and journald coverage on yggdrasil",
+    "systemd unit execution",
+    "Windows/WSL localhost forwarding",
+    "Target host latency or 24-hour operation",
+    "Detection accuracy on real attacks"
+  ],
+  "artifact_scope": "Original Sprint 1 ZIP release before public-repository documentation and synthetic-fixture anonymization; wheel hash refers to that original release."
+}

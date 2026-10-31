@@ -1,0 +1,34 @@
+[app]
+mode = "live"
+host_label = "Yggdrasil"
+timezone = "Europe/Copenhagen"
+[paths]
+database = "/var/lib/yggdrasil-ids/events.sqlite3"
+model = "/var/lib/yggdrasil-ids/model.json"
+credentials = "/etc/yggdrasil-ids/web-secrets.json"
+[rules]
+window_seconds = 300
+failure_threshold = 5
+username_threshold = 4
+cooldown_seconds = 300
+expected_sources = []
+expected_users = []
+[ml]
+window_seconds = 300
+min_samples = 80
+contamination = 0.03
+n_estimators = 128
+random_state = 42
+[collector]
+initial_history_hours = 24
+heartbeat_seconds = 5
+max_record_bytes = 65536
+[web]
+bind = "127.0.0.1"
+port = 8765
+poll_seconds = 5
+session_minutes = 60
+trusted_hosts = ["localhost", "127.0.0.1", "[::1]"]
+[storage]
+retention_days = 30
+max_database_mb = 512

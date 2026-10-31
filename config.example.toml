@@ -1,0 +1,45 @@
+# Copy to config.toml. Paths are relative to THIS file, not the current directory.
+[app]
+mode = "live"
+host_label = "Yggdrasil"
+timezone = "Europe/Copenhagen"
+
+[paths]
+database = ".local/events.sqlite3"
+model = ".local/model.json"
+credentials = ".local/web-secrets.json"
+
+[rules]
+window_seconds = 300
+failure_threshold = 5
+username_threshold = 4
+cooldown_seconds = 300
+# Empty lists disable the corresponding expected-profile check.
+# Add your actual laptop Tailscale address /32 and expected Linux accounts.
+# Example documentation address only: ["192.0.2.10/32"]
+expected_sources = []
+expected_users = []
+
+[ml]
+window_seconds = 300
+min_samples = 80
+contamination = 0.03 # Decision threshold parameter, NOT a measured attack rate.
+n_estimators = 128
+random_state = 42
+
+[collector]
+initial_history_hours = 24
+heartbeat_seconds = 5
+max_record_bytes = 65536
+executable = "journalctl"
+
+[web]
+bind = "127.0.0.1"
+port = 8765
+poll_seconds = 5
+session_minutes = 60
+trusted_hosts = ["localhost", "127.0.0.1", "[::1]"]
+
+[storage]
+retention_days = 30
+max_database_mb = 512

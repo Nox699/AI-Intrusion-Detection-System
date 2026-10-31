@@ -1,0 +1,32 @@
+{
+  "checks": [
+    "Authenticated overview, real metrics and Plotly traces",
+    "Populated time period controls and real event pagination",
+    "Failure filter and expandable raw SSH evidence",
+    "Alarm list opens actual evidence detail",
+    "Model and system status pages render",
+    "390px mobile navigation, layout and authenticated logout"
+  ],
+  "console_errors": [],
+  "page_errors": [],
+  "external_requests": [],
+  "chart": {
+    "traces": 2,
+    "points": 15,
+    "type": "scatter"
+  },
+  "outcome_options": [
+    {
+      "value": "",
+      "text": "Alle resultater"
+    },
+    {
+      "value": "success",
+      "text": "Vellykket"
+    },
+    {
+      "value": "failure",
+      "text": "Fejlet"
+    }
+  ]
+}

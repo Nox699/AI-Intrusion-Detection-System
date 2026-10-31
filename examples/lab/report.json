@@ -1,0 +1,2223 @@
+{
+  "schema_version": 1,
+  "kind": "synthetic_laboratory",
+  "observation_unit": "one_accepted_or_failed_authentication",
+  "evaluated_at": "2026-10-31T21:59:50+00:00",
+  "limitations": [
+    "Syntetiske software- og demonstrationsdata; resultaterne er ikke en sikkerhedsbenchmark for Pi’en.",
+    "En observation er ét autentificeringsresultat. Overlappende vinduer gør observationerne afhængige.",
+    "Scenariernes hensigt er kendt fra forsøget. Logs alene beviser ikke ondsindet hensigt.",
+    "Træningen bruger kun den separate normaldel. Validering og sluttest ændrer ikke modellen eller alarmgrænserne.",
+    "Første forsøg i et simuleret angrebsforløb kan ligge under reglernes tærskel og tæller derfor som oversete hændelser.",
+    "Precision, recall og falsk positiv-rate beskriver kun disse konstruerede forløb og deres valgte fordeling."
+  ],
+  "settings": {
+    "rules": {
+      "window_seconds": 300,
+      "failure_threshold": 5,
+      "username_threshold": 4,
+      "cooldown_seconds": 300,
+      "expected_sources": [
+        "192.0.2.10/32",
+        "192.0.2.11/32"
+      ],
+      "expected_users": [
+        "labuser",
+        "backup"
+      ]
+    },
+    "ml": {
+      "window_seconds": 300,
+      "min_samples": 80,
+      "contamination": 0.03,
+      "n_estimators": 128,
+      "random_state": 42
+    }
+  },
+  "model": {
+    "version": "ssh-if-5dc2863023cdd10b",
+    "provenance": "Syntetiske normale SSH-labforløb fra train.jsonl; ingen validerings- eller testobservationer i træningen.",
+    "trained_at": "2026-10-31T21:59:49+00:00",
+    "sample_count": 312,
+    "feature_names": [
+      "failed_count",
+      "success_count",
+      "unique_users",
+      "failure_ratio",
+      "hour_sin",
+      "hour_cos"
+    ],
+    "threshold": 0.6080298460770418,
+    "sklearn_version": "1.8.0",
+    "window_seconds": 300,
+    "contamination": 0.03,
+    "settings": {
+      "min_samples": 80,
+      "n_estimators": 128,
+      "contamination": 0.03,
+      "window_seconds": 300,
+      "random_state": 42
+    },
+    "fingerprint": "5dc2863023cdd10b582a3dd64a36ab7b8ddede763e0406a32874ca5ae1019375",
+    "score_direction": "higher_is_more_anomalous",
+    "observations": "event_driven_per_source_rolling_window"
+  },
+  "splits": {
+    "train": {
+      "event_count": 312,
+      "first_timestamp": 1793383647.0,
+      "last_timestamp": 1793468284.0,
+      "first_utc": "2026-10-30T18:07:27+00:00",
+      "last_utc": "2026-10-31T17:38:04+00:00",
+      "sha256": "279050bcd5adde7385fa13a13e6f9400fd4a9ad3f228cf60e0a12c8fa2c19844"
+    },
+    "validation": {
+      "event_count": 44,
+      "first_timestamp": 1793470048.0,
+      "last_timestamp": 1793475101.0,
+      "first_utc": "2026-10-31T18:07:28+00:00",
+      "last_utc": "2026-10-31T19:31:41+00:00",
+      "sha256": "e07f06c7a2328d3cced16fff3dded9fb1ce4a4115d1140cfd17c495a8f6668e0"
+    },
+    "test": {
+      "event_count": 41,
+      "first_timestamp": 1793475809.0,
+      "last_timestamp": 1793480859.0,
+      "first_utc": "2026-10-31T19:43:29+00:00",
+      "last_utc": "2026-10-31T21:07:39+00:00",
+      "sha256": "e8ae901bb5d8d3a7b43a5c90c56f1a6801d3cd4421f0afab69bf7be78c5e3c77"
+    }
+  },
+  "labels_sha256": "ece3c1e0b98ab95a3c7e1ace9fe0f92f6b3d4aa921a18e09a9b6c5433c33dbaf",
+  "validation": {
+    "event_count": 44,
+    "rules": {
+      "tp": 13,
+      "fp": 1,
+      "tn": 23,
+      "fn": 7,
+      "total": 44,
+      "expected_positive": 20,
+      "predicted_positive": 14,
+      "precision": 0.9285714285714286,
+      "recall": 0.65,
+      "false_positive_rate": 0.041666666666666664,
+      "denominators": {
+        "precision": 14,
+        "recall": 20,
+        "false_positive_rate": 24
+      }
+    },
+    "ml": {
+      "tp": 19,
+      "fp": 3,
+      "tn": 21,
+      "fn": 1,
+      "total": 44,
+      "expected_positive": 20,
+      "predicted_positive": 22,
+      "precision": 0.8636363636363636,
+      "recall": 0.95,
+      "false_positive_rate": 0.125,
+      "denominators": {
+        "precision": 22,
+        "recall": 20,
+        "false_positive_rate": 24
+      }
+    },
+    "detector_findings": {
+      "ssh.unexpected_success": 2,
+      "ssh.failed_burst": 11,
+      "ssh.user_spray": 5
+    },
+    "scenarios": [
+      {
+        "name": "validation_normal_login",
+        "event_count": 4,
+        "rules": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 4,
+          "fn": 0,
+          "total": 4,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 4
+          }
+        },
+        "ml": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 4,
+          "fn": 0,
+          "total": 4,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 4
+          }
+        }
+      },
+      {
+        "name": "validation_legitimate_typos",
+        "event_count": 3,
+        "rules": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 3,
+          "fn": 0,
+          "total": 3,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 3
+          }
+        },
+        "ml": {
+          "tp": 0,
+          "fp": 3,
+          "tn": 0,
+          "fn": 0,
+          "total": 3,
+          "expected_positive": 0,
+          "predicted_positive": 3,
+          "precision": 0.0,
+          "recall": null,
+          "false_positive_rate": 1.0,
+          "denominators": {
+            "precision": 3,
+            "recall": 0,
+            "false_positive_rate": 3
+          }
+        }
+      },
+      {
+        "name": "validation_legitimate_maintenance",
+        "event_count": 12,
+        "rules": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 12,
+          "fn": 0,
+          "total": 12,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 12
+          }
+        },
+        "ml": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 12,
+          "fn": 0,
+          "total": 12,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 12
+          }
+        }
+      },
+      {
+        "name": "validation_legitimate_new_source",
+        "event_count": 1,
+        "rules": {
+          "tp": 0,
+          "fp": 1,
+          "tn": 0,
+          "fn": 0,
+          "total": 1,
+          "expected_positive": 0,
+          "predicted_positive": 1,
+          "precision": 0.0,
+          "recall": null,
+          "false_positive_rate": 1.0,
+          "denominators": {
+            "precision": 1,
+            "recall": 0,
+            "false_positive_rate": 1
+          }
+        },
+        "ml": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 1,
+          "fn": 0,
+          "total": 1,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 1
+          }
+        }
+      },
+      {
+        "name": "validation_simulated_failed_burst",
+        "event_count": 11,
+        "rules": {
+          "tp": 7,
+          "fp": 0,
+          "tn": 0,
+          "fn": 4,
+          "total": 11,
+          "expected_positive": 11,
+          "predicted_positive": 7,
+          "precision": 1.0,
+          "recall": 0.6363636363636364,
+          "false_positive_rate": null,
+          "denominators": {
+            "precision": 7,
+            "recall": 11,
+            "false_positive_rate": 0
+          }
+        },
+        "ml": {
+          "tp": 11,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "total": 11,
+          "expected_positive": 11,
+          "predicted_positive": 11,
+          "precision": 1.0,
+          "recall": 1.0,
+          "false_positive_rate": null,
+          "denominators": {
+            "precision": 11,
+            "recall": 11,
+            "false_positive_rate": 0
+          }
+        }
+      },
+      {
+        "name": "validation_simulated_user_spray",
+        "event_count": 8,
+        "rules": {
+          "tp": 5,
+          "fp": 0,
+          "tn": 0,
+          "fn": 3,
+          "total": 8,
+          "expected_positive": 8,
+          "predicted_positive": 5,
+          "precision": 1.0,
+          "recall": 0.625,
+          "false_positive_rate": null,
+          "denominators": {
+            "precision": 5,
+            "recall": 8,
+            "false_positive_rate": 0
+          }
+        },
+        "ml": {
+          "tp": 8,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "total": 8,
+          "expected_positive": 8,
+          "predicted_positive": 8,
+          "precision": 1.0,
+          "recall": 1.0,
+          "false_positive_rate": null,
+          "denominators": {
+            "precision": 8,
+            "recall": 8,
+            "false_positive_rate": 0
+          }
+        }
+      },
+      {
+        "name": "validation_simulated_unexpected_success",
+        "event_count": 1,
+        "rules": {
+          "tp": 1,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "total": 1,
+          "expected_positive": 1,
+          "predicted_positive": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "false_positive_rate": null,
+          "denominators": {
+            "precision": 1,
+            "recall": 1,
+            "false_positive_rate": 0
+          }
+        },
+        "ml": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 0,
+          "fn": 1,
+          "total": 1,
+          "expected_positive": 1,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": 0.0,
+          "false_positive_rate": null,
+          "denominators": {
+            "precision": 0,
+            "recall": 1,
+            "false_positive_rate": 0
+          }
+        }
+      },
+      {
+        "name": "validation_legitimate_after_tests",
+        "event_count": 4,
+        "rules": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 4,
+          "fn": 0,
+          "total": 4,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 4
+          }
+        },
+        "ml": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 4,
+          "fn": 0,
+          "total": 4,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 4
+          }
+        }
+      }
+    ],
+    "observations": [
+      {
+        "cursor": "lab-42-validation-000-000-auth",
+        "event_id": "de23db40e67ea224ee7ca8239da080c91755a82c0272175bf997529e13da320b",
+        "timestamp": 1793470048.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_normal_login",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.47903595507374547,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-000-001-auth",
+        "event_id": "d95f5ea129592725e45a3f1d686abfc8f70dcaa590b52969f6bf07f173825aa3",
+        "timestamp": 1793470052.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_normal_login",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.47636299095482143,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-000-002-auth",
+        "event_id": "e99fd1c44a0ace35c14c225fbd8ef84ce1e53f4d5c10b78639d22c9ecbf01b79",
+        "timestamp": 1793470057.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_normal_login",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4764705283106781,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-000-003-auth",
+        "event_id": "45133551743a54ab783ba7306cbce2edf95a49f4c6ed4f88b82f0d92e0f9bb48",
+        "timestamp": 1793470061.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_normal_login",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.48663752679970057,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-001-000-auth",
+        "event_id": "25c461f2c99c5fa105001d0a1325adb7b7e4eb2b02f12924b0ca8e6d04d183ce",
+        "timestamp": 1793470767.0,
+        "source_ip": "192.0.2.11",
+        "username": "backup",
+        "outcome": "failure",
+        "scenario": "validation_legitimate_typos",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6459150110971479,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-001-001-auth",
+        "event_id": "1344ff43b9e7ac5cb0e25d768529c20076fe5c44d960ebada3e5f2914aa9a705",
+        "timestamp": 1793470772.0,
+        "source_ip": "192.0.2.11",
+        "username": "backup",
+        "outcome": "failure",
+        "scenario": "validation_legitimate_typos",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.663567465657201,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-001-002-auth",
+        "event_id": "af2a95316e31bd91b78c38926180a67cd0b23032de05c4f48c8e95a3e848f7cd",
+        "timestamp": 1793470775.0,
+        "source_ip": "192.0.2.11",
+        "username": "backup",
+        "outcome": "success",
+        "scenario": "validation_legitimate_typos",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6167157384120678,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-002-000-auth",
+        "event_id": "b58b881fb0d2ecb703e634397cabbc035c3dc4c5389055275cc9ccb5f8e3fa7f",
+        "timestamp": 1793471487.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4739992709325994,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-002-001-auth",
+        "event_id": "121be73b0730f6eece4b0059140bb54a42a90d235aab00707060b6548daed712",
+        "timestamp": 1793471491.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.46802993764664985,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-002-002-auth",
+        "event_id": "1da2b81f58032e9294e506a87bfb98216669cdcb6d9dddab51d31fee0cbe321b",
+        "timestamp": 1793471495.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4673870168822619,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-002-003-auth",
+        "event_id": "ca0203c5e3511022e8555feb87058f543c97a17c9615511bf5c290d5a5d64097",
+        "timestamp": 1793471500.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.47887694275183396,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-002-004-auth",
+        "event_id": "98f4b5ce7a90d09c0414ef9a020421db23ba7291d50bd3229d43d4de1208ff12",
+        "timestamp": 1793471504.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4858411008622441,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-002-005-auth",
+        "event_id": "b9587385b3cdb7dfa97486ef43bfe06560b813eee647a95927bb492672678044",
+        "timestamp": 1793471507.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.5169669395034757,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-002-006-auth",
+        "event_id": "06e209049531ba2c2bd7f66df0b68359470f06a0f08c19b72e79d7801a627f91",
+        "timestamp": 1793471512.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.5461071644087182,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-002-007-auth",
+        "event_id": "c415bf4a2f3e01ac9137ed5705bdacdfecd131d92f05b8fe2bc650e62bf333b1",
+        "timestamp": 1793471517.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.5701483366629089,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-002-008-auth",
+        "event_id": "020d115072196796ffaa76d9643beb1b8f691c5c28b269d46956693cb7e9c9e9",
+        "timestamp": 1793471519.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.5701483366629089,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-002-009-auth",
+        "event_id": "881a3b1105ca4db33e765881385a1bfb22fc71f3480b17cc016fddd063acabd3",
+        "timestamp": 1793471524.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.5701483366629089,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-002-010-auth",
+        "event_id": "c2347c55be187ccac8eecaa461cefb87a1803a25e9185cde2c3f540cad2499ef",
+        "timestamp": 1793471529.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.5701483366629089,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-002-011-auth",
+        "event_id": "280b6d03db8589548156537ad410bb3caafbdafac57f53717e57ae476efa5dc1",
+        "timestamp": 1793471532.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "validation_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.5865644835201315,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-003-000-auth",
+        "event_id": "5a3341d8bc20a918aea47122fef89e97acf3a030411573c379ed798de73e83a3",
+        "timestamp": 1793472209.0,
+        "source_ip": "203.0.113.44",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_legitimate_new_source",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.unexpected_success"
+        ],
+        "ml_alarm": false,
+        "score": 0.4773088628366794,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-004-000-auth",
+        "event_id": "0096ef1230aaf27d8e6f4a19b4d5406189e29f79ed87b13249dd983e7ee319d0",
+        "timestamp": 1793472929.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "validation_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6508171432456182,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-004-001-auth",
+        "event_id": "918461013d44b59a01b3280b2e09ecda2cd8180f90b328d7d5c5eb6863be613d",
+        "timestamp": 1793472932.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "validation_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6663242299103884,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-004-002-auth",
+        "event_id": "45c61c76531c392bedfe963471a62a39f584b26cbc5ec9f0a42e4c4a688135c3",
+        "timestamp": 1793472935.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "validation_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6663242299103884,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-004-003-auth",
+        "event_id": "daec4b74752b197e85affdc8cd9cd3b48974bd805fa8a368761067394c5f5a09",
+        "timestamp": 1793472939.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "validation_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6663242299103884,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-004-004-auth",
+        "event_id": "0b8d05a59c02507d6febcbae91c33d1e672a09253c3a9ec586e5304123f77433",
+        "timestamp": 1793472945.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "validation_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.6663242299103884,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-004-005-auth",
+        "event_id": "5f580c2e614552ebcae44b454615fc0a91223ff68ed2bca969ffcff763b449c0",
+        "timestamp": 1793472948.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "validation_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.6663242299103884,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-004-006-auth",
+        "event_id": "f7af0f30a37f61e330821ce426e5c2777f0786dd9600368daf1045e7e5d4acb4",
+        "timestamp": 1793472951.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "validation_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.6663242299103884,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-004-007-auth",
+        "event_id": "e7a64988f35f6b2d0af5466bd279047c13a9216973fd72437bf1556d1f58c1e2",
+        "timestamp": 1793472957.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "validation_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.6663242299103884,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-004-008-auth",
+        "event_id": "7aef4f191fa7a5fa56df429b462d4014f9c8823e6b2375142ca8f81004f42b76",
+        "timestamp": 1793472961.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "validation_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.6663242299103884,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-004-009-auth",
+        "event_id": "ca2352ee937b22311a9e3d8beb83b5f82e899dfcfb5d09b5c8ad22de7fa47050",
+        "timestamp": 1793472964.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "validation_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.6663242299103884,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-004-010-auth",
+        "event_id": "03d7f089fc41f87ebb54ed1717fbad6a449728f7748ca6a0a5fb867a60aaa005",
+        "timestamp": 1793472969.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "validation_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.6663242299103884,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-005-000-auth",
+        "event_id": "a9d3158f03aae82417dbf1816a15f594a2297b58cde95afb4f11df1f5519188c",
+        "timestamp": 1793473648.0,
+        "source_ip": "198.51.100.23",
+        "username": "admin",
+        "outcome": "failure",
+        "scenario": "validation_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6529497930531822,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-005-001-auth",
+        "event_id": "8107b2c089b5529dd749a09998d64071f6e97bcbe3735387d9476d2d8162baa9",
+        "timestamp": 1793473653.0,
+        "source_ip": "198.51.100.23",
+        "username": "test",
+        "outcome": "failure",
+        "scenario": "validation_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6873733455413932,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-005-002-auth",
+        "event_id": "d31d15fdca86283aafd6c415f239613fe9793d83caecdbc173e00ccea0a5e750",
+        "timestamp": 1793473656.0,
+        "source_ip": "198.51.100.23",
+        "username": "oracle",
+        "outcome": "failure",
+        "scenario": "validation_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.687010107645129,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-005-003-auth",
+        "event_id": "c90a14effbf7512347f81c9811a6e2a01673713867df3311d51ca434498ffc0e",
+        "timestamp": 1793473661.0,
+        "source_ip": "198.51.100.23",
+        "username": "guest",
+        "outcome": "failure",
+        "scenario": "validation_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.user_spray"
+        ],
+        "ml_alarm": true,
+        "score": 0.687010107645129,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-005-004-auth",
+        "event_id": "7f67d5ae9136d776ef3e4cde5d8e368c1feb6998bc04ed47137ed92260974b67",
+        "timestamp": 1793473663.0,
+        "source_ip": "198.51.100.23",
+        "username": "ubuntu",
+        "outcome": "failure",
+        "scenario": "validation_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst",
+          "ssh.user_spray"
+        ],
+        "ml_alarm": true,
+        "score": 0.6877367754898089,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-005-005-auth",
+        "event_id": "646cc7af61c6547c88ba43f12b7835f1bbd564e111a1a6c6bb540bfbec34d9f8",
+        "timestamp": 1793473667.0,
+        "source_ip": "198.51.100.23",
+        "username": "deploy",
+        "outcome": "failure",
+        "scenario": "validation_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst",
+          "ssh.user_spray"
+        ],
+        "ml_alarm": true,
+        "score": 0.6877367754898089,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-005-006-auth",
+        "event_id": "780d0601b86398fd95c17185a72d72f378c449b77628bd8cd43e1e19651d09e8",
+        "timestamp": 1793473673.0,
+        "source_ip": "198.51.100.23",
+        "username": "postgres",
+        "outcome": "failure",
+        "scenario": "validation_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst",
+          "ssh.user_spray"
+        ],
+        "ml_alarm": true,
+        "score": 0.6877367754898089,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-005-007-auth",
+        "event_id": "847e4e4494293d76b09777e75dc32da1a05885a8c81c6c81d99ce66d03d49be2",
+        "timestamp": 1793473677.0,
+        "source_ip": "198.51.100.23",
+        "username": "support",
+        "outcome": "failure",
+        "scenario": "validation_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst",
+          "ssh.user_spray"
+        ],
+        "ml_alarm": true,
+        "score": 0.6877367754898089,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-006-000-auth",
+        "event_id": "e43da4e39ea9b3b59fc35a9a1e61484dd9d908ad5da74786714b94ae3c49450d",
+        "timestamp": 1793474369.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "validation_simulated_unexpected_success",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.unexpected_success"
+        ],
+        "ml_alarm": false,
+        "score": 0.4875030900794809,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-007-000-auth",
+        "event_id": "055f11a196941a277ee4c89195cfca828c36d5d48ba9be69ec808bb170263ea4",
+        "timestamp": 1793475087.0,
+        "source_ip": "192.0.2.10",
+        "username": "backup",
+        "outcome": "success",
+        "scenario": "validation_legitimate_after_tests",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.48344078913536975,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-007-001-auth",
+        "event_id": "647d0dd43850381ee36c3da892d71624c3cdf6c6954e66e9092d9ea747472287",
+        "timestamp": 1793475093.0,
+        "source_ip": "192.0.2.10",
+        "username": "backup",
+        "outcome": "success",
+        "scenario": "validation_legitimate_after_tests",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.47324547854946886,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-007-002-auth",
+        "event_id": "f01ffa7cc571b573853ff19cc690ef77331d2bd36214a19cadebeb929c9f2923",
+        "timestamp": 1793475096.0,
+        "source_ip": "192.0.2.10",
+        "username": "backup",
+        "outcome": "success",
+        "scenario": "validation_legitimate_after_tests",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4758057261381497,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-validation-007-003-auth",
+        "event_id": "c4fb513829ed1d71eeabb36feebe63dec57a7e4fc269dc37c85d158e4060cd06",
+        "timestamp": 1793475101.0,
+        "source_ip": "192.0.2.10",
+        "username": "backup",
+        "outcome": "success",
+        "scenario": "validation_legitimate_after_tests",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4797354573499692,
+        "threshold": 0.6080298460770418
+      }
+    ]
+  },
+  "test": {
+    "event_count": 41,
+    "rules": {
+      "tp": 12,
+      "fp": 1,
+      "tn": 21,
+      "fn": 7,
+      "total": 41,
+      "expected_positive": 19,
+      "predicted_positive": 13,
+      "precision": 0.9230769230769231,
+      "recall": 0.631578947368421,
+      "false_positive_rate": 0.045454545454545456,
+      "denominators": {
+        "precision": 13,
+        "recall": 19,
+        "false_positive_rate": 22
+      }
+    },
+    "ml": {
+      "tp": 18,
+      "fp": 3,
+      "tn": 19,
+      "fn": 1,
+      "total": 41,
+      "expected_positive": 19,
+      "predicted_positive": 21,
+      "precision": 0.8571428571428571,
+      "recall": 0.9473684210526315,
+      "false_positive_rate": 0.13636363636363635,
+      "denominators": {
+        "precision": 21,
+        "recall": 19,
+        "false_positive_rate": 22
+      }
+    },
+    "detector_findings": {
+      "ssh.unexpected_success": 2,
+      "ssh.failed_burst": 10,
+      "ssh.user_spray": 5
+    },
+    "scenarios": [
+      {
+        "name": "test_normal_login",
+        "event_count": 3,
+        "rules": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 3,
+          "fn": 0,
+          "total": 3,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 3
+          }
+        },
+        "ml": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 3,
+          "fn": 0,
+          "total": 3,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 3
+          }
+        }
+      },
+      {
+        "name": "test_legitimate_typos",
+        "event_count": 3,
+        "rules": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 3,
+          "fn": 0,
+          "total": 3,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 3
+          }
+        },
+        "ml": {
+          "tp": 0,
+          "fp": 3,
+          "tn": 0,
+          "fn": 0,
+          "total": 3,
+          "expected_positive": 0,
+          "predicted_positive": 3,
+          "precision": 0.0,
+          "recall": null,
+          "false_positive_rate": 1.0,
+          "denominators": {
+            "precision": 3,
+            "recall": 0,
+            "false_positive_rate": 3
+          }
+        }
+      },
+      {
+        "name": "test_legitimate_maintenance",
+        "event_count": 11,
+        "rules": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 11,
+          "fn": 0,
+          "total": 11,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 11
+          }
+        },
+        "ml": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 11,
+          "fn": 0,
+          "total": 11,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 11
+          }
+        }
+      },
+      {
+        "name": "test_legitimate_new_source",
+        "event_count": 1,
+        "rules": {
+          "tp": 0,
+          "fp": 1,
+          "tn": 0,
+          "fn": 0,
+          "total": 1,
+          "expected_positive": 0,
+          "predicted_positive": 1,
+          "precision": 0.0,
+          "recall": null,
+          "false_positive_rate": 1.0,
+          "denominators": {
+            "precision": 1,
+            "recall": 0,
+            "false_positive_rate": 1
+          }
+        },
+        "ml": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 1,
+          "fn": 0,
+          "total": 1,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 1
+          }
+        }
+      },
+      {
+        "name": "test_simulated_failed_burst",
+        "event_count": 10,
+        "rules": {
+          "tp": 6,
+          "fp": 0,
+          "tn": 0,
+          "fn": 4,
+          "total": 10,
+          "expected_positive": 10,
+          "predicted_positive": 6,
+          "precision": 1.0,
+          "recall": 0.6,
+          "false_positive_rate": null,
+          "denominators": {
+            "precision": 6,
+            "recall": 10,
+            "false_positive_rate": 0
+          }
+        },
+        "ml": {
+          "tp": 10,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "total": 10,
+          "expected_positive": 10,
+          "predicted_positive": 10,
+          "precision": 1.0,
+          "recall": 1.0,
+          "false_positive_rate": null,
+          "denominators": {
+            "precision": 10,
+            "recall": 10,
+            "false_positive_rate": 0
+          }
+        }
+      },
+      {
+        "name": "test_simulated_user_spray",
+        "event_count": 8,
+        "rules": {
+          "tp": 5,
+          "fp": 0,
+          "tn": 0,
+          "fn": 3,
+          "total": 8,
+          "expected_positive": 8,
+          "predicted_positive": 5,
+          "precision": 1.0,
+          "recall": 0.625,
+          "false_positive_rate": null,
+          "denominators": {
+            "precision": 5,
+            "recall": 8,
+            "false_positive_rate": 0
+          }
+        },
+        "ml": {
+          "tp": 8,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "total": 8,
+          "expected_positive": 8,
+          "predicted_positive": 8,
+          "precision": 1.0,
+          "recall": 1.0,
+          "false_positive_rate": null,
+          "denominators": {
+            "precision": 8,
+            "recall": 8,
+            "false_positive_rate": 0
+          }
+        }
+      },
+      {
+        "name": "test_simulated_unexpected_success",
+        "event_count": 1,
+        "rules": {
+          "tp": 1,
+          "fp": 0,
+          "tn": 0,
+          "fn": 0,
+          "total": 1,
+          "expected_positive": 1,
+          "predicted_positive": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "false_positive_rate": null,
+          "denominators": {
+            "precision": 1,
+            "recall": 1,
+            "false_positive_rate": 0
+          }
+        },
+        "ml": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 0,
+          "fn": 1,
+          "total": 1,
+          "expected_positive": 1,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": 0.0,
+          "false_positive_rate": null,
+          "denominators": {
+            "precision": 0,
+            "recall": 1,
+            "false_positive_rate": 0
+          }
+        }
+      },
+      {
+        "name": "test_legitimate_after_tests",
+        "event_count": 4,
+        "rules": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 4,
+          "fn": 0,
+          "total": 4,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 4
+          }
+        },
+        "ml": {
+          "tp": 0,
+          "fp": 0,
+          "tn": 4,
+          "fn": 0,
+          "total": 4,
+          "expected_positive": 0,
+          "predicted_positive": 0,
+          "precision": null,
+          "recall": null,
+          "false_positive_rate": 0.0,
+          "denominators": {
+            "precision": 0,
+            "recall": 0,
+            "false_positive_rate": 4
+          }
+        }
+      }
+    ],
+    "observations": [
+      {
+        "cursor": "lab-42-test-000-000-auth",
+        "event_id": "a77f791993185366f7456e599e52fbe7ed5609eb36f6c3acb4a6e0ab9866252e",
+        "timestamp": 1793475809.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_normal_login",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.48128321953072156,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-000-001-auth",
+        "event_id": "93292dca0c384bf8f20daa3ec4d997ed0daa63937f115cdd77b40e12373a7b23",
+        "timestamp": 1793475811.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_normal_login",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.468363540080434,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-000-002-auth",
+        "event_id": "3b608ee3ca9dbf9fd9492a74db5e111c88df9e0cad0bba039d7d2099e5c459b4",
+        "timestamp": 1793475816.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_normal_login",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4706967877570153,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-001-000-auth",
+        "event_id": "bfa6f45f503eaa7078fc658e4d084bca5ee7bace715eae8fe0efb00685a7d366",
+        "timestamp": 1793476528.0,
+        "source_ip": "192.0.2.11",
+        "username": "backup",
+        "outcome": "failure",
+        "scenario": "test_legitimate_typos",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.650661381304364,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-001-001-auth",
+        "event_id": "6b0ee411c02c6591b7d6f5289cc2edd912d721791ce52d384e9b7ee952c402ac",
+        "timestamp": 1793476533.0,
+        "source_ip": "192.0.2.11",
+        "username": "backup",
+        "outcome": "failure",
+        "scenario": "test_legitimate_typos",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6631212366294006,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-001-002-auth",
+        "event_id": "5bb0560a69915e3806b7063d4b33d6dc4e11446219d2f28619399eb179c5d9aa",
+        "timestamp": 1793476535.0,
+        "source_ip": "192.0.2.11",
+        "username": "backup",
+        "outcome": "success",
+        "scenario": "test_legitimate_typos",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6219762384234648,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-002-000-auth",
+        "event_id": "5e92cdf8637123d540c661bf58d8fc1bb79e77537a3c9bdd1b256cf49c33c9e5",
+        "timestamp": 1793477248.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4679342801965784,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-002-001-auth",
+        "event_id": "8d93cfce052dba5bf9a7baa70de225a8491163b29f66654217062eb04b45207f",
+        "timestamp": 1793477252.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4547610234132651,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-002-002-auth",
+        "event_id": "c78fee2f9480d99fc9576f3bf1be56f4887a89b96ac0ff39a5dbda4ef544435f",
+        "timestamp": 1793477257.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4549168946122693,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-002-003-auth",
+        "event_id": "09ad33688ebbb4869922219556c2827f5feb2712a500b0468d4e9c39fdfe8b2b",
+        "timestamp": 1793477260.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4609106929397788,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-002-004-auth",
+        "event_id": "a714ee7cdf27735e672abd85478be207d64f016a4cb27a0bc4a044fc78ccfb20",
+        "timestamp": 1793477264.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4711408053648432,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-002-005-auth",
+        "event_id": "00b850c8f1f3344c0efa8e77fb4ae8a910092b84e6a4bef2502ca3431ce1fd57",
+        "timestamp": 1793477268.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.49646599364475835,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-002-006-auth",
+        "event_id": "a5b5203748e02df45225304823355c423392facf9a80e68b0b45d0a85ec754e7",
+        "timestamp": 1793477272.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.5337527758833847,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-002-007-auth",
+        "event_id": "fb8f4aeb2b74f774a5d47e8637dd4754175d50b813e42553cd4146907d6dab96",
+        "timestamp": 1793477275.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.5649836069006267,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-002-008-auth",
+        "event_id": "6787b3ca9a96a09ebe89ec2a32cdd670af52edf3bcdac745c643efc7de01135a",
+        "timestamp": 1793477280.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.5649836069006267,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-002-009-auth",
+        "event_id": "df8df06a63323b37fdecefebeab11d25c3816f20dbc66c99b16fd4c9a4ea516e",
+        "timestamp": 1793477283.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.5649836069006267,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-002-010-auth",
+        "event_id": "b43eac49d054ec8725d2306cc8a97bf8dce50961274495e383cbe01113fdc659",
+        "timestamp": 1793477289.0,
+        "source_ip": "192.0.2.10",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "test_legitimate_maintenance",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.5788169845075661,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-003-000-auth",
+        "event_id": "ebc5b78bdfc527e6f8e6edb225c2952aba87638979307827bc58b842d6f6a94c",
+        "timestamp": 1793477969.0,
+        "source_ip": "203.0.113.44",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_legitimate_new_source",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.unexpected_success"
+        ],
+        "ml_alarm": false,
+        "score": 0.4679267711675015,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-004-000-auth",
+        "event_id": "cca04a5214fe44ef648610934e965aa384ae3775a213f2abec2b94135d8378da",
+        "timestamp": 1793478689.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "test_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6583146731304398,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-004-001-auth",
+        "event_id": "1ba99322e93f87f56b6711fd137f0c7c3be9a8c9a1f6b8d39948849cf8e87cd8",
+        "timestamp": 1793478691.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "test_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.670698595272905,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-004-002-auth",
+        "event_id": "d8da55a827fb30ece287040ae14d55b00a07f43376088ce9174effc5f854f469",
+        "timestamp": 1793478696.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "test_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.670698595272905,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-004-003-auth",
+        "event_id": "9bf409835bd8bc2025d908755a1420ffed51a2500d1a96a361fd99b0e1617a31",
+        "timestamp": 1793478699.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "test_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.670698595272905,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-004-004-auth",
+        "event_id": "83ea1e65c279d2fd080f11c7fcd413968c23b6f45ac9433027394230931ab119",
+        "timestamp": 1793478704.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "test_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.670698595272905,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-004-005-auth",
+        "event_id": "6cc6cdd1e1b40b91fb1a4cd947e1ba8dbaf2d6eb615654255009496efeb8743a",
+        "timestamp": 1793478707.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "test_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.670698595272905,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-004-006-auth",
+        "event_id": "584ec9a14d4167e18db8de4137c957d79977a3ed39495776151a566b31d280be",
+        "timestamp": 1793478713.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "test_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.670698595272905,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-004-007-auth",
+        "event_id": "77d24155d1450d88313cfb257cb604991a4a69eca704eef6929887ae57b4ed1a",
+        "timestamp": 1793478715.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "test_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.670698595272905,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-004-008-auth",
+        "event_id": "56d878a799c8c4c8f4e477ded0c6c9f9fd5602d254c105d1bd84cb42da4301f8",
+        "timestamp": 1793478720.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "test_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.670698595272905,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-004-009-auth",
+        "event_id": "317b5d293bb1e5064e807e00717a88c2736211630b159d95610760a7d9ccfaf9",
+        "timestamp": 1793478723.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "failure",
+        "scenario": "test_simulated_failed_burst",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst"
+        ],
+        "ml_alarm": true,
+        "score": 0.670698595272905,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-005-000-auth",
+        "event_id": "15d64b7d5c1848d4ca92d48da3146a3b640657bb2faa43ba58542b92d779d61e",
+        "timestamp": 1793479408.0,
+        "source_ip": "198.51.100.23",
+        "username": "admin",
+        "outcome": "failure",
+        "scenario": "test_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6591141940714684,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-005-001-auth",
+        "event_id": "f8e07c317fc96d8b9e667e1b7a41126c73e3f0b605da03e83201dfc18efb2f36",
+        "timestamp": 1793479411.0,
+        "source_ip": "198.51.100.23",
+        "username": "test",
+        "outcome": "failure",
+        "scenario": "test_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6929012026907096,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-005-002-auth",
+        "event_id": "7b91d66bee31d7683cf81743f21629bcb391f1a04b3088651996c63e699c7cd5",
+        "timestamp": 1793479416.0,
+        "source_ip": "198.51.100.23",
+        "username": "oracle",
+        "outcome": "failure",
+        "scenario": "test_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": true,
+        "score": 0.6929012026907096,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-005-003-auth",
+        "event_id": "6f3bd8fd23cb5c94acc78ff1aa82cc5879c3cbe5ce43e8bb8ae11958eb2be8d8",
+        "timestamp": 1793479421.0,
+        "source_ip": "198.51.100.23",
+        "username": "guest",
+        "outcome": "failure",
+        "scenario": "test_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.user_spray"
+        ],
+        "ml_alarm": true,
+        "score": 0.6929012026907096,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-005-004-auth",
+        "event_id": "9f0a461daae5b3bb39ca0fb7dcf5d757b07d709c8394211b80151f7dbbd5ff88",
+        "timestamp": 1793479424.0,
+        "source_ip": "198.51.100.23",
+        "username": "ubuntu",
+        "outcome": "failure",
+        "scenario": "test_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst",
+          "ssh.user_spray"
+        ],
+        "ml_alarm": true,
+        "score": 0.6929012026907096,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-005-005-auth",
+        "event_id": "f998a018e0a047c160b481ff7d3de5f24f9cc73ea66d8b3f4a8ee2af85204267",
+        "timestamp": 1793479429.0,
+        "source_ip": "198.51.100.23",
+        "username": "deploy",
+        "outcome": "failure",
+        "scenario": "test_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst",
+          "ssh.user_spray"
+        ],
+        "ml_alarm": true,
+        "score": 0.6929012026907096,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-005-006-auth",
+        "event_id": "f0379eec9dde4b6e47247758616b7cbf214c4b2c31e2120d9548ec6f59c7d1e3",
+        "timestamp": 1793479432.0,
+        "source_ip": "198.51.100.23",
+        "username": "postgres",
+        "outcome": "failure",
+        "scenario": "test_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst",
+          "ssh.user_spray"
+        ],
+        "ml_alarm": true,
+        "score": 0.6929012026907096,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-005-007-auth",
+        "event_id": "1008406079293c145a8b612f8b88dc6c2c8db337c54b3b2f03f9df45e1616dbc",
+        "timestamp": 1793479436.0,
+        "source_ip": "198.51.100.23",
+        "username": "support",
+        "outcome": "failure",
+        "scenario": "test_simulated_user_spray",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.failed_burst",
+          "ssh.user_spray"
+        ],
+        "ml_alarm": true,
+        "score": 0.6929012026907096,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-006-000-auth",
+        "event_id": "e8b6db103037e30fc67e903c88836b6719d90a52c8e54625a8ac374ec4d4aa06",
+        "timestamp": 1793480128.0,
+        "source_ip": "198.51.100.23",
+        "username": "labuser",
+        "outcome": "success",
+        "scenario": "test_simulated_unexpected_success",
+        "expected": "simulated_suspicious",
+        "expected_positive": true,
+        "rule_alarm": true,
+        "rule_ids": [
+          "ssh.unexpected_success"
+        ],
+        "ml_alarm": false,
+        "score": 0.4739315972084174,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-007-000-auth",
+        "event_id": "8cdb83ee2cbcec99940d7f8913cc68f45f4f91dbcdd39deed4fad82b843e0660",
+        "timestamp": 1793480847.0,
+        "source_ip": "192.0.2.10",
+        "username": "backup",
+        "outcome": "success",
+        "scenario": "test_legitimate_after_tests",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.4734105670820902,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-007-001-auth",
+        "event_id": "a8b72b9c168b953873452caef5554654b0ad120470056457747f03cf21a2c895",
+        "timestamp": 1793480851.0,
+        "source_ip": "192.0.2.10",
+        "username": "backup",
+        "outcome": "success",
+        "scenario": "test_legitimate_after_tests",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.45855506819266273,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-007-002-auth",
+        "event_id": "b3a1cb800c1bc72786597983a794d1d4a5c56a0a945b3a350354f5b7f79087c3",
+        "timestamp": 1793480857.0,
+        "source_ip": "192.0.2.10",
+        "username": "backup",
+        "outcome": "success",
+        "scenario": "test_legitimate_after_tests",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.45947935092008635,
+        "threshold": 0.6080298460770418
+      },
+      {
+        "cursor": "lab-42-test-007-003-auth",
+        "event_id": "2c97668af2d34115c9e0ebd4751c81c0fd8bed8d0330ca35d4c2fad73acd4c6d",
+        "timestamp": 1793480859.0,
+        "source_ip": "192.0.2.10",
+        "username": "backup",
+        "outcome": "success",
+        "scenario": "test_legitimate_after_tests",
+        "expected": "normal",
+        "expected_positive": false,
+        "rule_alarm": false,
+        "rule_ids": [],
+        "ml_alarm": false,
+        "score": 0.467384352907065,
+        "threshold": 0.6080298460770418
+      }
+    ]
+  },
+  "artifacts": {
+    "train_path": "train.jsonl",
+    "validation_path": "validation.jsonl",
+    "test_path": "test.jsonl",
+    "labels_path": "labels.json",
+    "model_path": "lab-model.json",
+    "report_path": "report.json",
+    "markdown_path": "report.md"
+  }
+}
