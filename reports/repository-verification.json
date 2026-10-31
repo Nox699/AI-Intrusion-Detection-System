@@ -16,7 +16,40 @@
   "ruff_check": "passed",
   "ruff_format": "passed; all 25 Python files",
   "synthetic_lab": "Same 312 training rows and unchanged validation/test metrics after anonymization; input hashes refreshed.",
-  "github_ci": "Configured for Python 3.11 and 3.13; awaiting first workflow run after source publication.",
+  "github_ci": {
+    "status": "success",
+    "run_id": 41246897284,
+    "run_url": "https://github.com/Nox699/AI-Intrusion-Detection-System/actions/runs/41246897284",
+    "source_commit": "2c773244d1c31aebb15d0cfb347a798446981e2e",
+    "runner": "ubuntu-24.04",
+    "checks": [
+      "locked dependencies installation",
+      "editable source installation",
+      "ruff check",
+      "ruff format --check",
+      "pytest",
+      "wheel build"
+    ],
+    "jobs": [
+      {
+        "python": "3.11.17",
+        "tests_passed": 336,
+        "failures": 0,
+        "skipped": 0,
+        "test_seconds": 10.65,
+        "job_id": 124672094341
+      },
+      {
+        "python": "3.13.17",
+        "tests_passed": 336,
+        "failures": 0,
+        "skipped": 0,
+        "test_seconds": 12.88,
+        "job_id": 124672094509
+      }
+    ],
+    "scope": "GitHub-hosted Linux x86_64 runners; not a Raspberry Pi hardware acceptance test."
+  },
   "target_pi_acceptance": "Not performed; see docs/TEST_ON_PI.md",
   "browser_scope": "Browser checks apply to the original release; public preparation changes synthetic account names and documentation, not web code or assets.",
   "source_install": {

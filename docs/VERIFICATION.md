@@ -28,8 +28,19 @@ Efter klargøring til det offentlige repository er alle 336 tests kørt igen og
 bestået med 0 fejl og 0 oversprungne tests. Ruff-kontrol og formatkontrol bestod.
 Denne kørsel er dokumenteret i `reports/repository-verification.json` og
 `reports/pytest-results.xml`. Den oprindelige releasekørsel er bevaret i
-`reports/release-pytest-results.xml`. GitHub Actions er konfigureret til Python
-3.11 og 3.13; der er endnu ingen gennemført CI-kørsel i repositoryet.
+`reports/release-pytest-results.xml`.
+
+Den første [GitHub Actions-kørsel](https://github.com/Nox699/AI-Intrusion-Detection-System/actions/runs/41246897284)
+bestod på Ubuntu 24.04 med både Python 3.11.17 og 3.13.17. Hvert miljø installerede
+de fastlåste afhængigheder og pakken fra kildekoden, bestod Ruff-kontrol og
+formatkontrol, kørte alle 336 tests uden fejl eller oversprungne tests og byggede
+en wheel. Kørslen gælder kildecommit `2c773244d1c31aebb15d0cfb347a798446981e2e`.
+Jobhenvisninger og resultater findes i `reports/repository-verification.json`.
+
+Kildeinstallation er også afprøvet lokalt i en separat installationsmappe med
+`pip install --no-deps --no-build-isolation --target ... .`. Alle 27 programfiler
+og webressourcer matchede kildekoden, og den installerede CLI returnerede version
+0.1.0. Denne lokale kontrol genbrugte de allerede verificerede afhængigheder.
 
 Den afsluttende kørsel tog cirka 9 sekunder i udviklingsmiljøet. Det er testpakkens
 kørselstid og ikke et mål for alarmforsinkelse. Resultater pr. test findes i
