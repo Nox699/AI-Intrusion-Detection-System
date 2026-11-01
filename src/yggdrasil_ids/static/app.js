@@ -77,7 +77,7 @@
     if (signature === seriesSignature && !firstChart) return;
     const rows = series.filter(row => Number.isFinite(row.timestamp) && Number.isFinite(row.success) && Number.isFinite(row.failure) && Number.isFinite(row.preauth))
       .sort((a, b) => a.timestamp - b.timestamp);
-    const bucketSeconds = hours <= 24 ? 300 : 3600;
+    const bucketSeconds = hours <= 6 ? 300 : hours <= 24 ? 1800 : 3600;
     const end = serverTime;
     const start = end - hours * 3600;
     // Show only observed buckets. An absent bucket is not evidence that
@@ -108,19 +108,23 @@
     const x = points.map(point => point.x);
     const hover = points.map(point => point.label);
     const maxCount = Math.max(0, ...plotRows.flatMap(row => [row.success, row.failure, row.preauth]));
+    // Other types of events in the same bucket are not zero-valued samples
+    // of this category. Hide category zeros to avoid misleading up/down
+    // spikes and keep the true observed positive counts as visible dots.
+    const observed = (point, category) => point[category] > 0 ? point[category] : null;
     // Counts remain measured per bucket. Straight segments are visual guides,
     // not interpolated measurements, and missing buckets stay unconnected.
     const base = { type: "scatter", mode: "lines+markers", connectgaps: false,
       x, customdata: hover,
       hovertemplate: "%{customdata}<br>%{y} registrerede hændelser<extra>%{fullData.name}</extra>" };
     const traces = [
-      { ...base, name: "Vellykkede", y: points.map(point => point.success),
+      { ...base, name: "Vellykkede", y: points.map(point => observed(point, "success")),
         line: { color: "#68d8b6", width: 2.5, shape: "linear" },
         marker: { color: "#68d8b6", size: 7 } },
-      { ...base, name: "Fejlede", y: points.map(point => point.failure),
+      { ...base, name: "Fejlede", y: points.map(point => observed(point, "failure")),
         line: { color: "#ef6b6b", width: 2.5, shape: "linear" },
         marker: { color: "#ef6b6b", size: 7 } },
-      { ...base, name: "Afbrud før login", y: points.map(point => point.preauth),
+      { ...base, name: "Afbrud før login", y: points.map(point => observed(point, "preauth")),
         line: { color: "#e8ad70", width: 2.5, shape: "linear" },
         marker: { color: "#e8ad70", size: 7 } }
     ];

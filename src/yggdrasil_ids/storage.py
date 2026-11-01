@@ -505,7 +505,10 @@ class Repository:
 
     def dashboard(self, hours: int = 24) -> dict:
         start, end = self._period(hours)
-        bucket = 300 if hours <= 24 else 3600
+        # A five-minute bucket is useful for short views but makes the day
+        # chart overly spiky when observations are sparse. These are counts,
+        # not continuous samples; preserve exact five-minute detail at <=6h.
+        bucket = 300 if hours <= 6 else 1800 if hours <= 24 else 3600
         with self.reader() as db:
             counts = dict(
                 db.execute(

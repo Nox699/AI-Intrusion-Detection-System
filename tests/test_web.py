@@ -524,8 +524,8 @@ def test_analysis_error_observation_is_presented_as_error(client, configured):
 def test_chart_explains_missing_observations(client):
     login(client)
     page = client.get("/").get_data(as_text=True)
-    assert "huller kan skyldes rolig aktivitet eller manglende logindsamling" in page
-    assert "Registrerede SSH-hændelser pr. 5 minutter" in page
+    assert "manglende prikker betyder ikke dokumenteret normal drift" in page
+    assert "Registrerede SSH-hændelser pr. 30 minutter" in page
     assert "Afbrud før login" in page
     assert "Afbrud før login er ikke fejlede autentificeringer." in page
 
@@ -586,9 +586,11 @@ def test_activity_chart_uses_distinct_line_colors_and_does_not_connect_missing_b
     assert "points.push({ x: (previous.right + row.left) * 500," in script
     assert "success: null, failure: null, preauth: null" in script
     assert 'shape: "linear"' in script
-    assert '"Vellykkede", y: points.map(point => point.success)' in script
-    assert '"Fejlede", y: points.map(point => point.failure)' in script
-    assert '"Afbrud før login", y: points.map(point => point.preauth)' in script
+    assert '"Vellykkede", y: points.map(point => observed(point, "success"))' in script
+    assert '"Fejlede", y: points.map(point => observed(point, "failure"))' in script
+    assert '"Afbrud før login", y: points.map(point => observed(point, "preauth"))' in script
+    assert "point[category] > 0 ? point[category] : null" in script
+    assert "hours <= 6 ? 300 : hours <= 24 ? 1800 : 3600" in script
     assert 'line: { color: "#ef6b6b"' in script
     assert 'line: { color: "#e8ad70"' in script
     assert ".legend-dot.failure{background:#ef6b6b}" in style

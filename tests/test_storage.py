@@ -354,6 +354,24 @@ def test_chart_empty_history_uses_no_synthetic_activity(repository):
     assert result["preauth_count"] == 0
 
 
+def test_day_chart_uses_half_hour_intervals_but_hour_chart_keeps_five_minutes(repository):
+    # The same two observed successes share one 30-minute bucket.
+    insert(
+        repository,
+        event(31, timestamp=NOW - 1600, outcome="success"),
+        event(32, timestamp=NOW - 1200, outcome="success"),
+    )
+    day = repository.dashboard(hours=24)
+    short = repository.dashboard(hours=1)
+    assert len(day["series"]) == 1
+    assert day["series"][0]["success"] == 2
+    assert day["series"][0]["preauth"] == 0
+    assert len(short["series"]) == 2
+    assert sum(item["success"] for item in short["series"]) == 2
+    assert all(item["preauth"] == 0 for item in short["series"])
+    assert day["totals"]["success"] == 2
+
+
 def test_backup_is_consistent_readable_and_does_not_include_uncommitted_data(repository, tmp_path):
     insert(repository, event(1))
     repository.set_state("cursor", "committed")
