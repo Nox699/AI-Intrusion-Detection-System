@@ -34,8 +34,12 @@ def count(repo, table):
 
 
 def test_schema3_migrates_to4_without_changing_existing_ssh_alert_outbox(tmp_path):
-    repo = Repository(tmp_path / "events.sqlite3")
-    repo.initialize()
+    # Reproduce the actual Sprint 2 schema, not a v4 schema with tables removed.
+    database = tmp_path / "events.sqlite3"
+    with sqlite3.connect(database) as db:
+        db.executescript((FIXTURES.parent / "schema_v3.sql").read_text())
+        db.execute("PRAGMA user_version=3")
+    repo = Repository(database)
     with repo.transaction() as db:
         db.execute(
             "INSERT INTO alerts(detector_id,title,severity,reason,source_ip,"
@@ -62,8 +66,10 @@ def test_schema3_migrates_to4_without_changing_existing_ssh_alert_outbox(tmp_pat
         old_instance = db.execute("SELECT instance FROM discord_outbox_meta").fetchone()[0]
         old_ref = db.execute("SELECT ref FROM discord_outbox").fetchone()[0]
     with sqlite3.connect(repo.path) as db:
-        db.execute("DROP TABLE firewall_events")
-        db.execute("PRAGMA user_version=3")
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert db.execute(
+            "SELECT COUNT(*) FROM sqlite_master WHERE name='firewall_events'"
+        ).fetchone()[0] == 0
     repo.initialize()
     repo.initialize()
     with repo.reader() as db:
