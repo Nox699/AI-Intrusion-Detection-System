@@ -297,6 +297,64 @@ def test_dashboard_counts_selected_period_without_future_or_old_events(repositor
     assert result["top_sources"][0]["count"] == 2
 
 
+def test_chart_preauth_is_distinct_and_includes_preauth_only_buckets(repository):
+    import json
+
+    def record(index, timestamp, *, uid="0", comm="sshd-session", status="ignored"):
+        return (
+            f"preauth-{index}",
+            f"cursor-{index}",
+            timestamp,
+            status,
+            "preauth",
+            json.dumps(
+                {
+                    "_UID": uid,
+                    "_COMM": comm,
+                    "MESSAGE": (
+                        "Connection closed by authenticating user labuser "
+                        f"192.0.2.7 port {20000 + index} [preauth]"
+                    ),
+                }
+            ),
+        )
+
+    # A real authentication and a preauth disconnect can share one bucket.
+    insert(repository, event(1, timestamp=NOW - 20, outcome="success"))
+    with repository.transaction() as db:
+        db.executemany(
+            "INSERT INTO records(id,cursor,timestamp,status,reason,raw_json) "
+            "VALUES(?,?,?,?,?,?)",
+            [
+                record(1, NOW - 25),
+                record(2, NOW - 35),
+                record(3, NOW - 610),  # Another observed, preauth-only bucket.
+                record(4, NOW - 15, uid="1000"),  # Not root-owned: ignore.
+                record(5, NOW - 16, comm="logger"),  # Not OpenSSH: ignore.
+                record(6, NOW - 3700),  # Before the selected period.
+                record(7, NOW + 10),  # Future journal timestamp.
+            ],
+        )
+    result = repository.dashboard(hours=1)
+    assert result["totals"] == {"success": 1, "failure": 0, "events": 1, "alerts": 0}
+    assert result["preauth_count"] == 3
+    assert sum(row["success"] for row in result["series"]) == 1
+    assert sum(row["failure"] for row in result["series"]) == 0
+    assert sum(row["preauth"] for row in result["series"]) == 3
+    assert len(result["series"]) == 2
+    assert any(
+        row["preauth"] == 1 and row["success"] == 0 and row["failure"] == 0
+        for row in result["series"]
+    )
+    assert any(row["preauth"] == 2 and row["success"] == 1 for row in result["series"])
+
+
+def test_chart_empty_history_uses_no_synthetic_activity(repository):
+    result = repository.dashboard(hours=1)
+    assert result["series"] == []
+    assert result["preauth_count"] == 0
+
+
 def test_backup_is_consistent_readable_and_does_not_include_uncommitted_data(repository, tmp_path):
     insert(repository, event(1))
     repository.set_state("cursor", "committed")

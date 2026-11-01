@@ -522,13 +522,29 @@ class Repository:
                 "SELECT COUNT(*) FROM alerts WHERE last_seen>=? AND last_seen<=?", (start, end)
             ).fetchone()[0]
             times = db.execute("SELECT MIN(timestamp),MAX(timestamp) FROM events").fetchone()
-            series = [
-                dict(r)
-                for r in db.execute(
-                    "SELECT CAST(timestamp/? AS INTEGER)*? AS timestamp, SUM(outcome='success') AS success,SUM(outcome='failure') AS failure FROM events WHERE timestamp>=? AND timestamp<=? GROUP BY 1 ORDER BY 1",
+            # Authentication results and preauth disconnects are different
+            # types of evidence. Merge their time buckets for visualization,
+            # without changing authentication totals or ML observations.
+            by_time = {
+                row["timestamp"]: {**dict(row), "preauth": 0}
+                for row in db.execute(
+                    "SELECT CAST(timestamp/? AS INTEGER)*? AS timestamp, "
+                    "SUM(outcome='success') AS success, SUM(outcome='failure') AS failure "
+                    "FROM events WHERE timestamp>=? AND timestamp<=? GROUP BY 1",
                     (bucket, bucket, start, end),
                 )
-            ]
+            }
+            for row in db.execute(
+                "SELECT CAST(timestamp/? AS INTEGER)*? AS timestamp, COUNT(*) AS preauth "
+                "FROM records WHERE " + PREAUTH_FILTER + " GROUP BY 1",
+                (bucket, bucket, start, end),
+            ):
+                item = by_time.setdefault(
+                    row["timestamp"],
+                    {"timestamp": row["timestamp"], "success": 0, "failure": 0, "preauth": 0},
+                )
+                item["preauth"] = row["preauth"]
+            series = [by_time[key] for key in sorted(by_time)]
             sources = [
                 dict(r)
                 for r in db.execute(

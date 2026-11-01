@@ -75,7 +75,7 @@
     const compact = chart.clientWidth < 560;
     const signature = `${JSON.stringify(series)}:${Math.floor(serverTime / 60)}:${compact}`;
     if (signature === seriesSignature && !firstChart) return;
-    const rows = series.filter(row => Number.isFinite(row.timestamp) && Number.isFinite(row.success) && Number.isFinite(row.failure))
+    const rows = series.filter(row => Number.isFinite(row.timestamp) && Number.isFinite(row.success) && Number.isFinite(row.failure) && Number.isFinite(row.preauth))
       .sort((a, b) => a.timestamp - b.timestamp);
     const bucketSeconds = hours <= 24 ? 300 : 3600;
     const end = serverTime;
@@ -93,14 +93,15 @@
     const ticks = Array.from({ length: tickCount }, (_value, index) => start + (end - start) * index / (tickCount - 1));
     const intervalLabel = (timestamp) => `${date(timestamp, dayFormat)} ${date(timestamp, timeFormat)}`;
     const hover = plotRows.map(row => `${intervalLabel(row.left)}–${intervalLabel(row.right)}`);
-    const maxTotal = Math.max(0, ...plotRows.map(row => row.success + row.failure));
+    const maxTotal = Math.max(0, ...plotRows.map(row => row.success + row.failure + row.preauth));
     // Numeric x data avoids date parsing/timezone ambiguity. Hover text comes
     // only from formatted timestamps; log messages never become chart HTML.
     const base = { type: "bar", x, width: widths, customdata: hover,
-      hovertemplate: "%{customdata}<br>%{y} registrerede forsøg<extra>%{fullData.name}</extra>" };
+      hovertemplate: "%{customdata}<br>%{y} registrerede hændelser<extra>%{fullData.name}</extra>" };
     const traces = [
       { ...base, name: "Vellykkede", y: plotRows.map(row => row.success), marker: { color: "#68d8b6", line: { width: 0 } } },
-      { ...base, name: "Fejlede", y: plotRows.map(row => row.failure), marker: { color: "#e8ad70", line: { width: 0 } } }
+      { ...base, name: "Fejlede", y: plotRows.map(row => row.failure), marker: { color: "#e8ad70", line: { width: 0 } } },
+      { ...base, name: "Afbrud før login", y: plotRows.map(row => row.preauth), marker: { color: "#9eb5ff", line: { width: 0 } } }
     ];
     const layout = {
       paper_bgcolor: "transparent", plot_bgcolor: "transparent",

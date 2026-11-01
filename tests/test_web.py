@@ -525,7 +525,9 @@ def test_chart_explains_missing_observations(client):
     login(client)
     page = client.get("/").get_data(as_text=True)
     assert "Huller i grafen" in page
-    assert "Observerede loginforsøg pr. 5 minutter" in page
+    assert "Registrerede SSH-hændelser pr. 5 minutter" in page
+    assert "Afbrud før login" in page
+    assert "Afbrud før login er ikke fejlede autentificeringer." in page
 
 
 def test_model_iso_timestamp_and_analysis_errors_are_visible(client, configured):
