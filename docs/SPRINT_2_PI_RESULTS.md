@@ -3,7 +3,7 @@
 **Dato:** 1. november 2026 (Europe/Copenhagen)  
 **Testmiljø:** Raspberry Pi 5, Debian 13, ARM64, Python 3.13  
 **Installeret kildecommit:** `871eef2c951d402c29f3cf3796cb5b4b32baf209` på `sprint-2/discord-restart`  
-**Status:** Gennemført lokal funktionstest; ikke en fuld sikkerheds- eller driftsaccept.
+**Status:** Sprint 2's centrale funktion er praktisk testet. Restkontroller nedenfor er særskilt opfølgning.
 
 Resultaterne nedenfor bygger på brugerens terminaludskrifter og screenshots
 under den praktiske installation. Der er ikke indsamlet adgangsnøgler,
@@ -40,7 +40,14 @@ GitHub Actions for den installerede kildeversion:
 https://github.com/Nox699/AI-Intrusion-Detection-System/actions/runs/41266740493
 
 Status: gennemført med succes på Linux med Python 3.11 og 3.13, herunder
-Ruff-kontrol, formatkontrol, pytest og wheel-build. De automatiserede
+Ruff-kontrol, formatkontrol, pytest og wheel-build.
+
+Senere sikkerhedsregressioner for webhook, redirects, Discord-acknowledgement
+og grupperede notifikationer bestod i GitHub Actions
+https://github.com/Nox699/AI-Intrusion-Detection-System/actions/runs/41271766875
+(kildecommit `c82f5dbac66a12081527d41e0cefe1edca290918`).
+Denne nyere kode er udviklingsgrenens tilstand og skal installeres på Pi
+separat, før dens konkrete drift dér kan erklæres testet. De automatiserede
 notifier-tests anvender falske/modellerede Discord-svar og en lokal SQLite-
 database; de er ikke tests af Discords driftsinfrastruktur.
 
@@ -51,10 +58,12 @@ database; de er ikke tests af Discords driftsinfrastruktur.
 - **Fejlscenarier på målmaskinen:** ugyldig/slettet webhook, DNS-/netværksfejl,
   ratebegrænsning og langvarig Discord-udfald er afprøvet i kode/tests,
   men ikke dokumenteret under en kontrolleret Pi-driftsøvelse.
-- **Rettighedsrevision:** den særskilte notifierkonto, systemd-credential
-  og read-only kildeadgang er del af serviceopsætningen. En samlet negativ
-  privilegietest (kan ikke skrive kilde-DB, kan ikke læse SSH-journalen)
-  er endnu ikke protokolleret.
+- **Rettighedsrevision:** notifierens separate systemkonto blev bekræftet med
+  grupperne `yggdrasil-notifier` og `yggdrasil-data` (ikke
+  `systemd-journal`). En faktisk læsning af alarmtabellen fandt to
+  alarmforløb, mens forsøg på at åbne kildedatabasen med skriverettighed
+  blev afvist. Journallæseadgang og hele systemd-sandboxen kræver stadig
+  særskilt negativ kontrol på målmaskinen.
 - **Belastning og retention:** ingen målinger af mange samtidige alarmer,
   diskforbrug over lang tid eller varig outbox-vedligeholdelse; outboxposter
   bevares for at undgå stiltiende datatab og kræver fremtidig retentionpolitik.

@@ -24,7 +24,7 @@ og hvilke begrænsninger resultaterne har.
 
 ## Sprint 2 · Discord-notifikationer
 
-**Status: Implementeret og automatisk testet; end-to-end-prøve på Pi bestået. Fuld driftsaccept afventer.**
+**Status: Sprint 2-funktionalitet færdig og praktisk demonstreret på Pi. Langtidsdrift og særskilte sikkerhedstests følges op.**
 
 En separat systemd-notifier sender nye udvalgte alarmforløb fra en SQLite-
 outbox til en privat Discord-kanal via HTTPS-webhook. Den kører uafhængigt af
@@ -32,7 +32,8 @@ collectoren og har separat leveringsstatus. En kontrolleret ny preauth-alarm
 blev vist i dashboardet og udløste en Discord-desktopnotifikation på brugerens
 computer. Mobil-push er endnu ikke særskilt dokumenteret.
 
-[Praktiske Pi-testresultater og begrænsninger](SPRINT_2_PI_RESULTS.md).
+[Praktiske Pi-testresultater og begrænsninger](SPRINT_2_PI_RESULTS.md) og
+[afslutningskontrol](SPRINT_2_CLOSEOUT.md).
 
 - Konfiguration af webhook og alarmniveau uden hemmeligheder i Git eller logtekst.
 - Korte beskeder med hændelsestype, tidspunkt og begrundelse; begrænset deling af
