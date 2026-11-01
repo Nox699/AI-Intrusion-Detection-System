@@ -126,7 +126,9 @@ def test_failed_delivery_does_not_skip_pending_after_restart(tmp_path):
         assert not_before > time.time() + 250
     delivered = []
     restarted = DiscordNotifier(
-        repo.path, path, webhook_file=secret,
+        repo.path,
+        path,
+        webhook_file=secret,
         sender=lambda _url, msg: delivered.append(msg) or "234567890",
     )
     restarted.bootstrap()

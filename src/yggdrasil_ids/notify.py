@@ -187,7 +187,6 @@ class DiscordNotifier:
             db.execute(
                 "CREATE TABLE IF NOT EXISTS meta("
                 "instance TEXT NOT NULL,last_seq INTEGER NOT NULL,not_before REAL NOT NULL DEFAULT 0)"
-
             )
             db.execute(
                 "CREATE TABLE IF NOT EXISTS deliveries("
