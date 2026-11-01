@@ -13,6 +13,7 @@ from typing import Any, Iterator
 
 from .domain import Finding, SSHEvent
 from .firewall import FirewallEvent
+from .network_rules import NetworkFinding
 
 SCHEMA_VERSION = 4
 
@@ -94,6 +95,14 @@ CREATE TABLE IF NOT EXISTS preauth_evidence (
  PRIMARY KEY (record_id,detector_id)
 );
 CREATE INDEX IF NOT EXISTS preauth_evidence_alert ON preauth_evidence(alert_id,timestamp);
+CREATE TABLE IF NOT EXISTS network_evidence (
+ event_id TEXT NOT NULL REFERENCES firewall_events(event_id) ON DELETE CASCADE,
+ alert_id INTEGER NOT NULL REFERENCES alerts(id) ON DELETE CASCADE,
+ timestamp REAL NOT NULL, detector_id TEXT NOT NULL,
+ reason TEXT NOT NULL, details TEXT NOT NULL,
+ PRIMARY KEY(event_id,detector_id)
+);
+CREATE INDEX IF NOT EXISTS network_evidence_alert ON network_evidence(alert_id,timestamp);
 -- Independent notification identities survive deletion or reuse of alert IDs.
 -- Never cascade-delete outbox rows when the alert history is pruned.
 CREATE TABLE IF NOT EXISTS discord_outbox (
@@ -357,6 +366,89 @@ class Repository:
         )
 
     @staticmethod
+    def add_network_alert(
+        db: sqlite3.Connection, finding: NetworkFinding, cooldown: int
+    ) -> int:
+        """Group by source and sensor/destination. A new alert feeds Discord once."""
+        if type(cooldown) is not int or cooldown < 0:
+            raise ValueError("Ugyldigt netværksalarm-cooldown")
+        previous = db.execute(
+            "SELECT alert_id FROM network_evidence WHERE event_id=? AND detector_id=?",
+            (finding.event_id, finding.detector_id),
+        ).fetchone()
+        if previous:
+            return int(previous["alert_id"])
+        # Never merge different destination hosts, interfaces or sensor boots.
+        row = db.execute(
+            "SELECT a.id FROM alerts a "
+            "JOIN network_evidence ne ON ne.alert_id=a.id "
+            "JOIN firewall_events fe ON fe.event_id=ne.event_id "
+            "JOIN firewall_events current ON current.event_id=? "
+            "WHERE a.detector_id=? AND a.source_ip=? "
+            "AND a.last_seen>=? AND a.last_seen<=? "
+            "AND fe.namespace=current.namespace AND fe.host=current.host "
+            "AND fe.boot_id=current.boot_id "
+            "AND fe.destination_ip=current.destination_ip "
+            "AND fe.in_interface=current.in_interface "
+            "ORDER BY a.last_seen DESC LIMIT 1",
+            (
+                finding.event_id,
+                finding.detector_id,
+                finding.source_ip,
+                finding.timestamp - cooldown,
+                finding.timestamp,
+            ),
+        ).fetchone()
+        details = {
+            "destination_ip": finding.destination_ip,
+            "in_interface": finding.in_interface,
+            "window_seconds": finding.window_seconds,
+            "threshold": finding.threshold,
+            "distinct_ports": finding.distinct_ports,
+            "recorded_packets": finding.recorded_packets,
+            "destination_ports": list(finding.destination_ports),
+            "evidence_ids": list(finding.evidence_ids),
+            "evidence_truncated": finding.evidence_truncated,
+        }
+        if row:
+            alert_id = int(row["id"])
+            db.execute(
+                "UPDATE alerts SET last_seen=?,count=count+1,reason=?,details=? "
+                "WHERE id=?",
+                (finding.timestamp, finding.reason, encode(details), alert_id),
+            )
+        else:
+            result = db.execute(
+                "INSERT INTO alerts(detector_id,title,severity,reason,source_ip,"
+                "first_seen,last_seen,count,score,model_version,details) "
+                "VALUES(?,?,?,?,?,?,?,1,NULL,NULL,?)",
+                (
+                    finding.detector_id,
+                    finding.title,
+                    finding.severity,
+                    finding.reason,
+                    finding.source_ip,
+                    finding.timestamp,
+                    finding.timestamp,
+                    encode(details),
+                ),
+            )
+            alert_id = int(result.lastrowid)
+        db.execute(
+            "INSERT INTO network_evidence(event_id,alert_id,timestamp,detector_id,"
+            "reason,details) VALUES(?,?,?,?,?,?)",
+            (
+                finding.event_id,
+                alert_id,
+                finding.timestamp,
+                finding.detector_id,
+                finding.reason,
+                encode(details),
+            ),
+        )
+        return alert_id
+
+    @staticmethod
     def add_preauth_alert(
         db: sqlite3.Connection,
         *,
@@ -560,8 +652,17 @@ class Repository:
                 "WHERE p.alert_id=? ORDER BY p.timestamp DESC LIMIT 100",
                 (alert_id,),
             ).fetchall()
+            network = db.execute(
+                "SELECT n.event_id,n.timestamp,n.detector_id,n.reason,n.details,"
+                "NULL AS score,NULL AS model_version,NULL AS username,"
+                "'firewall' AS outcome,NULL AS message "
+                "FROM network_evidence n WHERE n.alert_id=? "
+                "ORDER BY n.timestamp DESC LIMIT 100",
+                (alert_id,),
+            ).fetchall()
             merged = [self._decode(r) for r in rows]
             merged.extend(self._decode(r) for r in evidence)
+            merged.extend(self._decode(r) for r in network)
             merged.sort(key=lambda item: (item["timestamp"], item["event_id"]), reverse=True)
             alert["findings"] = merged[:100]
             alert["findings_truncated"] = alert["count"] > len(alert["findings"])
@@ -661,18 +762,22 @@ class Repository:
             db.execute(
                 "DELETE FROM alerts WHERE "
                 "NOT EXISTS(SELECT 1 FROM findings WHERE alert_id=alerts.id) "
-                "AND NOT EXISTS(SELECT 1 FROM preauth_evidence WHERE alert_id=alerts.id)"
+                "AND NOT EXISTS(SELECT 1 FROM preauth_evidence WHERE alert_id=alerts.id) "
+                "AND NOT EXISTS(SELECT 1 FROM network_evidence WHERE alert_id=alerts.id)"
             )
             db.execute(
                 "UPDATE alerts SET "
                 "count=(SELECT COUNT(*) FROM findings WHERE alert_id=alerts.id)"
-                "+(SELECT COUNT(*) FROM preauth_evidence WHERE alert_id=alerts.id),"
+                "+(SELECT COUNT(*) FROM preauth_evidence WHERE alert_id=alerts.id)"
+                "+(SELECT COUNT(*) FROM network_evidence WHERE alert_id=alerts.id),"
                 "first_seen=(SELECT MIN(timestamp) FROM ("
                 "SELECT timestamp FROM findings WHERE alert_id=alerts.id UNION ALL "
-                "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id)),"
+                "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id UNION ALL "
+                "SELECT timestamp FROM network_evidence WHERE alert_id=alerts.id)),"
                 "last_seen=(SELECT MAX(timestamp) FROM ("
                 "SELECT timestamp FROM findings WHERE alert_id=alerts.id UNION ALL "
-                "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id))"
+                "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id UNION ALL "
+                "SELECT timestamp FROM network_evidence WHERE alert_id=alerts.id))"
             )
         # Reuse freed pages; avoids blocking a live collector with a full VACUUM.
         return {"events": events, "records": records, "firewall_events": firewall_events}
