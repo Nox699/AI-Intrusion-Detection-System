@@ -269,3 +269,52 @@ Der er dermed **ikke behov for at genkøre** hverken
 migrationsprocedurer. Nye handlinger må udelukkende vedrøre
 den særskilte opt-in-test og efterfølgende verifikation.
 Se [Pi-resultater](SPRINT_3_PI_RESULTS.md).
+
+## F. Første netværks-opt-in (separat fra programopgraderingen)
+
+**Status: Forberedt, endnu ikke udført på Pi.**
+
+Efter en bestået schema-v4-driftsmigration og kontrolleret genstart kan
+`deploy/sprint3_enable_network.sh` bruges til den første aktivering.
+Det forventer en **ren** eksisterende konfiguration uden `[network]`-sektion,
+de tre aktive IDS-tjenester, schema v4, ingen tidligere
+`firewall_started_at`, fungerende worker- og web-`doctor`, og UFW
+`Logging: on (low)`. Hvis konfigurationen allerede indeholder
+`[network]`, stopper scriptet; ændr da ikke konfigurationen uden
+en særskilt gennemgang.
+
+Scriptet tager en konsistent schema-v4-backup og en privat kopi af
+konfigurationen under `/var/backups/yggdrasil-ids`.
+Det tilføjer atomisk og med bevarede filrettigheder:
+
+```toml
+[network]
+enabled = true
+window_seconds = 60
+distinct_ports_threshold = 6
+```
+
+Derefter genstartes **kun IDS-collector og IDS-webdashboard**, så begge
+processer indlæser den nye konfiguration. Discord-notifier forbliver
+aktiv, og UFW/SSH/Tailscale/Fail2ban/porte ændres ikke. Der verificeres
+første aktiveringstid i SQLite, schema v4 og at alle tre services er aktive.
+Hvis der endnu ikke er firewallposter, er det **ikke** en fejlgaranti
+eller et bevis for, at alle pakker opsamles. Konkrete blokeringer og
+detektion testes særskilt med tidsafgrænset, autoriseret trafik.
+
+Kør kun med fuld Git-SHA, som har bestået CI:
+
+```bash
+cd /home/vidar/AI-Intrusion-Detection-System
+git fetch origin sprint-3/network-monitoring
+set -o pipefail
+script_sha='INDSAET_FULD_CI_BESTAAET_SHA'
+git show "$script_sha:deploy/sprint3_enable_network.sh" | bash -s -- "$script_sha"
+```
+
+Ved fejl må scriptet **ikke** genkøres blindt. Bevar backup, og kontrollér
+status. Midlertidig deaktivering kan foretages ved at gendanne den
+root-beskyttede konfigurationskopi med samme ejer/rettigheder og genstarte
+collector og web. Tidligere lagret firewallhistorik slettes ikke ved
+deaktivering, og gammel `firewall_started_at` skal vurderes særskilt
+ved fremtidig genaktivering.
