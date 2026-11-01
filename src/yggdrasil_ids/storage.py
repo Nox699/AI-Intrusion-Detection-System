@@ -610,8 +610,12 @@ class Repository:
         }
 
     def list_firewall(
-        self, hours: int = 24, source: str = "", protocol: str = "",
-        page: int = 1, per_page: int = 25
+        self,
+        hours: int = 24,
+        source: str = "",
+        protocol: str = "",
+        page: int = 1,
+        per_page: int = 25,
     ) -> dict:
         start, end = self._period(hours)
         where, args = "timestamp>=? AND timestamp<=?", [start, end]

@@ -433,9 +433,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
         if protocol not in {"", "TCP", "UDP", "IGMP", "ICMP", "ICMPV6"}:
             abort(400, description="Ukendt netværksprotokol.")
         read_status()
-        result = call(
-            "list_firewall", hours=period, source=source, protocol=protocol, **paging()
-        )
+        result = call("list_firewall", hours=period, source=source, protocol=protocol, **paging())
         summary = call("firewall_summary", hours=period)
         return render_template(
             "network.html",

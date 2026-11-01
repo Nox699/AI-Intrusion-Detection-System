@@ -200,7 +200,9 @@ def login(client):
     return response
 
 
-@pytest.mark.parametrize("path", ["/", "/events", "/network", "/alerts", "/alerts/1", "/model", "/status"])
+@pytest.mark.parametrize(
+    "path", ["/", "/events", "/network", "/alerts", "/alerts/1", "/model", "/status"]
+)
 def test_sensitive_pages_require_login(client, path):
     response = client.get(path)
     assert response.status_code == 302
@@ -326,7 +328,9 @@ def test_secure_headers_and_cookie_flags(client):
     assert "'unsafe-eval'" not in response.headers["Content-Security-Policy"]
 
 
-@pytest.mark.parametrize("path", ["/", "/events", "/network", "/alerts", "/alerts/1", "/model", "/status"])
+@pytest.mark.parametrize(
+    "path", ["/", "/events", "/network", "/alerts", "/alerts/1", "/model", "/status"]
+)
 def test_all_readonly_pages_render_real_repository_data(client, path):
     login(client)
     response = client.get(path)
