@@ -103,3 +103,22 @@ separat arkivfil før opdatering, så rollback ikke bygger på en antagelse.
 En ny backup af v3-databasen skal desuden tages **efter tjenestestop**
 før selve migrationsskridtet. Read-only preflight er bestået; selve
 opgraderingen og nettets observerbarhed er stadig uprøvet.
+
+## Releaseforberedelse udført på Pi (før driftsinstallation)
+
+Ejeren gennemførte `deploy/sprint3_prepare.sh` fra commit
+`07fab99c88fe51a2cc455f51788bb17fd6c37fa4`.
+Før opbygning blev SQLite schema v3 og deaktiveret netværksindsamling verificeret.
+Den nye wheel blev bygget og verificeret; et arkiv af det eksisterende
+installerede Python-miljø blev gemt i en root-beskyttet mappe.
+
+- Wheel: `yggdrasil_ids-0.1.0-py3-none-any.whl`
+- SHA-256 for wheel: `859726739016d0876e14a31d4762c203062f6a5530ad6da3013ad6df8da72b5e`
+- SHA-256 for tidligere venv: `fb38bc7b05024d6f52873fd3ec85093e157b2b4a7e607e0b70a88690a994faeb`
+- Forberedt release-mappe: `/var/backups/yggdrasil-ids/sprint3-prepared-07fab99c88fe51a2cc455f51788bb17fd6c37fa4`
+- Samlet størrelse: `89M`
+
+Den rapporterede slutttekst var `PASS: Forberedelse færdig; intet er installeret eller genstartet.`
+Dette er **ikke** en installation på Pi. Produktionsmigrering og live scan-test afventer.
+To fejlede sudo-adgangskodeforsøg blev fulgt af vellykket autentificering.
+Der er ingen observerede ændringer i IDS-tjenester eller adgangsregler.

@@ -126,6 +126,36 @@ skal også sikres** efter tjenestestop.
 10. Dokumentér drift i mindst 24 timer samt performance, diskvækst,
     negative fejltests og genstart, inden ændringen accepteres fuldt.
 
+## B2. Kontrolleret opgraderingsscript
+
+Efter den beståede releaseforberedelse og grøn CI på scriptet kan `deploy/sprint3_upgrade.sh` anvendes
+med en entydigt fastlåst (pinned) script-commit. Det installerer den allerede byggede wheel
+fra `07fab99c88fe51a2cc455f51788bb17fd6c37fa4` og verificerer både dens SHA-256
+og SHA-256 for arkivet af det tidligere installerede Python-miljø.
+
+Scriptet kræver, at kildekode og afhængigheder er identiske mellem den byggede wheel og
+den valgte script-commit. Det stopper derefter kun IDS notifier/web/collector og tager
+en frisk offline-v3-SQLite-backup samt private kopier af data, Discord-state, secrets
+og systemd-units. Først efter backupverifikation installeres den nye wheel uden online
+dependency-opgraderinger, schema v4 migreres, eksisterende SSH/outbox-data verificeres,
+og tjenesterne startes og helbredstestes én ad gangen.
+
+**OBS: Dette er en reel driftsændring**. SSH og Tailscale påvirkes ikke tilsigtet,
+men IDS-overvågning holder kortvarigt pause, mens de tre IDS-tjenester er stoppet.
+Netværksindsamling forbliver deaktiveret (`network.enabled=false`), UFW på `low`.
+
+```bash
+cd /home/vidar/AI-Intrusion-Detection-System
+git fetch origin sprint-3/network-monitoring
+set -o pipefail
+script_sha='INDSAET_40_TEGNS_GRONT_TESTET_SCRIPT_SHA'
+git show "$script_sha:deploy/sprint3_upgrade.sh" | bash -s -- "$script_sha"
+```
+
+Scriptet afbryder ved fejl og udfører **ikke** automatisk rollback efter en migration.
+En forkert restore kan slette nye hændelser. Bevar sikkerhedskopier og send
+den sidste fejlfase til gennemgang inden videre arbejde.
+
 ## C. Stop- og rollbackpolitik
 
 - **Før migrationsskridt 6:** afbryd ved fejl, gendan den tidligere
