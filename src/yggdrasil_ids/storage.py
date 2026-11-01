@@ -144,9 +144,7 @@ class Repository:
             # A single transaction makes upgrades from schema 1 crash-safe.
             # The old authentication tables are untouched; only new tables are added.
             db.executescript(
-                "BEGIN IMMEDIATE;\n"
-                + SCHEMA
-                + f"\nPRAGMA user_version={SCHEMA_VERSION};\nCOMMIT;"
+                "BEGIN IMMEDIATE;\n" + SCHEMA + f"\nPRAGMA user_version={SCHEMA_VERSION};\nCOMMIT;"
             )
         finally:
             db.close()

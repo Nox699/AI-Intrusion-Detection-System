@@ -19,13 +19,22 @@ def record(index, timestamp, message):
 
 def test_parser_checks_producer_and_ip():
     good = record(
-        1, 1800000000,
+        1,
+        1800000000,
         "Connection closed by authenticating user vidar 192.0.2.7 port 12345 [preauth]",
     )
     assert parse_preauth(good).source_ip == "192.0.2.7"
     assert parse_preauth({**good, "_UID": "1000"}) is None
     assert parse_preauth({**good, "_COMM": "logger"}) is None
-    assert parse_preauth({**good, "MESSAGE": "Connection closed by authenticating user vidar bad-ip port 12345 [preauth]"}) is None
+    assert (
+        parse_preauth(
+            {
+                **good,
+                "MESSAGE": "Connection closed by authenticating user vidar bad-ip port 12345 [preauth]",
+            }
+        )
+        is None
+    )
 
 
 def test_burst_needs_threshold_and_never_scores_as_login(tmp_path, monkeypatch):
@@ -40,8 +49,9 @@ def test_burst_needs_threshold_and_never_scores_as_login(tmp_path, monkeypatch):
     engine = AnalysisEngine(cfg, "test")
     for index in range(5):
         item = record(
-            index, 1800000000 - 20 + index,
-            f"Connection closed by authenticating user vidar 192.0.2.7 port {12345+index} [preauth]",
+            index,
+            1800000000 - 20 + index,
+            f"Connection closed by authenticating user vidar 192.0.2.7 port {12345 + index} [preauth]",
         )
         result = engine.process(item)
         assert result["findings"] == (1 if index == 4 else 0)

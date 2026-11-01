@@ -1,4 +1,5 @@
 """Recognize the two observed OpenSSH preauth disconnect formats."""
+
 from __future__ import annotations
 
 import ipaddress
