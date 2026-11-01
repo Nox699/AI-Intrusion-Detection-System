@@ -20,7 +20,7 @@ def packet(index, port=None, timestamp=None, **changes):
         f"PROTO=TCP SPT={40000 + index % 1000} DPT={2000 + index if port is None else port} SYN"
     )
     stamp = NOW + index if timestamp is None else timestamp
-    item = UFWParser().parse(
+    parsed = UFWParser().parse(
         {
             "_TRANSPORT": "kernel",
             "_BOOT_ID": "a" * 32,
@@ -30,7 +30,8 @@ def packet(index, port=None, timestamp=None, **changes):
             "MESSAGE": message,
         },
         namespace="test",
-    ).event
+    )
+    item = parsed.event
     assert item is not None
     return replace(item, **changes)
 

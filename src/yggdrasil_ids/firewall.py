@@ -173,9 +173,7 @@ class UFWParser:
             number = _PROTOCOL_NUMBERS.get(raw_protocol)
             if number is None:
                 number = _number(raw_protocol, 255)
-            if (number in {1, 2} and source.version != 4) or (
-                number == 58 and source.version != 6
-            ):
+            if (number in {1, 2} and source.version != 4) or (number == 58 and source.version != 6):
                 raise ValueError("Protocol incompatible with IP family")
             source_port = destination_port = None
             if ("SPT" in fields) != ("DPT" in fields):
