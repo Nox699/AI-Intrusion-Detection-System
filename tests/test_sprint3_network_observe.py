@@ -1,4 +1,5 @@
 """Isolated regression tests for read-only Sprint 3 scan observations."""
+
 import importlib.util
 import json
 import sqlite3
