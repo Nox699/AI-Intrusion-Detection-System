@@ -1,0 +1,75 @@
+# Sprint 3 · Første Pi-acceptresultater
+
+**Dato:** 1. november 2026 (Europe/Copenhagen)  
+**Mål:** Yggdrasil (Raspberry Pi), eksisterende Sprint 2-drift  
+**Testkilde:** `9b17bdac2af0db6f6af93eca574efee0b44a3b1e` på `sprint-3/network-monitoring`  
+**Status:** **Bestået for migration på databasekopi og én kort logvolumenmåling.**
+Ingen Sprint 3-installation, ændring af produktionsdatabase eller aktivering af
+netværksindsamling er gennemført.
+
+Dette er en referat af ejerens terminaloutput fra de afgrænsede kontroller.
+Kun aggregerede antal offentliggøres, ingen adresser, journalindhold,
+Discord-tokens, hemmelige stier med tokens eller private hændelses-ID'er.
+
+## SQLite-v3-backup migreret på midlertidig kopi
+
+Den installerede Sprint 2-CLI tog en konsistent backup, som blev kopieret til
+et privat midlertidigt arbejdsområde. Kun kopien blev åbnet med
+Sprint 3's `Repository.initialize()`. Arbejdsområdet blev slettet af
+shellens `trap`, mens den root-beskyttede backup blev bevaret separat under
+`/var/backups/yggdrasil-ids` (backupfilnavn er ikke offentliggjort).
+
+| Kontrol | Før | Efter | Resultat |
+| --- | ---: | ---: | --- |
+| `PRAGMA user_version` | 3 | 4 | PASS (kun kopi) |
+| `PRAGMA integrity_check` | ok | ok | PASS |
+| `records` | 63 | 63 | PASS |
+| `events` | 11 | 11 | PASS |
+| `observations` | 11 | 11 | PASS |
+| `alerts` | 2 | 2 | PASS |
+| `discord_outbox` | 1 | 1 | PASS |
+| `discord_outbox_meta` | 1 | 1 | PASS |
+| `state` | 10 | 10 | PASS |
+| Discord-outbox-instans | uændret | uændret | PASS (værdi ikke vist) |
+| `firewall_events` | findes ikke | 0 | PASS |
+| `network_evidence` | findes ikke | 0 | PASS |
+
+Bekræftet terminaltekst: `PASS: Migration v3 -> v4 på databasekopi`,
+`PASS: SQLite integrity_check`, `PASS: Eksisterende data og
+Discord-identitet bevaret`, `PASS: Nye firewalltabeller er tomme`.
+Der er **ikke** foretaget en opgradering af driftsdatabasen.
+
+## Første kernel-journaloptælling
+
+Kommandoerne blev kørt som `yggdrasil-worker` med systemjournalens
+`_TRANSPORT=kernel` og `--since "5 minutes ago"`; UFW-tællingen
+anvendte `--grep '\[UFW '`. Kun antallet af poster blev vist.
+
+| Måling, seneste fem minutter | Resultat |
+| --- | ---: |
+| Kernelposter | 15 |
+| UFW-poster | 15 |
+| Andel af målte kernelposter, der var UFW | 100 % |
+| Omtrentlig loghastighed i dette vindue | 3 poster/minut |
+
+Denne **ene** måling tyder ikke på høj kernel-logmængde ved det observerede
+tidspunkt. Den er ikke en spidsbelastningstest, og UFW `low` kan ratebegrænse
+logs, så antal poster ikke kan fortolkes som antal faktiske pakkeforsøg.
+
+## Uafsluttede kriterier
+
+- Kontroller faktisk installeret pakke/kilde, systemd-tilstand,
+  diskplads, backuprettigheder og lagringsbudget inden opgradering.
+- Forbered en verificeret, **frisk** backup efter kontrolleret tjenestestop,
+  gem tidligere wheel/kilde og dokumentér, hvordan v3 kan gendannes.
+- Installer først Sprint 3 med `network.enabled=false` og verificér
+  SSH, dashboard, notifier, databasen og driftslogning.
+- Aktivér først bagefter `network.enabled=true` i et adskilt trin, med
+  afgrænset måling fra ejerens egen enhed. Ingen offentlige porte åbnes.
+- Udfør langtidstest, fuld genstart, negative fejltests og
+  realistiske belastningsmålinger før fuld accept.
+
+Tilbageførsel til den tidligere kode efter en v4-migration kræver den
+gemte **v3-backup**, ikke blot reinstallering af den gamle wheel. En
+tilbageførsel kan medføre tab af hændelser siden backuptidspunktet.
+Se [opgraderingsplanen](SPRINT_3_PI_DEPLOY.md).

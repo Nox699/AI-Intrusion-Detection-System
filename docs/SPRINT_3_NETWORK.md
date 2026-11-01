@@ -95,10 +95,13 @@ De automatiske tests verificerer migrering af v3-data, bevaret SSH-alarm og
 Discord-outbox-identitet, dubletafvisning, rollback og adskillelse fra
 SSH-ML. Disse softwaretests er **ikke** en Pi-migration eller live scan-test.
 
-**Driftssikkerhed:** Den kommende driftsaktivering kræver en verificeret
-backup af SQLite v3, test af migration på backupkopi, diskbudgetkontrol,
-måling af kernel-journalstrøm og en rollbackplan. Ingen ændring af UFW's
-logniveau eller firewallregler er nødvendig for denne implementeringsdel.
+**Driftssikkerhed:** Den 1. november 2026 bestod en migration af en
+produktionsbackup **på kopi** (v3 → v4), og den første 5-minutters optælling
+viste 15 kernelposter, alle med UFW-præfiks. Den faktiske driftsdatabase er
+ikke migreret. Diskbudget, installeret kilde/wheel, tilbageførsel og
+kontrolleret drift med netværksindsamling skal stadig godkendes. Ingen
+ændring af UFW's logniveau eller firewallregler er nødvendig for denne
+implementeringsdel. Se [Pi-resultater](SPRINT_3_PI_RESULTS.md).
 
 ## Datagrundlag
 

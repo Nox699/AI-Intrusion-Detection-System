@@ -50,16 +50,22 @@ fuld maskingenstart og dokumenteret drift under belastning.
 
 ## Sprint 3 · UFW-observation og mulig TCP-portscanning
 
-**Status: Under udvikling på `sprint-3/network-monitoring`; ikke installeret på Pi.**
+**Status: Softwaretestet og kopimigration på Pi bestået; endnu ikke installeret på Pi.**
 
 Parseren og den eksperimentelle TCP-portscanningsregel er softwaretestet.
 En separat `firewall_events`-historik, opt-in kernel-journalintegration,
 TCP-scanningsalarmer med særskilt evidens og Discord-outbox samt en privat
-`/network`-side er implementeret i skema v4. Ressourceprøve og
-kontrolleret Pi-migration/accept afventer. Normaldriften fortsætter på
-Sprint 2-versionen. UFW `low` bevares, indtil en senere bevidst test.
+`/network`-side er implementeret i skema v4. Den 1. november 2026 bestod en
+kontrolleret migration **på en kopi** af Pi'ens schema-v3-database med
+bevarede SSH- og Discord-data. En første 5-minutters måling fandt
+15 kernelposter, alle UFW-poster; længere belastningsmålinger afventer.
+Normaldriften fortsætter på Sprint 2-versionen, og produktionsmigration,
+installation, kontrolleret netværksopt-in og langtidsaccept afventer.
+UFW `low` bevares indtil en særskilt bevidst prøve.
 
-[Arkitektur, dækningsgrænser og status](SPRINT_3_NETWORK.md).
+[Arkitektur, dækningsgrænser og status](SPRINT_3_NETWORK.md) ·
+[Pi-resultater](SPRINT_3_PI_RESULTS.md) ·
+[Pi-opgraderingsplan](SPRINT_3_PI_DEPLOY.md).
 
 ## Backlog · prioriteres efter de første sprints
 

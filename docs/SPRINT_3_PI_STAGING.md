@@ -1,7 +1,9 @@
 # Sprint 3 · Første Pi-accept: sikker databaseprøve på kopi
 
-**Status:** Forberedt, men **ikke udført på målmaskinen**. En bestået
-GitHub-test er ikke en driftsaccept.
+**Status:** Første Pi-prøve **bestået på databasekopi** den 1. november 2026
+med kildecommit `9b17bdac2af0db6f6af93eca574efee0b44a3b1e`.
+Det er **ikke** en migration af driftsdatabasen eller en komplet driftsaccept.
+De anonymiserede målinger står i [Sprint 3 Pi-resultater](SPRINT_3_PI_RESULTS.md).
 
 ## Grænser
 
@@ -117,6 +119,8 @@ En stor forskel viser, hvor mange irrelevante kernelposter den
 kommende opt-in collector i øjeblikket må passere. Hvis antallet er
 højt, vurderes kildefilter/performance **før** aktivering.
 
-Først efter denne accept kan der planlægges en kontrolleret
-installation med korrekt wheel, rollback og kort tjenestestop.
+Denne begrænsede kopimigrations- og journalvolumenkontrol er nu bestået én
+gang. De resterende sikkerhedsforudsætninger (diskplads, tidligere wheel,
+stoppede tjenester, frisk backup, rollback og monitorering) skal kontrolleres
+før en ny installation. Se [den planlagte Pi-opgradering](SPRINT_3_PI_DEPLOY.md).
 Den live `[network] enabled=true`-prøve er et særskilt skridt.
