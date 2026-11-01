@@ -591,10 +591,10 @@ def test_activity_chart_connects_positive_markers_without_inventing_samples():
     assert 'uirevision: "ssh-activity-connected-dots"' in script
     assert 'mode: "lines+markers"' not in script
     assert 'type: "scatter", mode: "lines"' in script
-    assert 'distance <= bucketSeconds ? solid : dashed' in script
-    assert 'if (distance > 6 * 3600) continue;' in script
-    assert 'segment.x.push((previous.left + previous.right) * 500' in script
-    assert 'segment.y.push(previous[field], current[field], null)' in script
+    assert "distance <= bucketSeconds ? solid : dashed" in script
+    assert "if (distance > 6 * 3600) continue;" in script
+    assert "segment.x.push((previous.left + previous.right) * 500" in script
+    assert "segment.y.push(previous[field], current[field], null)" in script
     assert 'dash: "dot"' in script
     assert 'hoverinfo: "skip", showlegend: false' in script
     assert '...connectors("preauth", "#e8ad70")' in script
