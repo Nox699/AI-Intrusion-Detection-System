@@ -128,19 +128,24 @@ class DiscordNotifier:
         self.zone = ZoneInfo(zone)
         self.sender = sender
 
-    def _source(self):
+    def _source(self, after: int | None = None):
+        """Return instance, monotonic high watermark and up to 20 events."""
         with self.source.reader() as db:
-            instance = db.execute("SELECT instance FROM discord_outbox_meta WHERE id=1").fetchone()[
-                0
-            ]
-            rows = [
-                dict(r)
-                for r in db.execute(
-                    "SELECT seq,ref,detector_id,severity,happened_at "
-                    "FROM discord_outbox ORDER BY seq"
-                ).fetchall()
-            ]
-        return instance, rows
+            instance = db.execute(
+                "SELECT instance FROM discord_outbox_meta WHERE id=1"
+            ).fetchone()[0]
+            maximum = db.execute("SELECT COALESCE(MAX(seq),0) FROM discord_outbox").fetchone()[0]
+            rows = []
+            if after is not None:
+                rows = [
+                    dict(r)
+                    for r in db.execute(
+                        "SELECT seq,ref,detector_id,severity,happened_at "
+                        "FROM discord_outbox WHERE seq>? ORDER BY seq LIMIT 20",
+                        (after,),
+                    ).fetchall()
+                ]
+        return instance, maximum, rows
 
     def _connect(self):
         db = sqlite3.connect(self.path, timeout=5)
@@ -150,7 +155,7 @@ class DiscordNotifier:
     def bootstrap(self):
         """Explicitly skip existing alarms once; never reset on restart."""
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        instance, events = self._source()
+        instance, maximum, _ = self._source()
         with self._connect() as db:
             db.execute(
                 "CREATE TABLE IF NOT EXISTS meta(instance TEXT NOT NULL,last_seq INTEGER NOT NULL)"
@@ -161,7 +166,7 @@ class DiscordNotifier:
             )
             current = db.execute("SELECT instance,last_seq FROM meta").fetchone()
             if current is None:
-                last_seq = events[-1]["seq"] if events else 0
+                last_seq = maximum
                 db.execute("INSERT INTO meta VALUES(?,?)", (instance, last_seq))
                 log.info("Notifikationer starter efter historisk sekvens %d", last_seq)
             elif current[0] != instance:
@@ -191,15 +196,15 @@ class DiscordNotifier:
         )
 
     def poll(self):
-        instance, events = self._source()
         with self._connect() as db:
             row = db.execute("SELECT instance,last_seq FROM meta").fetchone()
             if row is None:
                 raise DeliveryError("Notifieren skal initialiseres med --bootstrap")
-            if row[0] != instance:
-                raise DeliveryError("Databasens identitet er ændret")
-            cursor = row[1]
-        if events and events[-1]["seq"] < cursor:
+            expected_instance, cursor = row
+        instance, maximum, events = self._source(cursor)
+        if expected_instance != instance:
+            raise DeliveryError("Databasens identitet er ændret")
+        if maximum < cursor:
             raise DeliveryError("Kildens sekvens er gået baglæns")
         webhook = None
         for event in events:
@@ -223,11 +228,11 @@ class DiscordNotifier:
                         "INSERT OR IGNORE INTO deliveries(ref,discord_id,sent_at) VALUES(?,?,?)",
                         (event["ref"], discord_id, time.time()),
                     )
-                db.execute(
+                updated = db.execute(
                     "UPDATE meta SET last_seq=? WHERE instance=? AND last_seq=?",
                     (event["seq"], instance, cursor),
                 )
-                if db.total_changes < 1:
+                if updated.rowcount != 1:
                     raise DeliveryError("Checkpoint blev ændret samtidig")
             cursor = event["seq"]
         return cursor
