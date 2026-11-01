@@ -606,3 +606,55 @@ def test_activity_chart_connects_positive_markers_without_inventing_samples():
     assert ".legend-dot.success{background:#68d8b6}" in style
     assert ".legend-dot.failure{background:#ef6b6b}" in style
     assert ".legend-dot.preauth{background:#e8ad70}" in style
+
+
+def test_authenticated_network_page_displays_firewall_history_and_scan_alert(configured, client):
+    from yggdrasil_ids.firewall import UFWParser
+    from yggdrasil_ids.network_rules import TCPPortScanDetector
+
+    _cfg, repo = configured
+    recorded = []
+    timestamp = time.time() - 20
+    for index in range(6):
+        record = {
+            "_TRANSPORT": "kernel",
+            "__CURSOR": f"network-web-{index}",
+            "__REALTIME_TIMESTAMP": str(int((timestamp + index) * 1_000_000)),
+            "MESSAGE": (
+                "[UFW BLOCK] IN=wlan0 OUT= SRC=192.0.2.55 DST=192.0.2.92 "
+                f"LEN=60 PROTO=TCP SPT=40000 DPT={3000 + index} SYN"
+            ),
+        }
+        parsed = UFWParser().parse(record, namespace="live")
+        assert parsed.event is not None
+        recorded.append(parsed.event)
+    with repo.transaction() as db:
+        for item in recorded:
+            assert repo.insert_firewall_event(db, item)
+        finding = TCPPortScanDetector().evaluate(recorded[-1], recorded)
+        assert finding is not None
+        incident = repo.add_network_alert(db, finding, cooldown=300)
+    login(client)
+    response = client.get("/network")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Netværkshændelser" in body
+    assert "192.0.2.55:40000" in body
+    assert "192.0.2.92:3005" in body
+    assert "6 logposter" in body
+    assert "Netværksindsamling er ikke aktiveret" in body
+    assert client.get("/network?source=192.0.2.55&protocol=TCP").status_code == 200
+    assert "192.0.2.92:3005" not in client.get(
+        "/network?source=192.0.2.55&protocol=UDP"
+    ).get_data(as_text=True)
+    assert client.get("/network?protocol=bogus").status_code == 400
+    alerts = client.get("/alerts?detector=network.tcp_port_scan")
+    assert alerts.status_code == 200
+    assert "Mulig TCP-portscanning" in alerts.get_data(as_text=True)
+    detail = client.get(f"/alerts/{incident}")
+    assert detail.status_code == 200
+    detail_html = detail.get_data(as_text=True)
+    assert "Se registrerede firewallhændelser" in detail_html
+    assert "6 forskellige" in detail_html
+    assert "/network?source=192.0.2.55" in detail_html
+    assert repo.list_events()["total"] == 1
