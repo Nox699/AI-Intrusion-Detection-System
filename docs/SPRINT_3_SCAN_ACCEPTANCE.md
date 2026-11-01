@@ -116,12 +116,40 @@ tærskel eller loggerens niveau for at få en kunstig bestået test.
 ## Plan for eksperimentel følsomhed efter første test
 
 Den første kendte scanning gav fem loggede unikke blokerede porte,
-hvilket var under tærsklen seks. For et lille LAN vil vi afprøve
-`distinct_ports_threshold=5` med **uændret** tidsvindue 60 sekunder
-og UFW-logniveau `low`. Dette er en ny test, ikke en ændring af
-den historiske fiasko. Efter kontrolleret ændring skal én ny scan
-sammenlignes med tidligere data, og vi skal holde øje med
+hvilket var under tærsklen seks. Derfor er
+`distinct_ports_threshold=5` nu **aktiveret på Pi**, med uændret
+60-sekunders vindue og UFW `low` (bekræftet via ejerens terminaloutput).
+Dette er en eksperimentel kalibrering baseret på første resultat, ikke
+uafhængig validering. Den historiske fiasko ændres ikke. Efter ændringen
+skal én ny scan sammenlignes med tidligere data, og vi skal holde øje med
 falske positiver i normaldrift, før vi vælger en permanent tærskel.
 
 Se `docs/SPRINT_3_SCREENSHOTS.md` for forslag til rapportbilag
 og `deploy/sprint3_tune_threshold5.sh` for kontrolleret ændring.
+
+## Ny kontrol efter tuning (udføres på egen LAN-maskine)
+
+Brug den **samme, afgrænsede 10-porttest** som før for at holde
+metoden sammenlignelig, og kontroller først at portene fortsat
+ikke er tilladt eller lyttende. Udfør en ny read-only baseline
+af indsamlings- og alarmtal. Undgå overlap med tidligere tests
+inden for 60-sekunders detektionsvinduet.
+
+På laptop med Ubuntu/WSL (anden maskine end Pi):
+
+```bash
+nmap -sT -Pn -n --scan-delay 2s --max-retries 0 --host-timeout 90s -p 45010-45019 192.168.0.92
+```
+
+IP-adressen er den sidst observerede private LAN-adresse på Pi;
+bekræft den igen før kørsel. Sammenlign derefter ny aggregeret
+SQLite-måling, alarmantal og Discord-deliveries med baseline. Ved
+manglende alarm: undersøg loggede unikke destinationporte **før**
+yderligere scanninger. Ændr ikke grænsen igen alene for at opnå en
+succesfuld test.
+
+**Fuld TCP-scanning udskydes.** Gruppering og 300-sekunders cooldown
+begrænser normalt antal beskeder fra én sammenhængende kilde mod
+samme destination, men garanterer ikke højst én besked ved en
+langvarig scanning. Den vil også skabe mere log- og databasearbejde,
+særligt ved ratebegrænsning og tidsvinduesoverløb.

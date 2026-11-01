@@ -12,7 +12,7 @@ målinger eller diskussion af begrænsninger.
 | S3-A | Ubuntu/WSL Nmap med tid, 10 porte `45010-45019` og `filtered` | Første scan, tærskel 6 | Kan tages af eksisterende terminaloutput |
 | S3-B | Anonymiseret SQL-porttabel: 8 SYN / 5 unikke porte | Første scan, tærskel 6 | Kan tages af eksisterende terminaloutput |
 | S3-C | Read-only aggregator med 5 unikke, 0 alarmer og sund collector | Første scan, tærskel 6 | Gem output/screenshot fra terminal, hvis tilgængeligt |
-| S3-D | Udsnit af **kun** `[network]`-sektionen: `enabled=true`, `window_seconds=60`, `distinct_ports_threshold=5` | Efter kontrolleret tuning | Afventer |
+| S3-D | Udsnit af **kun** `[network]`-sektionen: `enabled=true`, `window_seconds=60`, `distinct_ports_threshold=5` | Efter kontrolleret tuning | Klar til screenshot: tuning bestået |
 | S3-E | Yggdrasils private `/network`-side med registreret aktivitet | Efter den næste scan | Afventer |
 | S3-F | Alarmoversigt og evt. detaljer for `network.tcp_port_scan` | Hvis ny scan udløser alarm | Afventer |
 | S3-G | Faktisk Discord-besked med `Mulig TCP-portscanning (UFW)` og referencen | Hvis den bliver leveret | Afventer |
@@ -49,3 +49,16 @@ som en **ny** selvstændig test.
 
 Skærmbillederne er **ikke oprettet af dette dokument**. Ejeren tager
 dem på laptop/Pi under de relevante aktiviteter.
+
+## Ny dokumenteret ændring – tag billedet nu
+
+Ejeren har bekræftet `distinct_ports_threshold=5` på Pi, schema v4,
+aktive IDS-tjenester og uændret UFW `low`. Gem **S3-D** enten som
+et beskåret billede af kun `[network]`-konfigurationssektionen eller
+terminalens PASS-meddelelser (uden adgangskoder).
+Gem derefter **S3-E/S3-F/S3-G** i forbindelse med **en ny** scan,
+hvis data, alarm og Discord-besked faktisk optræder.
+
+Den nye tuning er en kalibrering efter test 1; S3-A/B/C skal vise
+historiske resultater med tærskel 6 uændret, så rapporten ikke
+forveksler trænings-/justeringsgrundlag med uafhængig evaluering.

@@ -325,3 +325,37 @@ UFW-forbliver `low`, og pakken geninstalleres ikke.
 
 Screenshot- og bilagsplan:
 [SPRINT_3_SCREENSHOTS.md](SPRINT_3_SCREENSHOTS.md).
+
+## Eksperimentel tærskel sænket til fem porte – praktisk Pi-resultat
+
+Ejeren kørte `deploy/sprint3_tune_threshold5.sh` fra commit
+`c1f6ec1be453de87449a5cf33a988a3537b685e4` og rapporterede:
+
+- `PASS: Live schema v4 og eksisterende 6-port-konfiguration er verificeret`.
+- `PASS: Kun distinct_ports_threshold ændret fra 6 til 5`.
+- `PASS: Ny eksperimentel tærskel = 5 porte på 60 sekunder`.
+- `PASS: Alle tre IDS-tjenester aktive; UFW low og netværksindsamling bevaret`.
+
+Privat konfigurationsbackup:
+`/var/backups/yggdrasil-ids/sprint3-threshold5-MkMb1mZK`.
+
+Denne ændring påvirker **kun fremtidig analyse** efter genstart, ikke
+historiske hændelser eller tidligere alarmer. Test 1 blev gennemført
+med tærskel 6 og gav ingen alarm; det resultat bevares som faktisk
+evidens. Den nye tærskel 5 er valgt efter at have set testresultatet
+og er derfor **kalibrering**, ikke uafhængig validering. Vi mangler
+en ny kontrolleret test, måling af Discord-levering og observation af
+falske positiver under normal drift.
+
+### Forventet alarmgruppering og hvorfor fuld scanning afventer
+
+Den aktuelle kode grupperer `network.tcp_port_scan`-fund med samme
+kilde, destination, interface, host, boot og namespace, hvis fund følger
+hinanden inden for den eksisterende cooldown på 300 sekunder.
+Opfølgende fund opdaterer et alarmforløb; en ny alarm indsætter én
+Discord-outboxpost. En lang scanning, pauser længere end cooldown eller
+flere sensor-/destinationsgrupper kan dog oprette flere alarmer.
+Dette er **ikke** en ubetinget garanti mod mange notifikationer.
+Scanning af 65.535 porte kan desuden øge journal- og databasebelastning
+betydeligt. Før en fuld TCP-scan kræves en afgrænset ny test med
+tærskel 5, kontrol af alarmgruppering og målt belastning.

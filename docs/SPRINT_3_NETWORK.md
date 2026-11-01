@@ -247,3 +247,15 @@ er fortsat ikke målt på et større gennemgået netværksdatasæt.
 
 De eksterne kilder er gennemgået 1. november 2026. Tærskler og udviklingsrækkefølge
 ovenfor er projektets designvalg; de er ikke leverandørgarantier.
+
+## Praktisk afprøvning af tærskel
+
+Efter første kendte Nmap-scan var 8 blokerede SYN-poster fordelt på
+5 forskellige loggede porte. Der kom ingen alarm ved tærskel 6.
+Ejeren har nu kontrolleret en *konfigurationsbaseret*, eksperimentel
+ændring til tærskel **5**, stadig i 60 sekunder og med UFW `low`.
+Detektionskoden er ikke ændret, og den første scan bliver ikke
+genanalyseret retroaktivt. En ny afgrænset scan og efterfølgende
+normaldrifts-observation er påkrævet før vurdering af følsomhed og
+falske positiver. Fuld `-p-`-scanning er udskudt på grund af
+mulig alarm- og journalbelastning.
