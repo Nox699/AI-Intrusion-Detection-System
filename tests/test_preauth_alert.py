@@ -56,8 +56,6 @@ def test_burst_needs_threshold_and_never_scores_as_login(tmp_path, monkeypatch):
 
 
 def test_migration_preserves_existing_events(tmp_path):
-    import sqlite3
-
     path = tmp_path / "old.sqlite3"
     repo = Repository(path)
     repo.initialize()

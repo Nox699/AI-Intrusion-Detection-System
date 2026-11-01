@@ -12,8 +12,8 @@ from pathlib import Path
 from .config import AppConfig
 from .domain import Finding
 from .features import FEATURE_NAMES, SSHFeatureBuilder
-from .preauth import parse_preauth
 from .ml import IsolationForestDetector
+from .preauth import parse_preauth
 from .rules import SSHRuleDetector
 from .ssh import SSHParser
 from .storage import Repository, encode
