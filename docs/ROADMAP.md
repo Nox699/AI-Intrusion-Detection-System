@@ -24,10 +24,15 @@ og hvilke begrænsninger resultaterne har.
 
 ## Sprint 2 · Discord-notifikationer
 
-**Status: Planlagt; endnu ikke implementeret.**
+**Status: Implementeret og automatisk testet; end-to-end-prøve på Pi bestået. Fuld driftsaccept afventer.**
 
-Formålet er at modtage udvalgte alarmer på telefonen uden at holde dashboardet
-åbent. Den planlagte integration bruger en Discord-webhook til en valgt kanal.
+En separat systemd-notifier sender nye udvalgte alarmforløb fra en SQLite-
+outbox til en privat Discord-kanal via HTTPS-webhook. Den kører uafhængigt af
+collectoren og har separat leveringsstatus. En kontrolleret ny preauth-alarm
+blev vist i dashboardet og udløste en Discord-desktopnotifikation på brugerens
+computer. Mobil-push er endnu ikke særskilt dokumenteret.
+
+[Praktiske Pi-testresultater og begrænsninger](SPRINT_2_PI_RESULTS.md).
 
 - Konfiguration af webhook og alarmniveau uden hemmeligheder i Git eller logtekst.
 - Korte beskeder med hændelsestype, tidspunkt og begrundelse; begrænset deling af
@@ -37,10 +42,10 @@ Formålet er at modtage udvalgte alarmer på telefonen uden at holde dashboardet
 - En særskilt notifierkomponent, så collectorens begrænsede netværksadgang kan
   bevares. Den konkrete proces- og rettighedsmodel fastlægges i sprintet.
 
-Accept kræver både en kontrolleret leveret testbesked og dokumenteret håndtering
-af ugyldig webhook, midlertidig netværksfejl og mange gentagne fund. Tests skal
-som udgangspunkt bruge en simuleret modtager; rigtige beskeder afprøves i en
-udtrykkeligt valgt testkanal.
+En kontrolleret Discord-testbesked og en automatisk besked fra en reel IDS-
+regelalarm er leveret. Simulerede transportfejl og genstart er afprøvet i tests.
+Fuld accept afventer bl.a. fejltest på Pi, rettighedsrevision, outbox-retention,
+fuld maskingenstart og dokumenteret drift under belastning.
 
 ## Backlog · prioriteres efter de første sprints
 

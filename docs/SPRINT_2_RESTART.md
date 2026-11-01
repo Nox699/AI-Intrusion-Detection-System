@@ -1,6 +1,10 @@
 # Sprint 2 — Discord-notifikationer, ny start
 
-**Status: design og acceptkriterier. Ikke en færdig implementering eller installationsvejledning.**
+**Status: Implementeret, CI-bestået og end-to-end-prøvet på Pi. Fuld driftsaccept afventer.**
+
+De faktiske målinger og udestående acceptpunkter er registreret i
+[Pi-resultaterne](SPRINT_2_PI_RESULTS.md). Designkravene nedenfor er bevaret
+som grundlag og er ikke alle fuldt opfyldt endnu.
 
 Denne branch starter fra Sprint 1-commit `14b66943cf49b9915c5832f957903b2aa9c79789`.
 Den tidligere branch `feature/discord-notifier` bevares som uafsluttet udkast,
@@ -160,9 +164,10 @@ acceptkriterier. Afsendelse må ikke genforsøges blot fordi en telefon er lydl�
 | N14 | Leveringsstatus | Kø, seneste kvittering, fejl og forældet heartbeat fremgår tydeligt. |
 | N15 | Pi og telefon | Faktisk besked modtaget i valgt kanal; telefonindstillinger afprøvet særskilt. |
 
-Ingen af N01–N15 er erklæret bestået af dette dokument. Testresultater skal
-registreres med commit, miljø, handling, forventning og faktisk resultat.
-Syntetiske testdata og rigtig drift holdes fortsat adskilt.
+Praktiske delresultater er registreret i [Pi-resultaterne](SPRINT_2_PI_RESULTS.md).
+N01, testen af ny reel regelalarm og Discord-levering, er demonstreret på Pi;
+alle N01–N15 er **ikke** samlet godkendt. De resterende kriterier kræver
+særskilt resultatregistrering. Syntetiske testdata og drift holdes adskilt.
 
 ## Første forberedelse hos ejeren
 
@@ -170,7 +175,9 @@ Opret eller vælg en privat Discord-server og tekstkanal til projektet,
 for eksempel `#ids-alarmer`. En webhook kan oprettes under serverens
 integrationer og knyttes til denne kanal. Gem URL'en privat, eller vent med at
 kopiere den til installationen. URL'en skal ikke sendes til udviklingschatten.
-Der er endnu ingen Sprint 2-installationskommandoer at køre på Pi'en.
+Den første kontrollerede Pi-installation er gennemført. Se de dokumenterede
+resultater i [Pi-resultaterne](SPRINT_2_PI_RESULTS.md). Opgraderinger kræver
+fortsat backup, verificeret release og individuel rollbackplan.
 
 ## Forhold fra Sprint 1, som stadig skal følges
 
