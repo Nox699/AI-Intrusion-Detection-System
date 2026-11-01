@@ -172,10 +172,19 @@ produktionsskema v4; schema skal kontrolleres read-only før yderligere
 handling. Den friske v3-backup og arkivet af det tidligere fungerende
 Python-miljø skal bevares.
 
-En sandsynlig årsag er `umask 077` ved root-`pip install`: ny Python-kode
-kan blive utilgængelig for servicekontiene. Dette er en **hypotese**, indtil
-installerede filer, wheel-indhold og imports som servicebrugerne er undersøgt.
-En vellykket import som root udelukker ikke rettighedsfejl.
+Årsagen er nu **bekræftet** på Pi: Den installerede
+`yggdrasil_ids`-pakkemappe var `0700`, og `cli.py` var `0600`.
+Den originale wheel indeholdt faktisk `cli.py`.
+Ved afgrænset reparation blev kun `yggdrasil_ids`-programkoden
+sat til `0755` (mapper) og `0644` (filer); efterfølgende import som
+alle tre servicekonti bestod. Database v3 med `quick_check=ok` blev
+kontrolleret inden reparationen.
+
+Ingen rettigheder blev lempet på `/etc/yggdrasil-ids` eller
+`/var/lib/yggdrasil-ids`. Systemd-tjenesterne er ikke dokumenteret
+genstartet endnu. Udfør kun en separat, kontrolleret migration og
+driftskontrol fra den allerede installerede pakke; genkør ikke
+det oprindelige fulde opgraderingsscript.
 
 Deploy-scriptet blev derefter ændret til kun at bruge `umask 022` for
 installation af kildekodefiler, og det kontrollerer fremover CLI-import
@@ -203,3 +212,26 @@ kontrolleret tilbageførsel skal være gennemført først.
 dokumenterer konsistent v3-backup, vellykket v4-migration på kopi og
 15 kernelposter/15 UFW-poster i ét fem-minuttersinterval. Det dokumenterer
 ikke en sikker opgradering på driftsdatabasen eller dækningsgraden for en scanning.
+
+## D. Genoptagelse efter rettighedsreparation (afventer på Pi)
+
+**Forudsætning:** Kun den installerede kodepakke er repareret, og import af
+`yggdrasil_ids.cli` som samtlige tre servicekonti er bestået. Da den
+oprindelige opgraderingskørsel stoppede under `init`, skal der ikke tages
+udgangspunkt i, at schema allerede er v4.
+
+Den næste separate Pi-kontrol skal gennemføre følgende med
+`network.enabled=false`: (1) alle tre IDS-tjenester er inaktive;
+(2) frisk v3-backup fra fejlkørslen er `integrity_check=ok`;
+(3) produktions-DB er stadig v3; (4) systemkonti kan eksekvere CLI;
+(5) baseline for SSH-tabeller, outbox og Discord-instans gemmes
+fra backuppen; (6) `yggdrasil-ids init` udføres én gang som worker;
+(7) schema v4 og bevaringskontroller verificeres; (8) collector, web
+og notifier startes ét ad gangen med målrettet kontrol.
+
+Vigtigt: Ved fejl efter migrationspunktet må v3 ikke genindlæses
+automatisk. Bevar backup og log, og beslut tilbageførsel ud fra
+faktisk status og mulig tabt historik. `systemctl reset-failed`
+må kun anvendes for IDS-collector, hvis den ellers er verificeret klar.
+Tjek den private webside via SSH-tunnel efter genstart. Den separate
+UFW-kernel-opt-in og portscanning må først aktiveres efter denne accept.

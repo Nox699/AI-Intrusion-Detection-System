@@ -139,8 +139,24 @@ Ejerens terminaloutput dokumenterer følgende sekvens:
 Fejlfase: `migrating-db`. Den automatisk efterfølgende genstart blev
 derfor **ikke** kørt. Den faktiske aktuelle databaseskema- og
 tjenestestatus skal efterprøves på Pi, før flere skrivehandlinger udføres.
-En begrænset mulig forklaring er filrettigheder fra `umask 077`
-under root-installation. Dette er endnu ikke verificeret på Pi.
+Den efterfølgende read-only diagnose **bekræftede filrettighedsfejlen**:
+`yggdrasil_ids/cli.py` fandtes i wheel-arkivet, men den installerede
+`yggdrasil_ids`-mappes rettigheder var `0700`, og `cli.py` havde
+`0600`. Import af `yggdrasil_ids.cli` som `yggdrasil-worker` fejlede.
+Databasen var stadig schema v3 med `quick_check=ok`. Tjenesterne viste:
+collector `failed`, web `inactive`, notifier `inactive`.
+
+**Reparation bekræftet på Pi:** Kun programkodens pakkemappe fik
+mapperettigheder `0755` og filrettigheder `0644` (ikke secrets eller
+database). Derefter lykkedes import af `yggdrasil_ids.cli.main` samt
+`SCHEMA_VERSION == 4` som alle tre servicekonti:
+`yggdrasil-worker`, `yggdrasil-web` og `yggdrasil-notifier`.
+Terminalen afsluttede med
+`PASS: Python-pakkens rettigheder er repareret`.
+
+**Status efter reparationen:** Sprint 3-koden kan importeres, men der er endnu
+ikke vist en v4-produktionsmigration eller genstartede IDS-tjenester.
+Derfor må den fulde driftsopgradering ikke markeres som bestået endnu.
 
 En senere rettelse af scriptet må ikke markeres som en bestået
 produktionsaccept, før Pi'ens faktiske import, schema, servicekonti,
