@@ -52,7 +52,6 @@ def test_six_distinct_ports_are_needed_and_evidence_is_explainable():
     assert finding.window_seconds == 60 and finding.threshold == 6
 
 
-
 def test_local_lan_threshold_five_detects_five_but_default_six_does_not():
     events = [packet(index, port=45010 + index) for index in range(5)]
     assert TCPPortScanDetector().evaluate(events[-1], events) is None
