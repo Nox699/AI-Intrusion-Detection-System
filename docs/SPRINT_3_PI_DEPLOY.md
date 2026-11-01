@@ -235,3 +235,21 @@ faktisk status og mulig tabt historik. `systemctl reset-failed`
 må kun anvendes for IDS-collector, hvis den ellers er verificeret klar.
 Tjek den private webside via SSH-tunnel efter genstart. Den separate
 UFW-kernel-opt-in og portscanning må først aktiveres efter denne accept.
+
+### Enkeltstående genoptagelse efter bekræftet chmod-reparation
+
+Et script med navnet `deploy/sprint3_resume_after_permissions.sh` er
+udelukkende til den dokumenterede hændelse med root-installerede kodefiler
+(mode `0700`/`0600`) og den specifikke offline-v3-backup
+`sprint3-offline-Ga0vDrfK`. Scriptet geninstallerer **ikke** wheel.
+Det kræver netop v3 på både backup og drift, inaktive IDS-services,
+CLI-import som alle tre servicebrugere og ens rækker i SSH/outbox-tabellerne.
+
+Det migrerer én gang til v4 som `yggdrasil-worker`, sammenligner de
+oprindelige SSH-/Discord-rækker med backup, genstarter collector/web/notifier
+separat og tester lokalt dashboard og rolleopdelt adgang. Fejl stopper,
+uden automatiseret rollback. **Kør ikke igen efter en migration**, heller
+ikke hvis senere serviceopstart fejler.
+
+Kør kun efter grøn CI på det nye script og med bevidst operatørhandling.
+`network.enabled=false` og UFW `low` fastholdes.
