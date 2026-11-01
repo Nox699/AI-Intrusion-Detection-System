@@ -524,7 +524,8 @@ def test_analysis_error_observation_is_presented_as_error(client, configured):
 def test_chart_explains_missing_observations(client):
     login(client)
     page = client.get("/").get_data(as_text=True)
-    assert "Manglende prikker dokumenterer ikke normal drift" in page
+    assert "Tynde streger forbinder målte prikker" in page
+    assert "stiplede streger angiver manglende observationer" in page
     assert "Registrerede SSH-hændelser pr. 30 minutter" in page
     assert "Afbrud før login" in page
     assert "Afbrud før login er ikke fejlede autentificeringer." in page
