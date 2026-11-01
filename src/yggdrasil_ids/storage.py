@@ -12,8 +12,9 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from .domain import Finding, SSHEvent
+from .firewall import FirewallEvent
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 # Previously ignored trusted journal records remain visible after migration.
 # Preauth disconnects are never authentication events, rule inputs or ML features.
@@ -43,6 +44,21 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS events_time ON events(timestamp);
 CREATE INDEX IF NOT EXISTS events_source_time ON events(source_ip,timestamp);
+-- Separate packet history: no SSH event, ML or outbox foreign keys.
+CREATE TABLE IF NOT EXISTS firewall_events (
+ event_id TEXT PRIMARY KEY, namespace TEXT NOT NULL,
+ timestamp REAL NOT NULL, cursor TEXT NOT NULL, boot_id TEXT NOT NULL,
+ host TEXT NOT NULL, action TEXT NOT NULL, direction TEXT NOT NULL,
+ in_interface TEXT NOT NULL, out_interface TEXT NOT NULL,
+ source_ip TEXT NOT NULL, destination_ip TEXT NOT NULL,
+ ip_version INTEGER NOT NULL, protocol TEXT NOT NULL,
+ protocol_number INTEGER NOT NULL, source_port INTEGER,
+ destination_port INTEGER, packet_length INTEGER, transport_length INTEGER,
+ tcp_flags TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS firewall_events_time ON firewall_events(timestamp);
+CREATE INDEX IF NOT EXISTS firewall_events_group
+ ON firewall_events(namespace,source_ip,destination_ip,in_interface,timestamp);
 CREATE TABLE IF NOT EXISTS observations (
  event_id TEXT PRIMARY KEY REFERENCES events(event_id) ON DELETE CASCADE,
  timestamp REAL NOT NULL, source_ip TEXT NOT NULL, features TEXT NOT NULL,
@@ -206,6 +222,54 @@ class Repository:
         if len(rows) > 10000:
             raise ValueError("Observationsvinduet overstiger 10000 hændelser; analyse er pauset")
         return [SSHEvent(**dict(r)) for r in rows]
+
+    @staticmethod
+    def insert_firewall_event(db: sqlite3.Connection, event: FirewallEvent) -> bool:
+        """Persist normalized packet metadata, never raw logs or MAC addresses."""
+        fields = tuple(FirewallEvent.__dataclass_fields__)
+        values = [
+            encode(event.tcp_flags) if field == "tcp_flags" else getattr(event, field)
+            for field in fields
+        ]
+        result = db.execute(
+            "INSERT OR IGNORE INTO firewall_events ("
+            + ",".join(fields)
+            + ") VALUES ("
+            + ",".join("?" for _ in fields)
+            + ")",
+            values,
+        )
+        return result.rowcount == 1
+
+    @staticmethod
+    def firewall_history(
+        db: sqlite3.Connection, event: FirewallEvent, seconds: int, limit: int = 10000
+    ) -> list[FirewallEvent]:
+        """Bounded event-time history for one source, destination and sensor."""
+        if type(limit) is not int or not 1 <= limit <= 50000:
+            raise ValueError("Ugyldig netværkshistorikgrænse")
+        rows = db.execute(
+            "SELECT * FROM firewall_events WHERE namespace=? AND host=? AND boot_id=? "
+            "AND source_ip=? AND destination_ip=? AND in_interface=? "
+            "AND timestamp>? AND timestamp<=? ORDER BY timestamp,event_id LIMIT ?",
+            (
+                event.namespace,
+                event.host,
+                event.boot_id,
+                event.source_ip,
+                event.destination_ip,
+                event.in_interface,
+                event.timestamp - seconds,
+                event.timestamp,
+                limit + 1,
+            ),
+        ).fetchall()
+        if len(rows) > limit:
+            raise ValueError("Netværkshistorikken er for stor til pålidelig analyse")
+        return [
+            FirewallEvent(**{**dict(row), "tcp_flags": tuple(json.loads(row["tcp_flags"]))})
+            for row in rows
+        ]
 
     @staticmethod
     def add_finding(db: sqlite3.Connection, finding: Finding, cooldown: int) -> int:
@@ -591,6 +655,7 @@ class Repository:
         with self.transaction() as db:
             events = db.execute("DELETE FROM events WHERE timestamp<?", (cutoff,)).rowcount
             records = db.execute("DELETE FROM records WHERE timestamp<?", (cutoff,)).rowcount
+            firewall_events = db.execute("DELETE FROM firewall_events WHERE timestamp<?", (cutoff,)).rowcount
             db.execute(
                 "DELETE FROM alerts WHERE "
                 "NOT EXISTS(SELECT 1 FROM findings WHERE alert_id=alerts.id) "
@@ -608,7 +673,7 @@ class Repository:
                 "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id))"
             )
         # Reuse freed pages; avoids blocking a live collector with a full VACUUM.
-        return {"events": events, "records": records}
+        return {"events": events, "records": records, "firewall_events": firewall_events}
 
     def backup(self, destination: Path) -> None:
         if destination.resolve() == self.path:
