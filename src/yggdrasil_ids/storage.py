@@ -13,7 +13,7 @@ from typing import Any, Iterator
 
 from .domain import Finding, SSHEvent
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # Previously ignored trusted journal records remain visible after migration.
 # Preauth disconnects are never authentication events, rule inputs or ML features.
@@ -78,6 +78,24 @@ CREATE TABLE IF NOT EXISTS preauth_evidence (
  PRIMARY KEY (record_id,detector_id)
 );
 CREATE INDEX IF NOT EXISTS preauth_evidence_alert ON preauth_evidence(alert_id,timestamp);
+-- Independent notification identities survive deletion or reuse of alert IDs.
+-- Never cascade-delete outbox rows when the alert history is pruned.
+CREATE TABLE IF NOT EXISTS discord_outbox (
+ seq INTEGER PRIMARY KEY AUTOINCREMENT,
+ ref TEXT NOT NULL UNIQUE,
+ detector_id TEXT NOT NULL, severity TEXT NOT NULL,
+ happened_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS discord_outbox_meta (
+ id INTEGER PRIMARY KEY CHECK(id=1), instance TEXT NOT NULL
+);
+INSERT OR IGNORE INTO discord_outbox_meta(id,instance)
+VALUES(1,lower(hex(randomblob(16))));
+CREATE TRIGGER IF NOT EXISTS alert_discord_outbox AFTER INSERT ON alerts
+BEGIN
+ INSERT INTO discord_outbox(ref,detector_id,severity,happened_at)
+ VALUES(lower(hex(randomblob(16))),NEW.detector_id,NEW.severity,NEW.first_seen);
+END;
 CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
 
@@ -133,7 +151,7 @@ class Repository:
         db = self.connect()
         try:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, SCHEMA_VERSION):
+            if version not in (0, 1, 2, SCHEMA_VERSION):
                 raise ValueError(
                     f"Databaseversion {version} understøttes ikke; tag backup før migration"
                 )
@@ -487,7 +505,10 @@ class Repository:
 
     def dashboard(self, hours: int = 24) -> dict:
         start, end = self._period(hours)
-        bucket = 300 if hours <= 24 else 3600
+        # A five-minute bucket is useful for short views but makes the day
+        # chart overly spiky when observations are sparse. These are counts,
+        # not continuous samples; preserve exact five-minute detail at <=6h.
+        bucket = 300 if hours <= 6 else 1800 if hours <= 24 else 3600
         with self.reader() as db:
             counts = dict(
                 db.execute(
@@ -504,13 +525,29 @@ class Repository:
                 "SELECT COUNT(*) FROM alerts WHERE last_seen>=? AND last_seen<=?", (start, end)
             ).fetchone()[0]
             times = db.execute("SELECT MIN(timestamp),MAX(timestamp) FROM events").fetchone()
-            series = [
-                dict(r)
-                for r in db.execute(
-                    "SELECT CAST(timestamp/? AS INTEGER)*? AS timestamp, SUM(outcome='success') AS success,SUM(outcome='failure') AS failure FROM events WHERE timestamp>=? AND timestamp<=? GROUP BY 1 ORDER BY 1",
+            # Authentication results and preauth disconnects are different
+            # types of evidence. Merge their time buckets for visualization,
+            # without changing authentication totals or ML observations.
+            by_time = {
+                row["timestamp"]: {**dict(row), "preauth": 0}
+                for row in db.execute(
+                    "SELECT CAST(timestamp/? AS INTEGER)*? AS timestamp, "
+                    "SUM(outcome='success') AS success, SUM(outcome='failure') AS failure "
+                    "FROM events WHERE timestamp>=? AND timestamp<=? GROUP BY 1",
                     (bucket, bucket, start, end),
                 )
-            ]
+            }
+            for row in db.execute(
+                "SELECT CAST(timestamp/? AS INTEGER)*? AS timestamp, COUNT(*) AS preauth "
+                "FROM records WHERE " + PREAUTH_FILTER + " GROUP BY 1",
+                (bucket, bucket, start, end),
+            ):
+                item = by_time.setdefault(
+                    row["timestamp"],
+                    {"timestamp": row["timestamp"], "success": 0, "failure": 0, "preauth": 0},
+                )
+                item["preauth"] = row["preauth"]
+            series = [by_time[key] for key in sorted(by_time)]
             sources = [
                 dict(r)
                 for r in db.execute(

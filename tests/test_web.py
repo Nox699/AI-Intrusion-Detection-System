@@ -524,8 +524,11 @@ def test_analysis_error_observation_is_presented_as_error(client, configured):
 def test_chart_explains_missing_observations(client):
     login(client)
     page = client.get("/").get_data(as_text=True)
-    assert "Huller i grafen" in page
-    assert "Observerede loginforsøg pr. 5 minutter" in page
+    assert "Tynde streger forbinder målte prikker" in page
+    assert "stiplede streger angiver manglende observationer" in page
+    assert "Registrerede SSH-hændelser pr. 30 minutter" in page
+    assert "Afbrud før login" in page
+    assert "Afbrud før login er ikke fejlede autentificeringer." in page
 
 
 def test_model_iso_timestamp_and_analysis_errors_are_visible(client, configured):
@@ -570,3 +573,32 @@ def test_plotly_is_local_and_requires_authentication(client):
     assert len(response.data) > 100000
     page = client.get("/").get_data(as_text=True)
     assert "cdn.plot.ly" not in page and "fonts.googleapis" not in page
+
+
+def test_activity_chart_connects_positive_markers_without_inventing_samples():
+    """Solid/dashed guide lines must never create fake events or zero samples."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / "src" / "yggdrasil_ids"
+    script = (root / "static" / "app.js").read_text(encoding="utf-8")
+    style = (root / "static" / "app.css").read_text(encoding="utf-8")
+
+    assert 'type: "scatter", mode: "markers"' in script
+    assert "const observed = plotRows.filter(row => row[field] > 0);" in script
+    assert "observed.map(row => row[field])" in script
+    assert 'dots("Vellykkede", "success", "#68d8b6", "circle")' in script
+    assert 'dots("Fejlede", "failure", "#ef6b6b", "diamond")' in script
+    assert 'dots("Afbrud før login", "preauth", "#e8ad70", "square")' in script
+    assert 'uirevision: "ssh-activity-connected-dots"' in script
+    assert 'mode: "lines+markers"' not in script
+    assert 'type: "scatter", mode: "lines"' in script
+    assert "distance <= bucketSeconds ? solid : dashed" in script
+    assert "if (distance > 6 * 3600) continue;" in script
+    assert "segment.x.push((previous.left + previous.right) * 500" in script
+    assert "segment.y.push(previous[field], current[field], null)" in script
+    assert 'dash: "dot"' in script
+    assert 'hoverinfo: "skip", showlegend: false' in script
+    assert '...connectors("preauth", "#e8ad70")' in script
+    assert ".legend-dot.success{background:#68d8b6}" in style
+    assert ".legend-dot.failure{background:#ef6b6b}" in style
+    assert ".legend-dot.preauth{background:#e8ad70}" in style

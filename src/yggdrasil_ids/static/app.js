@@ -75,9 +75,9 @@
     const compact = chart.clientWidth < 560;
     const signature = `${JSON.stringify(series)}:${Math.floor(serverTime / 60)}:${compact}`;
     if (signature === seriesSignature && !firstChart) return;
-    const rows = series.filter(row => Number.isFinite(row.timestamp) && Number.isFinite(row.success) && Number.isFinite(row.failure))
+    const rows = series.filter(row => Number.isFinite(row.timestamp) && Number.isFinite(row.success) && Number.isFinite(row.failure) && Number.isFinite(row.preauth))
       .sort((a, b) => a.timestamp - b.timestamp);
-    const bucketSeconds = hours <= 24 ? 300 : 3600;
+    const bucketSeconds = hours <= 6 ? 300 : hours <= 24 ? 1800 : 3600;
     const end = serverTime;
     const start = end - hours * 3600;
     // Show only observed buckets. An absent bucket is not evidence that
@@ -86,32 +86,70 @@
     const plotRows = rows.map(row => ({ ...row,
       left: Math.max(start, row.timestamp), right: Math.min(end, row.timestamp + bucketSeconds)
     })).filter(row => row.right > row.left);
-    const x = plotRows.map(row => (row.left + row.right) * 500);
-    const widths = plotRows.map(row => (row.right - row.left) * 1000 * 0.86);
     const showDates = hours >= 24 || dayFormat.format(new Date(start * 1000)) !== dayFormat.format(new Date(end * 1000));
     const tickCount = compact ? 3 : 7;
     const ticks = Array.from({ length: tickCount }, (_value, index) => start + (end - start) * index / (tickCount - 1));
     const intervalLabel = (timestamp) => `${date(timestamp, dayFormat)} ${date(timestamp, timeFormat)}`;
-    const hover = plotRows.map(row => `${intervalLabel(row.left)}–${intervalLabel(row.right)}`);
-    const maxTotal = Math.max(0, ...plotRows.map(row => row.success + row.failure));
-    // Numeric x data avoids date parsing/timezone ambiguity. Hover text comes
-    // only from formatted timestamps; log messages never become chart HTML.
-    const base = { type: "bar", x, width: widths, customdata: hover,
-      hovertemplate: "%{customdata}<br>%{y} registrerede forsøg<extra>%{fullData.name}</extra>" };
+    // Discrete counts are observations per interval, not a continuous trend.
+    // Plot only positive values: no connecting lines or invented zero samples.
+    // Separate traces keep login successes, failures and preauth distinct.
+    const maxCount = Math.max(0, ...plotRows.flatMap(row => [row.success, row.failure, row.preauth]));
+    const dots = (name, field, color, symbol) => {
+      const observed = plotRows.filter(row => row[field] > 0);
+      return {
+        type: "scatter", mode: "markers", name,
+        x: observed.map(row => (row.left + row.right) * 500),
+        y: observed.map(row => row[field]),
+        customdata: observed.map(row => `${intervalLabel(row.left)}–${intervalLabel(row.right)}`),
+        marker: { color, symbol, size: compact ? 8 : 10,
+          line: { color: "#101b2b", width: 1.3 } },
+        hovertemplate: "%{customdata}<br>%{y} registrerede hændelser<extra>%{fullData.name}</extra>"
+      };
+    };
+    // Thin connectors are visual guides between *actual* positive samples.
+    // When a category has empty buckets between two samples, mark the
+    // connection as dashed: no data are inferred for those missing intervals.
+    // Never connect across gaps longer than six hours.
+    const connectors = (field, color) => {
+      const observed = plotRows.filter(row => row[field] > 0);
+      const solid = { x: [], y: [] };
+      const dashed = { x: [], y: [] };
+      for (let index = 1; index < observed.length; index++) {
+        const previous = observed[index - 1];
+        const current = observed[index];
+        const distance = current.timestamp - previous.timestamp;
+        if (distance > 6 * 3600) continue;
+        const segment = distance <= bucketSeconds ? solid : dashed;
+        segment.x.push((previous.left + previous.right) * 500, (current.left + current.right) * 500, null);
+        segment.y.push(previous[field], current[field], null);
+      }
+      return [
+        { type: "scatter", mode: "lines", x: solid.x, y: solid.y,
+          line: { color, width: 1.8, dash: "solid" }, opacity: 0.65,
+          hoverinfo: "skip", showlegend: false },
+        { type: "scatter", mode: "lines", x: dashed.x, y: dashed.y,
+          line: { color, width: 1.6, dash: "dot" }, opacity: 0.55,
+          hoverinfo: "skip", showlegend: false }
+      ];
+    };
     const traces = [
-      { ...base, name: "Vellykkede", y: plotRows.map(row => row.success), marker: { color: "#68d8b6", line: { width: 0 } } },
-      { ...base, name: "Fejlede", y: plotRows.map(row => row.failure), marker: { color: "#e8ad70", line: { width: 0 } } }
+      ...connectors("success", "#68d8b6"),
+      ...connectors("failure", "#ef6b6b"),
+      ...connectors("preauth", "#e8ad70"),
+      dots("Vellykkede", "success", "#68d8b6", "circle"),
+      dots("Fejlede", "failure", "#ef6b6b", "diamond"),
+      dots("Afbrud før login", "preauth", "#e8ad70", "square")
     ];
     const layout = {
       paper_bgcolor: "transparent", plot_bgcolor: "transparent",
       font: { family: '"Segoe UI",Arial,sans-serif', color: "#8797ad", size: 10 },
       margin: { l: 46, r: 24, t: 15, b: showDates ? 56 : 38 }, showlegend: false,
-      barmode: "stack", hovermode: "closest", uirevision: "ssh-activity", dragmode: false,
+      hovermode: "closest", uirevision: "ssh-activity-connected-dots", dragmode: false,
       xaxis: { type: "linear", range: [start * 1000, end * 1000], tickmode: "array", tickvals: ticks.map(value => value * 1000),
         ticktext: ticks.map(value => `${date(value, shortFormat)}${showDates ? `<br>${date(value, dayFormat)}` : ""}`),
         showgrid: false, zeroline: false, fixedrange: true, ticks: "", ticklabelstandoff: 6, tickfont: { size: 11 } },
       yaxis: { rangemode: "tozero", gridcolor: "#233040", zerolinecolor: "#28394b", fixedrange: true,
-        nticks: 5, dtick: maxTotal <= 5 ? 1 : undefined, tickformat: ",d", tickfont: { size: 11 }, minallowed: 0 },
+        nticks: 5, dtick: maxCount <= 5 ? 1 : undefined, tickformat: ",d", tickfont: { size: 11 }, minallowed: 0 },
       hoverlabel: { bgcolor: "#1b293b", bordercolor: "#3a526b", font: { color: "#e1ebf6", size: 11 } },
       annotations: plotRows.length ? [] : [{ text: "Ingen hændelser i perioden", showarrow: false, xref: "paper", yref: "paper", x: 0.5, y: 0.5, font: { color: "#8b9db4", size: 12 } }]
     };
