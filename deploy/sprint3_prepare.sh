@@ -90,8 +90,12 @@ from zipfile import ZipFile
 with ZipFile(sys.argv[1]) as archive:
     assert archive.testzip() is None, "Wheel indeholder fejl"
     expected = {
+        "yggdrasil_ids/cli.py",
         "yggdrasil_ids/engine.py",
         "yggdrasil_ids/network_rules.py",
+        "yggdrasil_ids/storage.py",
+        "yggdrasil_ids/web.py",
+        "yggdrasil_ids/notify.py",
         "yggdrasil_ids/templates/network.html",
     }
     missing = expected.difference(archive.namelist())

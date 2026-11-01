@@ -156,6 +156,33 @@ Scriptet afbryder ved fejl og udfører **ikke** automatisk rollback efter en mig
 En forkert restore kan slette nye hændelser. Bevar sikkerhedskopier og send
 den sidste fejlfase til gennemgang inden videre arbejde.
 
+## Fund under første produktionsopgraderingsforsøg
+
+Det første forsøg nåede gennem frisk offline-backup, wheel-installation og
+**root-baseret** kodeimport, men stoppede i fasen `migrating-db`, før
+`yggdrasil-ids init` kunne køre som `yggdrasil-worker`:
+
+```text
+ModuleNotFoundError: No module named 'yggdrasil_ids.cli'
+```
+
+De tre IDS-tjenester var på dette tidspunkt stoppet. Den installerede pakke
+var blevet udskiftet, men der foreligger **ikke** et verificeret
+produktionsskema v4; schema skal kontrolleres read-only før yderligere
+handling. Den friske v3-backup og arkivet af det tidligere fungerende
+Python-miljø skal bevares.
+
+En sandsynlig årsag er `umask 077` ved root-`pip install`: ny Python-kode
+kan blive utilgængelig for servicekontiene. Dette er en **hypotese**, indtil
+installerede filer, wheel-indhold og imports som servicebrugerne er undersøgt.
+En vellykket import som root udelukker ikke rettighedsfejl.
+
+Deploy-scriptet blev derefter ændret til kun at bruge `umask 022` for
+installation af kildekodefiler, og det kontrollerer fremover CLI-import
+som **alle tre servicekonti før databaseskemamigration**. Den oprindelige
+fejlramte kørsel skal **ikke genkøres direkte**. Fejlsøgning eller
+kontrolleret tilbageførsel skal være gennemført først.
+
 ## C. Stop- og rollbackpolitik
 
 - **Før migrationsskridt 6:** afbryd ved fejl, gendan den tidligere

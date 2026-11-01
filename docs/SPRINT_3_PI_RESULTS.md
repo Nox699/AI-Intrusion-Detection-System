@@ -122,3 +122,26 @@ Den rapporterede slutttekst var `PASS: Forberedelse færdig; intet er installere
 Dette er **ikke** en installation på Pi. Produktionsmigrering og live scan-test afventer.
 To fejlede sudo-adgangskodeforsøg blev fulgt af vellykket autentificering.
 Der er ingen observerede ændringer i IDS-tjenester eller adgangsregler.
+
+## Første produktionsopgraderingsforsøg: afbrudt
+
+Ejerens terminaloutput dokumenterer følgende sekvens:
+
+1. V3 database og `network.enabled=false` kontrolleret; notifier-checkpoint OK.
+2. Forberedt wheel og tidligere `venv` verifieret med SHA-256.
+3. De tre IDS-tjenester stoppet.
+4. Frisk offline-v3-backup oprettet med `integrity_check=ok`.
+5. Data, Discord-state, konfiguration og systemd-units arkiveret privat.
+6. Sprint 3-wheel installeret og root-import af schema v4 og netværksregel bestået.
+7. **STOP:** CLI gav `ModuleNotFoundError: No module named 'yggdrasil_ids.cli'`
+   ved første forsøg på `yggdrasil-ids init` som `yggdrasil-worker`.
+
+Fejlfase: `migrating-db`. Den automatisk efterfølgende genstart blev
+derfor **ikke** kørt. Den faktiske aktuelle databaseskema- og
+tjenestestatus skal efterprøves på Pi, før flere skrivehandlinger udføres.
+En begrænset mulig forklaring er filrettigheder fra `umask 077`
+under root-installation. Dette er endnu ikke verificeret på Pi.
+
+En senere rettelse af scriptet må ikke markeres som en bestået
+produktionsaccept, før Pi'ens faktiske import, schema, servicekonti,
+journal og dashboard er testet efter genstart.

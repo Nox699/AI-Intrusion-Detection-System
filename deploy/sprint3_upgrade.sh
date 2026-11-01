@@ -130,15 +130,30 @@ done
 printf 'PASS: Data, notifier-state, konfiguration og systemd-units arkiveret privat\n'
 
 phase="installing-wheel"
-sudo "$venv/bin/python" -m pip install --no-index --no-deps --force-reinstall "$wheel"
+# pip writes new package paths via open(..., 'wb') and mkdir. A process-wide
+# umask 077 can make Python modules inaccessible to yggdrasil-worker, even
+# though root can import them. Limit 022 to this code-only wheel install;
+# retain 077 for all backup and secrets operations above and below.
+sudo /bin/sh -c 'umask 022; exec "$1" -m pip install --no-index --no-deps --force-reinstall "$2"' \
+  _ "$venv/bin/python" "$wheel"
 sudo "$venv/bin/python" -m pip check >/dev/null || stop "Dependency-fejl efter installation."
 sudo "$venv/bin/python" - <<'PY'
+from yggdrasil_ids.cli import main
 from yggdrasil_ids.storage import SCHEMA_VERSION
 from yggdrasil_ids.network_rules import TCPPortScanDetector
 assert SCHEMA_VERSION == 4
-assert TCPPortScanDetector is not None
-print("PASS: Sprint 3-kode installeret (schema v4 + netværksregel)")
+assert TCPPortScanDetector is not None and callable(main)
+print("PASS: Sprint 3-kode installeret (CLI, schema v4, netværksregel)")
 PY
+
+# A root-only import proves nothing about the three non-root services.
+# Fail BEFORE mutating the production schema if any service user cannot
+# execute the actual console entry point.
+for account in yggdrasil-worker yggdrasil-web yggdrasil-notifier; do
+  sudo -u "$account" "$venv/bin/yggdrasil-ids" --version >/dev/null \
+    || stop "Ny CLI er ikke tilgængelig for $account; schema v3 er endnu ikke ændret."
+  printf 'PASS: CLI importeres som %s\n' "$account"
+done
 
 phase="migrating-db"
 sudo -u yggdrasil-worker "$venv/bin/yggdrasil-ids" init --config "$config"
