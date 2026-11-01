@@ -1,0 +1,30 @@
+[Unit]
+Description=Yggdrasil IDS Discord delivery test message
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=yggdrasil-notifier
+Group=yggdrasil-notifier
+SupplementaryGroups=yggdrasil-data
+WorkingDirectory=/var/lib/yggdrasil-notifier
+ExecStart=/opt/yggdrasil-ids/venv/bin/yggdrasil-ids notify --config /etc/yggdrasil-ids/config.toml --state-file /var/lib/yggdrasil-notifier/delivery.sqlite3 --test
+LoadCredential=discord-webhook.url:/etc/yggdrasil-ids/discord-webhook.url
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/var/lib/yggdrasil-ids
+CapabilityBoundingSet=
+AmbientCapabilities=
+MemoryMax=128M
+TasksMax=16

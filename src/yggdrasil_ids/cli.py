@@ -219,6 +219,7 @@ def parser() -> argparse.ArgumentParser:
             sub.add_argument("--state-file", type=Path, required=True)
             sub.add_argument("--webhook-file", type=Path)
             sub.add_argument("--test", action="store_true")
+            sub.add_argument("--status", action="store_true")
             sub.add_argument("--bootstrap", action="store_true")
         if name == "doctor":
             sub.add_argument("--journal", action="store_true")
@@ -390,7 +391,9 @@ def main(argv: list[str] | None = None) -> int:
                 zone=config.timezone,
                 webhook_file=args.webhook_file,
             )
-            if args.test:
+            if args.status:
+                _json(notifier.status())
+            elif args.test:
                 notifier.test()
                 print("Discord kvitterede for testbeskeden.")
             elif args.bootstrap:

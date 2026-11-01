@@ -204,6 +204,36 @@ class DiscordNotifier:
         self.path.chmod(0o600)
         return {"last_seq": last_seq}
 
+    def status(self):
+        """Read-only operational status without accessing webhook credentials."""
+        with self._connect() as db:
+            try:
+                row = db.execute("SELECT instance,last_seq,not_before FROM meta").fetchone()
+                acknowledged = db.execute("SELECT COUNT(*) FROM deliveries").fetchone()[0]
+            except sqlite3.OperationalError as exc:
+                raise DeliveryError("Notifierstatus mangler eller er ikke initialiseret") from exc
+        if row is None:
+            raise DeliveryError("Notifieren er ikke initialiseret")
+        instance, maximum, _ = self._source()
+        if instance != row[0] or maximum < row[1]:
+            raise DeliveryError("Notifierstatus matcher ikke alarmdatabasen")
+        return {
+            "pending": self._pending_count(row[1]),
+            "delivered": acknowledged,
+            "last_seq": row[1],
+            "cooldown_seconds": max(0, int(row[2] - time.time() + 0.999)),
+        }
+
+    def _pending_count(self, last_seq: int) -> int:
+        with self.source.reader() as db:
+            return int(
+                db.execute(
+                    "SELECT COUNT(*) FROM discord_outbox "
+                    "WHERE seq>? AND severity IN ('medium','high','critical')",
+                    (last_seq,),
+                ).fetchone()[0]
+            )
+
     def message(self, event):
         label = {
             "ssh.preauth_burst": "Gentagne SSH-afbrud før login",

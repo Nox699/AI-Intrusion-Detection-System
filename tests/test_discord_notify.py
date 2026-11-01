@@ -214,3 +214,28 @@ def test_malformed_discord_reply_is_manual_review(monkeypatch):
     monkeypatch.setattr("yggdrasil_ids.notify.urllib.request.build_opener", lambda *args: Opener())
     with pytest.raises(DeliveryError):
         deliver("https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60, "test")
+
+
+def test_status_shows_queue_and_acknowledgements(tmp_path):
+    repo = Repository(tmp_path / "state.sqlite3")
+    repo.initialize()
+    secret = tmp_path / "secret"
+    secret.write_text("https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60)
+    secret.chmod(0o600)
+    sent = []
+    notify = DiscordNotifier(
+        repo.path,
+        tmp_path / "private/delivery.sqlite3",
+        webhook_file=secret,
+        sender=lambda _url, msg: sent.append(msg) or "987654",
+    )
+    notify.bootstrap()
+    assert notify.status()["pending"] == 0
+    add_alert(repo)
+    assert notify.status()["pending"] == 1
+    notify.poll()
+    status = notify.status()
+    assert status["pending"] == 0
+    assert status["delivered"] == 1
+    assert status["cooldown_seconds"] == 0
+    assert len(sent) == 1
