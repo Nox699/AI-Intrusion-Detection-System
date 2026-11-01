@@ -359,9 +359,7 @@ def test_new_alert_recorded_once_per_incident_even_with_multiple_findings(tmp_pa
 
 
 def test_network_discord_message_has_plain_label_but_no_raw_network_metadata(tmp_path):
-    notify = DiscordNotifier(
-        tmp_path / "events.sqlite3", tmp_path / "private/state.sqlite3"
-    )
+    notify = DiscordNotifier(tmp_path / "events.sqlite3", tmp_path / "private/state.sqlite3")
     event = {
         "detector_id": "network.tcp_port_scan",
         "severity": "medium",

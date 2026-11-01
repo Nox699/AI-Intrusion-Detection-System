@@ -644,9 +644,9 @@ def test_authenticated_network_page_displays_firewall_history_and_scan_alert(con
     assert "6 logposter" in body
     assert "Netværksindsamling er ikke aktiveret" in body
     assert client.get("/network?source=192.0.2.55&protocol=TCP").status_code == 200
-    assert "192.0.2.92:3005" not in client.get(
-        "/network?source=192.0.2.55&protocol=UDP"
-    ).get_data(as_text=True)
+    assert "192.0.2.92:3005" not in client.get("/network?source=192.0.2.55&protocol=UDP").get_data(
+        as_text=True
+    )
     assert client.get("/network?protocol=bogus").status_code == 400
     alerts = client.get("/alerts?detector=network.tcp_port_scan")
     assert alerts.status_code == 200
