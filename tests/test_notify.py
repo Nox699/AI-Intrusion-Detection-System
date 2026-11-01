@@ -1,8 +1,6 @@
 """The notifier is isolated from the collector and uses a private cursor."""
 
-import json
 import stat
-import threading
 import time
 
 import pytest
