@@ -323,8 +323,7 @@ def test_chart_preauth_is_distinct_and_includes_preauth_only_buckets(repository)
     insert(repository, event(1, timestamp=NOW - 20, outcome="success"))
     with repository.transaction() as db:
         db.executemany(
-            "INSERT INTO records(id,cursor,timestamp,status,reason,raw_json) "
-            "VALUES(?,?,?,?,?,?)",
+            "INSERT INTO records(id,cursor,timestamp,status,reason,raw_json) VALUES(?,?,?,?,?,?)",
             [
                 record(1, NOW - 25),
                 record(2, NOW - 35),
