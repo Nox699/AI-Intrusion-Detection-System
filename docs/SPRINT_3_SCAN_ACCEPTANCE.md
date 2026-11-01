@@ -153,3 +153,20 @@ begrænser normalt antal beskeder fra én sammenhængende kilde mod
 samme destination, men garanterer ikke højst én besked ved en
 langvarig scanning. Den vil også skabe mere log- og databasearbejde,
 særligt ved ratebegrænsning og tidsvinduesoverløb.
+
+## Uafhængige SSH- og netværksnotifikationer
+
+Koden grupperer nye fund efter detektor/kilde og 300-sekunders
+`rules.cooldown_seconds`. En kvalificeret SSH-alarm og en
+kvalificeret netværksalarm fra samme IP kan derfor begge oprette
+hver sin `discord_outbox`-post inden for samme fem minutter.
+Gentagne fund fra samme detektor/kilde i cooldown-vinduet samles
+i en eksisterende alarm. `notify status`-feltet
+`cooldown_seconds` er derimod et **leverings-retry** efter
+Discord-tilbageholdelse, ikke detektorernes alarmgruppering.
+
+En ny regressionstest i `tests/test_network_ingestion.py`
+efterprøver særskilt alarm- og outbox-identitet for SSH og
+TCP-scanning med samme kilde og samtidige tidspunkter.
+Det er ikke nødvendigt at installere ny programkode på Pi for
+at få denne eksisterende adfærd.

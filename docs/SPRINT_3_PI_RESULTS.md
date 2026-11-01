@@ -359,3 +359,24 @@ Dette er **ikke** en ubetinget garanti mod mange notifikationer.
 Scanning af 65.535 porte kan desuden øge journal- og databasebelastning
 betydeligt. Før en fuld TCP-scan kræves en afgrænset ny test med
 tærskel 5, kontrol af alarmgruppering og målt belastning.
+
+## Anden Nmap-test efter tuning – analyse afventer
+
+**Dato:** 2. november 2026 kl. 00:53 CET (klientens Nmap-output).  
+**Miljø:** Samme private Pi og testporte 45010–45019 på eget LAN.  
+**Konfiguration:** Eksperimentel `distinct_ports_threshold=5`,
+`window_seconds=60`, UFW `low` og de tre IDS-services aktive
+ifølge foregående konfigurationstest.
+
+Den anden Nmap 7.94SVN-kørsel med
+`-sT -Pn -n --scan-delay 2s --max-retries 0 --host-timeout 90s` viste:
+- **10/10** testporte som `filtered`.
+- Varighed: **22,21 sekunder**.
+- Nmap angav `Host is up` og en advarsel om nul retransmissioner.
+
+**Ingen SQLite-måling efter den anden scanning er endnu leveret.**
+Derfor er det endnu uvist, om threshold 5 blev nået, om
+`network.tcp_port_scan` gav en alarm, og om Discord fik en ny
+besked. En `filtered`-port alene dokumenterer ikke en IDS-alarm.
+Næste handling er samme read-only aggregerede kontrol med et
+60-minutters vindue og notifierens leveringsstatus.

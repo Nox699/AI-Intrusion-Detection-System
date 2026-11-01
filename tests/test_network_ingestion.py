@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from yggdrasil_ids.config import AppConfig, NetworkConfig
+from yggdrasil_ids.domain import Finding, SSHEvent
 from yggdrasil_ids.engine import AnalysisEngine
 from yggdrasil_ids.storage import SCHEMA_VERSION, Repository
 
@@ -250,6 +251,64 @@ def test_network_scan_creates_one_incident_and_discord_outbox_message(tmp_path):
     assert engine.process(scan_record(6))["status"] == "duplicate"
     assert count(engine.repository, "network_evidence") == 2
     assert count(engine.repository, "discord_outbox") == 1
+
+
+def test_ssh_and_network_alerts_have_independent_grouping_and_outbox(tmp_path):
+    """SSH cooldown never suppresses a separate scan notification."""
+    engine = AnalysisEngine(config(tmp_path), namespace="test")
+    for index in range(6):
+        engine.process(scan_record(index))
+    assert count(engine.repository, "discord_outbox") == 1
+
+    def ssh_finding(index):
+        item = SSHEvent(
+            f"ssh-finding-{index}",
+            NOW + index,
+            "192.0.2.50",
+            "labuser",
+            "failure",
+            "publickey",
+            "test-sensor",
+            "Synthetic SSH event",
+        )
+        finding = Finding(
+            "ssh.failed_burst",
+            "Test SSH alarm",
+            "medium",
+            "Synthetic SSH burst for grouping test",
+            item.source_ip,
+            item.event_id,
+            item.timestamp,
+            {"event_ids": [item.event_id]},
+            None,
+            None,
+        )
+        with engine.repository.transaction() as db:
+            engine.repository.insert_event(db, item)
+            return engine.repository.add_finding(db, finding, cooldown=300)
+
+    # The SSH alarm uses the SAME source and time period as the portscan,
+    # but must create its own incident and Discord outbox entry.
+    first_ssh = ssh_finding(7)
+    assert count(engine.repository, "alerts") == 2
+    assert count(engine.repository, "discord_outbox") == 2
+
+    # Later findings inside the respective 300-second cooldowns update
+    # their own incident, but must not produce additional notifications.
+    assert engine.process(scan_record(8))["findings"] == 1
+    assert ssh_finding(9) == first_ssh
+    assert count(engine.repository, "alerts") == 2
+    assert count(engine.repository, "discord_outbox") == 2
+
+    with engine.repository.reader() as db:
+        categories = {
+            row["detector_id"]: row["n"]
+            for row in db.execute(
+                "SELECT detector_id, COUNT(*) AS n FROM discord_outbox "
+                "GROUP BY detector_id"
+            )
+        }
+    assert categories == {"network.tcp_port_scan": 1, "ssh.failed_burst": 1}
 
 
 def test_different_destinations_and_interfaces_have_separate_incidents(tmp_path):

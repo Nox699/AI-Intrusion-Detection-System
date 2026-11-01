@@ -13,7 +13,7 @@ målinger eller diskussion af begrænsninger.
 | S3-B | Anonymiseret SQL-porttabel: 8 SYN / 5 unikke porte | Første scan, tærskel 6 | Kan tages af eksisterende terminaloutput |
 | S3-C | Read-only aggregator med 5 unikke, 0 alarmer og sund collector | Første scan, tærskel 6 | Gem output/screenshot fra terminal, hvis tilgængeligt |
 | S3-D | Udsnit af **kun** `[network]`-sektionen: `enabled=true`, `window_seconds=60`, `distinct_ports_threshold=5` | Efter kontrolleret tuning | Klar til screenshot: tuning bestået |
-| S3-E | Yggdrasils private `/network`-side med registreret aktivitet | Efter den næste scan | Afventer |
+| S3-E | Yggdrasils private `/network`-side med registreret aktivitet | Efter anden scan kl. 00:53 | Afventer SQLite-/dashboardkontrol |
 | S3-F | Alarmoversigt og evt. detaljer for `network.tcp_port_scan` | Hvis ny scan udløser alarm | Afventer |
 | S3-G | Faktisk Discord-besked med `Mulig TCP-portscanning (UFW)` og referencen | Hvis den bliver leveret | Afventer |
 | S3-H | Kort anonymiseret terminaludsnit af `systemctl is-active` og collector/netværksstatus | Efter ny test | Valgfrit |
@@ -62,3 +62,15 @@ hvis data, alarm og Discord-besked faktisk optræder.
 Den nye tuning er en kalibrering efter test 1; S3-A/B/C skal vise
 historiske resultater med tærskel 6 uændret, så rapporten ikke
 forveksler trænings-/justeringsgrundlag med uafhængig evaluering.
+
+## Anden Nmap-test – screenshotmulighed
+
+Kl. **00:53 CET den 2. november 2026** blev den samme 10-porttest
+kørt med tærskel 5. Alle porte var `filtered`; varigheden var 22,21 s.
+Tag gerne et særskilt screenshot af denne Ubuntu-terminal og navngiv
+det `S3-I-nmap-threshold5.png`. Det kan sammenlignes med første
+Nmap-screenshot `S3-A-nmap-baseline.png`.
+
+**S3-F og S3-G skal kun markeres som gennemført, hvis vi faktisk
+bekræfter en alarm og en leveret Discord-meddelelse**. Beskær
+eventuelle IP-adresser, private detaljer og logins før offentlig deling.
