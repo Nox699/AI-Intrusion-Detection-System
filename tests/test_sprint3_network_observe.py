@@ -34,9 +34,22 @@ def test_aggregate_report_does_not_disclose_ips_or_modify_db(tmp_path):
         for i in range(7):
             db.execute(
                 "INSERT INTO firewall_events VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (1000 + i, "BLOCK", "incoming", "wlan0", "", "live", "Yggdrasil",
-                 "boot", "192.0.2.101", "192.0.2.102", 6, 45010 + i,
-                 json.dumps(["SYN"]), str(i)),
+                (
+                    1000 + i,
+                    "BLOCK",
+                    "incoming",
+                    "wlan0",
+                    "",
+                    "live",
+                    "Yggdrasil",
+                    "boot",
+                    "192.0.2.101",
+                    "192.0.2.102",
+                    6,
+                    45010 + i,
+                    json.dumps(["SYN"]),
+                    str(i),
+                ),
             )
         db.execute("INSERT INTO alerts VALUES('network.tcp_port_scan',1005)")
         db.execute("INSERT INTO network_evidence VALUES('network.tcp_port_scan',1005)")
