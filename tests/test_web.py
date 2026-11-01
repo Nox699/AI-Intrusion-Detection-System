@@ -583,13 +583,13 @@ def test_activity_chart_uses_distinct_line_colors_and_does_not_connect_missing_b
     style = (root / "static" / "app.css").read_text(encoding="utf-8")
 
     assert 'type: "scatter", mode: "lines+markers", connectgaps: false' in script
-    assert 'points.push({ x: (previous.right + row.left) * 500,' in script
+    assert "points.push({ x: (previous.right + row.left) * 500," in script
     assert "success: null, failure: null, preauth: null" in script
     assert 'shape: "linear"' in script
     assert '"Vellykkede", y: points.map(point => point.success)' in script
     assert '"Fejlede", y: points.map(point => point.failure)' in script
     assert '"Afbrud før login", y: points.map(point => point.preauth)' in script
-    assert "line: { color: \"#ef6b6b\"" in script
-    assert "line: { color: \"#e8ad70\"" in script
+    assert 'line: { color: "#ef6b6b"' in script
+    assert 'line: { color: "#e8ad70"' in script
     assert ".legend-dot.failure{background:#ef6b6b}" in style
     assert ".legend-dot.preauth{background:#e8ad70}" in style
