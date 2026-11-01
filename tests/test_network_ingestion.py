@@ -2,14 +2,13 @@
 
 import json
 import sqlite3
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from yggdrasil_ids.config import AppConfig, NetworkConfig
 from yggdrasil_ids.engine import AnalysisEngine
-from yggdrasil_ids.storage import Repository, SCHEMA_VERSION
+from yggdrasil_ids.storage import SCHEMA_VERSION, Repository
 
 NOW = 1_800_000_000.0
 FIXTURES = Path(__file__).parent / "fixtures" / "ufw_journal.jsonl"
