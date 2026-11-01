@@ -67,9 +67,12 @@ def test_schema3_migrates_to4_without_changing_existing_ssh_alert_outbox(tmp_pat
         old_ref = db.execute("SELECT ref FROM discord_outbox").fetchone()[0]
     with sqlite3.connect(repo.path) as db:
         assert db.execute("PRAGMA user_version").fetchone()[0] == 3
-        assert db.execute(
-            "SELECT COUNT(*) FROM sqlite_master WHERE name='firewall_events'"
-        ).fetchone()[0] == 0
+        assert (
+            db.execute(
+                "SELECT COUNT(*) FROM sqlite_master WHERE name='firewall_events'"
+            ).fetchone()[0]
+            == 0
+        )
     repo.initialize()
     repo.initialize()
     with repo.reader() as db:
