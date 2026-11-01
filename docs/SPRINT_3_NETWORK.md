@@ -6,13 +6,54 @@
 `63ea44a5363403b6da0725a894e48ea9a40a8bd7`.
 
 **Første del:** isoleret UFW-parser og ren detektionsfunktion med tests.
-**Ikke tilkoblet endnu:** live collector, databasen, dashboardet eller Discord.
-Dette dokument er ikke en installationsvejledning, og den kørende Pi-installation
-skal ikke opdateres til denne del-leverance. `main` ændres ikke.
+**Anden del:** opt-in UFW-logindsamling til separat SQLite-tabel i skema v4,
+med migration, transaktionel cursor, dubletkontrol, retention og backup.
+**Ikke tilkoblet endnu:** TCP-scanningsreglen som live alarm, dashboard eller
+Discord. Denne udviklingsversion er ikke accepteret på Pi; den skal ikke
+installeres i drift, før kontrolleret migration og kildetest er planlagt.
+`main` ændres ikke.
 
 Der ændres ingen UFW-regler eller logniveauer. UFW forbliver på `low` under
 udviklingen. En eventuel senere prøve med `medium` kræver en bevidst handling
 på målmaskinen; dette bliver ikke udført af IDS-koden.
+
+## Anden del: opt-in journalintegration og database
+
+`AppConfig.network.enabled` er **false** som standard. Uden opt-in bevarer
+`journalctl` det eksisterende SSH-filter fuldstændigt, og kernelposter
+indsamles ikke. En senere eksplicit `[network] enabled=true` tilføjer
+`+ _TRANSPORT=kernel`, dvs. et separat OR-match uden at svække
+`_UID=0`-kravet for SSH-processerne. Kun genkendte UFW-poster gemmes som
+normaliserede firewallobjekter; ikke-UFW kernelposter lægges ikke i
+`records`-tabellen. De passerer dog gennem journalstrømmen og checkpointet,
+så kernel-logmængde og I/O skal måles, inden driftsaktivering.
+
+SQLite-skema **4** tilføjer `firewall_events`, med unikke
+`event_id`-nøgler og indeks efter tidsstempel og kildedimensioner.
+Tabellen er adskilt fra `events`, `observations`, `findings`,
+`preauth_disconnects` og Discord-outbox. TCP-scanningsdetektoren
+**kører endnu ikke** i live collector; en firewallpost giver derfor ingen ny
+Discord-besked eller alarm i dette trin.
+
+Firewallpost og journalcursor skrives i **samme transaktion**; en fejlet
+SQLite-skrivning skal rulle både post og checkpoint tilbage, så journalposten
+kan genindlæses. Ved første aktivering i live mode gemmes et starttidspunkt,
+og ældre kernelhistorik springes over. Det modvirker historisk backfill og
+en strøm af gamle netværksalarmer ved første opstart; SSH-forløb bevarer
+deres tidligere checkpoint.
+
+`Repository.firewall_history` er tidsvindue- og størrelsesbegrænset
+og adskiller kilder, destinations-IP, interface, host, boot og namespace.
+`Repository.prune` sletter også forældet firewallhistorik efter samme
+retention som SSH; den eksisterende SQLite-backup omfatter tabellen.
+De automatiske tests verificerer migrering af v3-data, bevaret SSH-alarm og
+Discord-outbox-identitet, dubletafvisning, rollback og adskillelse fra
+SSH-ML. Disse softwaretests er **ikke** en Pi-migration eller live scan-test.
+
+**Driftssikkerhed:** Den kommende driftsaktivering kræver en verificeret
+backup af SQLite v3, test af migration på backupkopi, diskbudgetkontrol,
+måling af kernel-journalstrøm og en rollbackplan. Ingen ændring af UFW's
+logniveau eller firewallregler er nødvendig for denne implementeringsdel.
 
 ## Datagrundlag
 

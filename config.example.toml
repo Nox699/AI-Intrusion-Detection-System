@@ -43,3 +43,9 @@ trusted_hosts = ["localhost", "127.0.0.1", "[::1]"]
 [storage]
 retention_days = 30
 max_database_mb = 512
+
+# Sprint 3 network history is opt-in; leave disabled in existing deployments.
+[network]
+enabled = false
+window_seconds = 60
+distinct_ports_threshold = 6

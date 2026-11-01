@@ -48,6 +48,18 @@ regelalarm er leveret. Simulerede transportfejl og genstart er afprøvet i tests
 Fuld accept afventer bl.a. fejltest på Pi, rettighedsrevision, outbox-retention,
 fuld maskingenstart og dokumenteret drift under belastning.
 
+## Sprint 3 · UFW-observation og mulig TCP-portscanning
+
+**Status: Under udvikling på `sprint-3/network-monitoring`; ikke installeret på Pi.**
+
+Parseren og den eksperimentelle TCP-portscanningsregel er softwaretestet.
+En separat `firewall_events`-historik og opt-in kernel-journalintegration
+er implementeret i skema v4; live netværksalarmer, dashboardvisning, Discord,
+ressourceprøve og Pi-migration afventer. Normaldriften fortsætter på
+Sprint 2-versionen. UFW `low` bevares, indtil en senere bevidst test.
+
+[Arkitektur, dækningsgrænser og status](SPRINT_3_NETWORK.md).
+
 ## Backlog · prioriteres efter de første sprints
 
 | Område | Mulig funktion | Afklaring før implementering |
