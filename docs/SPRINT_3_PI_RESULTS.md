@@ -73,3 +73,33 @@ Tilbageførsel til den tidligere kode efter en v4-migration kræver den
 gemte **v3-backup**, ikke blot reinstallering af den gamle wheel. En
 tilbageførsel kan medføre tab af hændelser siden backuptidspunktet.
 Se [opgraderingsplanen](SPRINT_3_PI_DEPLOY.md).
+
+## Read-only installationskontrol, efter den første kopitest
+
+Ejeren kørte en separat read-only preflight fra `vidar`-terminalen.
+Følgende er observeret, uden at dele selve konfigurationsfilen:
+
+| Kontrol | Observeret |
+| --- | --- |
+| `yggdrasil-collector.service` | active |
+| `yggdrasil-web.service` | active |
+| `yggdrasil-notifier.service` | active |
+| NVMe-filsystem | ca. 1,8 TB i alt; 22 GB brugt; 1,7 TB ledigt (2 % brugt) |
+| `/var/lib/yggdrasil-ids` | 200 KB |
+| `/var/backups/yggdrasil-ids` | 1,2 MB |
+| Python | 3.13.5 |
+| Installeret pakkes versionsnummer | `yggdrasil-ids 0.1.0` |
+| Produktionsdatabaseskema | 3 |
+| SQLite `quick_check` | ok |
+| `app.mode` | live |
+| `network.enabled` | false |
+| Lokalt Git-checkout | `658c9140f8b224ae3ab21b4d161f44c3e91697c9` |
+| `git status --short` | Intet output (rent arbejdsområde) |
+
+**Vigtigt:** Lokalt Git-HEAD og pakkens versionsnummer beviser ikke, hvilken
+kildecommit der faktisk er installeret i `/opt/yggdrasil-ids/venv`.
+Den tidligere installerede `venv` skal derfor bevares i en root-beskyttet,
+separat arkivfil før opdatering, så rollback ikke bygger på en antagelse.
+En ny backup af v3-databasen skal desuden tages **efter tjenestestop**
+før selve migrationsskridtet. Read-only preflight er bestået; selve
+opgraderingen og nettets observerbarhed er stadig uprøvet.

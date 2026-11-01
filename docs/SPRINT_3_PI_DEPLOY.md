@@ -61,11 +61,43 @@ Stop, hvis tjenesterne ikke er som forventet, databaseintegriteten fejler,
 der er lokale ændringer, eller den tilgængelige diskplads er utilstrækkelig.
 Nuværende schema forventes at være **3**; bekræft faktisk før opgradering.
 
+## A2. Sikker releaseforberedelse (ingen installation)
+
+Hjælpescriptet `deploy/sprint3_prepare.sh` er lavet til den eksisterende
+Pi-installation. Det køres som `vidar` med en **fuld, CI-verificeret commit-SHA**
+som eneste argument. Det stopper ved lokale Git-ændringer, forskellig
+remote-SHA, stoppede IDS-tjenester, ændret driftskonfiguration eller manglende
+SQLite-v3-integritet. Det bygger en wheel fra den præcise kilde i et
+**midlertidigt** build-venv og gemmer wheel, SHA og et arkiv af den faktisk
+installerede `/opt/yggdrasil-ids/venv` i en root-beskyttet undermappe under
+`/var/backups/yggdrasil-ids`.
+
+Scriptet kan hente Python-buildafhængigheder fra pakkeregisteret i den
+midlertidige build-venv. Det installerer **ikke** runtime-afhængigheder eller
+ny kode i den kørende venv, stopper/genstarter ikke services, ændrer ingen
+netværksregler og migrerer ikke databasen. Stagingartefakterne er private,
+må ikke pushes til GitHub, og eksisterende release-mapper overskrives ikke.
+
+**Kør kun en pinned scriptversion.** Efter `git fetch` kan man bruge:
+
+```bash
+cd /home/vidar/AI-Intrusion-Detection-System
+set -o pipefail
+sha="INDSAET_40_TEGNS_GROEN_CI_SHA"
+git show "$sha:deploy/sprint3_prepare.sh" | bash -s -- "$sha"
+```
+
+Brug ikke et uverificeret SHA eller `curl | bash`. Tjek resultatet og
+hashene, før der planlægges en installation. Den nye wheel og snapshot af
+tidligere venv er ikke i sig selv en gendannelsestest. **Den gamle v3-database
+skal også sikres** efter tjenestestop.
+
 ## B. Installationsrækkefølge, først efter godkendt preflight
 
-1. Verificér den valgte kilde-SHA mod en grøn CI-kørsel; byg en wheel fra
-   en ren, isoleret kildekopi på Pi. Opbevar den tidligere installerede wheel
-   eller en lokalt reproducerbar kildekopi med låste dependencies.
+1. Verificér den valgte kilde-SHA mod en grøn CI-kørsel; gennemfør
+   forberedelsen i afsnit A2. Kontrollér at den forventede wheel og det
+   root-beskyttede arkiv af **faktisk installeret venv** findes, med hashes,
+   før tjenester stoppes.
 2. Kontrollér at wheel og eksisterende låste dependencies fungerer med Pi's
    Python/ARM64. Ingen ukontrolleret online dependency-opgradering.
 3. Notér tjenesterne og stop **kun**

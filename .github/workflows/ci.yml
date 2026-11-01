@@ -38,6 +38,9 @@ jobs:
           python -m pip install --disable-pip-version-check -r requirements-dev.txt
           python -m pip install --no-build-isolation --no-deps --editable .
 
+      - name: Validate safe Pi preparation script syntax
+        run: bash -n deploy/sprint3_prepare.sh
+
       - name: Lint
         run: python -m ruff check src tests
 
