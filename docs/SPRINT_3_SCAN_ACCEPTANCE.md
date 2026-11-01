@@ -112,3 +112,16 @@ denne gennemgang vælges en eventuel ny kontrolleret test.
 Undgå en automatisk omlægning til `medium` som løsning:
 også `medium` er ratebegrænset. Ændr ikke firewallregler,
 tærskel eller loggerens niveau for at få en kunstig bestået test.
+
+## Plan for eksperimentel følsomhed efter første test
+
+Den første kendte scanning gav fem loggede unikke blokerede porte,
+hvilket var under tærsklen seks. For et lille LAN vil vi afprøve
+`distinct_ports_threshold=5` med **uændret** tidsvindue 60 sekunder
+og UFW-logniveau `low`. Dette er en ny test, ikke en ændring af
+den historiske fiasko. Efter kontrolleret ændring skal én ny scan
+sammenlignes med tidligere data, og vi skal holde øje med
+falske positiver i normaldrift, før vi vælger en permanent tærskel.
+
+Se `docs/SPRINT_3_SCREENSHOTS.md` for forslag til rapportbilag
+og `deploy/sprint3_tune_threshold5.sh` for kontrolleret ændring.

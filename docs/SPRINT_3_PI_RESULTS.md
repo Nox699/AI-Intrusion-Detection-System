@@ -280,3 +280,48 @@ Før ny scanning måles fordeling pr. testport uden IP-oplysninger og
 evt. logprefix for at skelne dæknings- og regelsvigt.
 UFW `medium` er fortsat ratebegrænset, så en ren skift til medium
 garanterer ikke, at alle ti porte logges.
+
+## Detaljeret portfordeling fra første scan
+
+En yderligere read-only forespørgsel mod SQLite, afgrænset til
+testportene og det tilsvarende tidsrum, gav denne anonymiserede
+portfordeling (ingen IP-adresser eller rå logs):
+
+| Testport | TCP-poster | Blokerede SYN |
+| --- | ---: | ---: |
+| 45010 | 2 | 2 |
+| 45011 | 0 | 0 |
+| 45012 | 0 | 0 |
+| 45013 | 1 | 1 |
+| 45014 | 0 | 0 |
+| 45015 | 2 | 2 |
+| 45016 | 2 | 2 |
+| 45017 | 0 | 0 |
+| 45018 | 0 | 0 |
+| 45019 | 1 | 1 |
+
+**I alt:** 8 registrerede blokerede SYN til **5** forskellige porte.
+Det bekræfter den tidligere 60-minutters aggregerede observation.
+Registrering af samme port flere gange øger ikke antallet af unikke
+porte. Manglende loglinjer er ikke i sig selv bevis for, hvilken mekanisme
+der undertrykte dem.
+
+## Planlagt grænseforsøg: 6 → 5
+
+Ejeren bemærkede, at uventede portforsøg på eget LAN er interessante.
+En **foreløbig konfigurationsændring** fra 6 til 5 forskellige,
+blokerede TCP SYN-destinationsporte inden for 60 sekunder er derfor
+foreslået og forberedt i `deploy/sprint3_tune_threshold5.sh`.
+Dette er **ikke endnu aktiveret** på Pi.
+
+Det er en ændring af følsomhed, ikke en fejlrettelse. Grænsen vælges
+på baggrund af eget netværks risikoprofil og den observerede logdækning;
+den må ikke efterfølgende påstås at være objektivt optimal. De gamle
+8 logposter giver stadig **ingen retroaktiv alarm**. En ny kontrolleret
+scan skal fungere som en separat test efter konfigurationsændringen.
+Observer også normale LAN-perioder for mulige falske positiver
+(fx netværksdiscovery, administration eller legitim software).
+UFW-forbliver `low`, og pakken geninstalleres ikke.
+
+Screenshot- og bilagsplan:
+[SPRINT_3_SCREENSHOTS.md](SPRINT_3_SCREENSHOTS.md).

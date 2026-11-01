@@ -44,6 +44,9 @@ jobs:
       - name: Verify scan observation helper syntax
         run: python -m py_compile deploy/sprint3_network_observe.py
 
+      - name: Validate threshold tuning script syntax
+        run: bash -n deploy/sprint3_tune_threshold5.sh
+
       - name: Lint
         run: python -m ruff check src tests
 

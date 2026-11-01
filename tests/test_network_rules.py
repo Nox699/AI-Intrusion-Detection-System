@@ -52,6 +52,19 @@ def test_six_distinct_ports_are_needed_and_evidence_is_explainable():
     assert finding.window_seconds == 60 and finding.threshold == 6
 
 
+
+def test_local_lan_threshold_five_detects_five_but_default_six_does_not():
+    events = [packet(index, port=45010 + index) for index in range(5)]
+    assert TCPPortScanDetector().evaluate(events[-1], events) is None
+    tuned = TCPPortScanDetector(NetworkRuleConfig(distinct_ports_threshold=5))
+    assert tuned.evaluate(events[-2], events[:-1]) is None
+    result = tuned.evaluate(events[-1], events)
+    assert result is not None
+    assert result.distinct_ports == 5
+    assert result.threshold == 5
+    assert result.recorded_packets == 5
+
+
 def test_retransmissions_and_changing_source_ports_do_not_count_as_new_ports():
     events = [packet(index, port=443) for index in range(50)]
     assert TCPPortScanDetector().evaluate(events[-1], events) is None
