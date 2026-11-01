@@ -190,3 +190,19 @@ SSH, UFW og Tailscale blev ikke ændret.
 er nu praktisk verificeret; dette er **ikke** en accept af live
 firewallindsamling, en dokumenteret TCP-scanningsalarm, 24-timers
 stabilitet eller målt falsk-positiv-rate. De kræver særskilte prøver.
+
+## First live UFW opt-in succeeded
+
+Owner executed the pinned first opt-in at
+957c65c7d0a39f560eac04bc71e4f2dd8affb587.
+SQLite schema v4 and a fresh v4 backup passed integrity checks.
+The separate network section was enabled without other configuration changes.
+Collector, private dashboard (HTTP 200) and notifier all remained active.
+UFW stayed on low, SSH and Tailscale were not changed.
+
+Initial normalized firewall records: **1**. Scan alerts: **0**.
+The private opt-in backup is stored under:
+ /var/backups/yggdrasil-ids/sprint3-network-optin-WewUNOgt
+
+This verifies journal ingestion for one event, **not** scan detection or
+Discord delivery. See SPRINT_3_SCAN_ACCEPTANCE.md for the next bounded test.

@@ -41,6 +41,9 @@ jobs:
       - name: Validate safe Pi deployment scripts syntax
         run: bash -n deploy/sprint3_prepare.sh deploy/sprint3_upgrade.sh deploy/sprint3_resume_after_permissions.sh deploy/sprint3_enable_network.sh
 
+      - name: Verify scan observation helper syntax
+        run: python -m py_compile deploy/sprint3_network_observe.py
+
       - name: Lint
         run: python -m ruff check src tests
 

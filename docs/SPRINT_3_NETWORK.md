@@ -15,7 +15,7 @@ Discord-outboxpost pr. nyt alarmforløb. Dashboardet har en privat
 logningsbegrænsninger. Netværksalarmer er integreret med alarmdetaljer
 uden at oprette falske SSH-events eller ML-data.
 
-**Bekræftet på Pi:** schema 3→4 er migreret i drift med bevaret SSH-/Discord-historik og alle tre IDS-tjenester genstartet. **Afventer:** faktisk UFW-opt-in, ressourceforbrug ved flere kernelposter og en kontrolleret live-scanning.
+**Bekræftet på Pi:** Schema 3→4 i drift med bevaret SSH-/Discord-historik, alle tre tjenester aktive og første UFW opt-in gennemført. En normaliseret firewallpost er gemt med UFW low. **Afventer:** en kontrolleret scanning, alarm/Discord-accept og 24h stabilitet.
 Netværksindsamling er stadig `enabled=false` som standard. Denne
 udviklingsversion må ikke aktiveres i driften uden kontrolleret
 backup, migration og opt-in. `main` ændres ikke.
