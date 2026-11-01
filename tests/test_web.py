@@ -524,7 +524,7 @@ def test_analysis_error_observation_is_presented_as_error(client, configured):
 def test_chart_explains_missing_observations(client):
     login(client)
     page = client.get("/").get_data(as_text=True)
-    assert "Huller i grafen" in page
+    assert "huller kan skyldes rolig aktivitet eller manglende logindsamling" in page
     assert "Registrerede SSH-hændelser pr. 5 minutter" in page
     assert "Afbrud før login" in page
     assert "Afbrud før login er ikke fejlede autentificeringer." in page
@@ -572,3 +572,24 @@ def test_plotly_is_local_and_requires_authentication(client):
     assert len(response.data) > 100000
     page = client.get("/").get_data(as_text=True)
     assert "cdn.plot.ly" not in page and "fonts.googleapis" not in page
+
+
+def test_activity_chart_uses_distinct_line_colors_and_does_not_connect_missing_buckets():
+    """Static guard for local Plotly chart settings; browser behavior is tested on Pi."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / "src" / "yggdrasil_ids"
+    script = (root / "static" / "app.js").read_text(encoding="utf-8")
+    style = (root / "static" / "app.css").read_text(encoding="utf-8")
+
+    assert 'type: "scatter", mode: "lines+markers", connectgaps: false' in script
+    assert 'points.push({ x: (previous.right + row.left) * 500,' in script
+    assert "success: null, failure: null, preauth: null" in script
+    assert 'shape: "linear"' in script
+    assert '"Vellykkede", y: points.map(point => point.success)' in script
+    assert '"Fejlede", y: points.map(point => point.failure)' in script
+    assert '"Afbrud før login", y: points.map(point => point.preauth)' in script
+    assert "line: { color: \"#ef6b6b\"" in script
+    assert "line: { color: \"#e8ad70\"" in script
+    assert ".legend-dot.failure{background:#ef6b6b}" in style
+    assert ".legend-dot.preauth{background:#e8ad70}" in style

@@ -86,33 +86,54 @@
     const plotRows = rows.map(row => ({ ...row,
       left: Math.max(start, row.timestamp), right: Math.min(end, row.timestamp + bucketSeconds)
     })).filter(row => row.right > row.left);
-    const x = plotRows.map(row => (row.left + row.right) * 500);
-    const widths = plotRows.map(row => (row.right - row.left) * 1000 * 0.86);
     const showDates = hours >= 24 || dayFormat.format(new Date(start * 1000)) !== dayFormat.format(new Date(end * 1000));
     const tickCount = compact ? 3 : 7;
     const ticks = Array.from({ length: tickCount }, (_value, index) => start + (end - start) * index / (tickCount - 1));
     const intervalLabel = (timestamp) => `${date(timestamp, dayFormat)} ${date(timestamp, timeFormat)}`;
-    const hover = plotRows.map(row => `${intervalLabel(row.left)}–${intervalLabel(row.right)}`);
-    const maxTotal = Math.max(0, ...plotRows.map(row => row.success + row.failure + row.preauth));
-    // Numeric x data avoids date parsing/timezone ambiguity. Hover text comes
-    // only from formatted timestamps; log messages never become chart HTML.
-    const base = { type: "bar", x, width: widths, customdata: hover,
+    // A missing time bucket does not prove that monitoring was continuous.
+    // Put a null point between non-adjacent observed buckets. Plotly then
+    // breaks each curve instead of drawing a misleading line across the gap.
+    const points = [];
+    let previous = null;
+    for (const row of plotRows) {
+      if (previous && row.left - previous.right > 1) {
+        points.push({ x: (previous.right + row.left) * 500,
+          label: null, success: null, failure: null, preauth: null });
+      }
+      points.push({ x: (row.left + row.right) * 500,
+        label: `${intervalLabel(row.left)}–${intervalLabel(row.right)}`,
+        success: row.success, failure: row.failure, preauth: row.preauth });
+      previous = row;
+    }
+    const x = points.map(point => point.x);
+    const hover = points.map(point => point.label);
+    const maxCount = Math.max(0, ...plotRows.flatMap(row => [row.success, row.failure, row.preauth]));
+    // Counts remain measured per bucket. Straight segments are visual guides,
+    // not interpolated measurements, and missing buckets stay unconnected.
+    const base = { type: "scatter", mode: "lines+markers", connectgaps: false,
+      x, customdata: hover,
       hovertemplate: "%{customdata}<br>%{y} registrerede hændelser<extra>%{fullData.name}</extra>" };
     const traces = [
-      { ...base, name: "Vellykkede", y: plotRows.map(row => row.success), marker: { color: "#68d8b6", line: { width: 0 } } },
-      { ...base, name: "Fejlede", y: plotRows.map(row => row.failure), marker: { color: "#e8ad70", line: { width: 0 } } },
-      { ...base, name: "Afbrud før login", y: plotRows.map(row => row.preauth), marker: { color: "#9eb5ff", line: { width: 0 } } }
+      { ...base, name: "Vellykkede", y: points.map(point => point.success),
+        line: { color: "#68d8b6", width: 2.5, shape: "linear" },
+        marker: { color: "#68d8b6", size: 7 } },
+      { ...base, name: "Fejlede", y: points.map(point => point.failure),
+        line: { color: "#ef6b6b", width: 2.5, shape: "linear" },
+        marker: { color: "#ef6b6b", size: 7 } },
+      { ...base, name: "Afbrud før login", y: points.map(point => point.preauth),
+        line: { color: "#e8ad70", width: 2.5, shape: "linear" },
+        marker: { color: "#e8ad70", size: 7 } }
     ];
     const layout = {
       paper_bgcolor: "transparent", plot_bgcolor: "transparent",
       font: { family: '"Segoe UI",Arial,sans-serif', color: "#8797ad", size: 10 },
       margin: { l: 46, r: 24, t: 15, b: showDates ? 56 : 38 }, showlegend: false,
-      barmode: "stack", hovermode: "closest", uirevision: "ssh-activity", dragmode: false,
+      hovermode: "closest", uirevision: "ssh-activity-lines", dragmode: false,
       xaxis: { type: "linear", range: [start * 1000, end * 1000], tickmode: "array", tickvals: ticks.map(value => value * 1000),
         ticktext: ticks.map(value => `${date(value, shortFormat)}${showDates ? `<br>${date(value, dayFormat)}` : ""}`),
         showgrid: false, zeroline: false, fixedrange: true, ticks: "", ticklabelstandoff: 6, tickfont: { size: 11 } },
       yaxis: { rangemode: "tozero", gridcolor: "#233040", zerolinecolor: "#28394b", fixedrange: true,
-        nticks: 5, dtick: maxTotal <= 5 ? 1 : undefined, tickformat: ",d", tickfont: { size: 11 }, minallowed: 0 },
+        nticks: 5, dtick: maxCount <= 5 ? 1 : undefined, tickformat: ",d", tickfont: { size: 11 }, minallowed: 0 },
       hoverlabel: { bgcolor: "#1b293b", bordercolor: "#3a526b", font: { color: "#e1ebf6", size: 11 } },
       annotations: plotRows.length ? [] : [{ text: "Ingen hændelser i perioden", showarrow: false, xref: "paper", yref: "paper", x: 0.5, y: 0.5, font: { color: "#8b9db4", size: 12 } }]
     };
