@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import logging
 import math
@@ -13,6 +14,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -96,8 +98,12 @@ def deliver(webhook: str, content: str) -> str:
                 delay = 30.0
             try:
                 extra = json.loads(exc.read(4096))
-                specified = extra.get("retry_after")
-                if isinstance(specified, (int, float)) and math.isfinite(specified):
+                specified = extra.get("retry_after") if isinstance(extra, dict) else None
+                if (
+                    isinstance(specified, (int, float))
+                    and not isinstance(specified, bool)
+                    and math.isfinite(specified)
+                ):
                     delay = max(delay, specified)
             except (ValueError, TypeError):
                 pass
@@ -107,6 +113,21 @@ def deliver(webhook: str, content: str) -> str:
         raise RetryLater() from None
     except (urllib.error.URLError, TimeoutError, OSError):
         raise RetryLater() from None
+
+
+@contextmanager
+def exclusive_notifier(path: Path):
+    """Only one process may own the notifier state and perform deliveries."""
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd = os.open(str(path) + ".lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise DeliveryError("En notifier bruger allerede denne kø") from None
+        yield
+    finally:
+        os.close(fd)
 
 
 class DiscordNotifier:
@@ -246,14 +267,15 @@ class DiscordNotifier:
         return self.sender(secret_file(webhook), "🧪 Yggdrasil IDS: testbesked, ikke en alarm.")
 
     def run(self, stop: threading.Event):
-        self.bootstrap()
-        while not stop.is_set():
-            try:
-                self.poll()
-                stop.wait(20)
-            except RetryLater as exc:
-                log.warning("Discord midlertidigt utilgængelig; afventer genforsøg")
-                stop.wait(max(20.0, exc.delay))
-            except (InvalidWebhook, DeliveryError, sqlite3.Error):
-                log.error("Notifier er stoppet efter konfigurations-/leveringsfejl")
-                raise
+        with exclusive_notifier(self.path):
+            self.bootstrap()
+            while not stop.is_set():
+                try:
+                    self.poll()
+                    stop.wait(20)
+                except RetryLater as exc:
+                    log.warning("Discord midlertidigt utilgængelig; afventer genforsøg")
+                    stop.wait(max(20.0, exc.delay))
+                except (InvalidWebhook, DeliveryError, sqlite3.Error):
+                    log.error("Notifier er stoppet efter konfigurations-/leveringsfejl")
+                    raise
