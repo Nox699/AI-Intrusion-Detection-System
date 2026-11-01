@@ -15,6 +15,7 @@ class RulesConfig:
     window_seconds: int = 300
     failure_threshold: int = 5
     username_threshold: int = 4
+    preauth_threshold: int = 5
     cooldown_seconds: int = 300
     expected_sources: tuple[str, ...] = ()
     expected_users: tuple[str, ...] = ()
@@ -108,6 +109,7 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         ("window_seconds", 300, 10, 3600),
         ("failure_threshold", 5, 2, 10000),
         ("username_threshold", 4, 2, 10000),
+        ("preauth_threshold", 5, 2, 10000),
         ("cooldown_seconds", 300, 10, 86400),
     ]:
         rules[key] = _int(rules.get(key, default), f"rules.{key}", low, high)

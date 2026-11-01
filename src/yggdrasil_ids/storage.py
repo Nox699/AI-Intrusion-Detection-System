@@ -13,9 +13,9 @@ from typing import Any, Iterator
 
 from .domain import Finding, SSHEvent
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
-# Previously ignored trusted journal records are visible without changing schema 1.
+# Previously ignored trusted journal records remain visible after migration.
 # Preauth disconnects are never authentication events, rule inputs or ML features.
 PREAUTH_FILTER = """
     timestamp>=? AND timestamp<=? AND status='ignored'
@@ -64,6 +64,20 @@ CREATE TABLE IF NOT EXISTS findings (
  details TEXT NOT NULL, score REAL, model_version TEXT,
  UNIQUE(event_id,detector_id)
 );
+CREATE TABLE IF NOT EXISTS preauth_disconnects (
+ record_id TEXT PRIMARY KEY REFERENCES records(id) ON DELETE CASCADE,
+ timestamp REAL NOT NULL, source_ip TEXT NOT NULL,
+ kind TEXT NOT NULL CHECK(kind IN ('closed','reset'))
+);
+CREATE INDEX IF NOT EXISTS preauth_source_time ON preauth_disconnects(source_ip,timestamp);
+CREATE TABLE IF NOT EXISTS preauth_evidence (
+ record_id TEXT NOT NULL REFERENCES records(id) ON DELETE CASCADE,
+ alert_id INTEGER NOT NULL REFERENCES alerts(id) ON DELETE CASCADE,
+ timestamp REAL NOT NULL, detector_id TEXT NOT NULL,
+ reason TEXT NOT NULL, details TEXT NOT NULL,
+ PRIMARY KEY (record_id,detector_id)
+);
+CREATE INDEX IF NOT EXISTS preauth_evidence_alert ON preauth_evidence(alert_id,timestamp);
 CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
 
@@ -119,7 +133,7 @@ class Repository:
         db = self.connect()
         try:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, SCHEMA_VERSION):
+            if version not in (0, 1, SCHEMA_VERSION):
                 raise ValueError(
                     f"Databaseversion {version} understøttes ikke; tag backup før migration"
                 )
@@ -127,9 +141,13 @@ class Repository:
             # keeps committed history readable when the collector is stopped.
             db.execute("PRAGMA journal_mode=DELETE")
             db.execute("PRAGMA synchronous=FULL")
-            db.executescript(SCHEMA)
-            db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
-            db.commit()
+            # A single transaction makes upgrades from schema 1 crash-safe.
+            # The old authentication tables are untouched; only new tables are added.
+            db.executescript(
+                "BEGIN IMMEDIATE;\n"
+                + SCHEMA
+                + f"\nPRAGMA user_version={SCHEMA_VERSION};\nCOMMIT;"
+            )
         finally:
             db.close()
         self.path.chmod(0o640)
@@ -236,6 +254,94 @@ class Repository:
             ),
         )
         return int(alert_id)
+
+
+    @staticmethod
+    def insert_preauth_disconnect(
+        db: sqlite3.Connection, record_id: str, timestamp: float, source_ip: str, kind: str
+    ) -> None:
+        db.execute(
+            "INSERT INTO preauth_disconnects(record_id,timestamp,source_ip,kind) VALUES(?,?,?,?)",
+            (record_id, timestamp, source_ip, kind),
+        )
+
+    @staticmethod
+    def preauth_window_count(
+        db: sqlite3.Connection, source_ip: str, timestamp: float, seconds: int
+    ) -> int:
+        return int(
+            db.execute(
+                "SELECT COUNT(*) FROM preauth_disconnects "
+                "WHERE source_ip=? AND timestamp>? AND timestamp<=?",
+                (source_ip, timestamp - seconds, timestamp),
+            ).fetchone()[0]
+        )
+
+    @staticmethod
+    def add_preauth_alert(
+        db: sqlite3.Connection,
+        *,
+        record_id: str,
+        timestamp: float,
+        source_ip: str,
+        observed: int,
+        threshold: int,
+        window_seconds: int,
+        cooldown: int,
+    ) -> int:
+        """Record one burst finding, retaining source evidence outside events/ML."""
+        detector_id = "ssh.preauth_burst"
+        existing = db.execute(
+            "SELECT alert_id FROM preauth_evidence WHERE record_id=? AND detector_id=?",
+            (record_id, detector_id),
+        ).fetchone()
+        if existing:
+            return int(existing[0])
+        reason = (
+            f"{observed} SSH-forbindelser fra {source_ip} blev afbrudt før login "
+            f"inden for {window_seconds} sekunder (grænse: {threshold}). "
+            "Dette alene beviser ikke et nøgleangreb."
+        )
+        details = {
+            "window_seconds": window_seconds,
+            "observed_disconnects": observed,
+            "threshold": threshold,
+            "evidence_record_id": record_id,
+        }
+        row = db.execute(
+            "SELECT id FROM alerts WHERE detector_id=? AND source_ip=? "
+            "AND last_seen>=? AND last_seen<=? ORDER BY last_seen DESC LIMIT 1",
+            (detector_id, source_ip, timestamp - cooldown, timestamp),
+        ).fetchone()
+        if row:
+            alert_id = int(row[0])
+            db.execute(
+                "UPDATE alerts SET last_seen=?,count=count+1,reason=?,details=? WHERE id=?",
+                (timestamp, reason, encode(details), alert_id),
+            )
+        else:
+            result = db.execute(
+                "INSERT INTO alerts(detector_id,title,severity,reason,source_ip,"
+                "first_seen,last_seen,count,score,model_version,details) "
+                "VALUES(?,?,?,?,?,?,?,1,NULL,NULL,?)",
+                (
+                    detector_id,
+                    "Gentagne SSH-afbrud før login",
+                    "medium",
+                    reason,
+                    source_ip,
+                    timestamp,
+                    timestamp,
+                    encode(details),
+                ),
+            )
+            alert_id = int(result.lastrowid)
+        db.execute(
+            "INSERT INTO preauth_evidence(record_id,alert_id,timestamp,detector_id,"
+            "reason,details) VALUES(?,?,?,?,?,?)",
+            (record_id, alert_id, timestamp, detector_id, reason, encode(details)),
+        )
+        return alert_id
 
     @staticmethod
     def _decode(row: sqlite3.Row) -> dict:
@@ -366,8 +472,20 @@ class Repository:
                 "SELECT f.*, e.username, e.outcome, e.message FROM findings f LEFT JOIN events e USING(event_id) WHERE f.alert_id=? ORDER BY f.timestamp DESC LIMIT 100",
                 (alert_id,),
             ).fetchall()
-            alert["findings"] = [self._decode(r) for r in rows]
-            alert["findings_truncated"] = alert["count"] > len(rows)
+            evidence = db.execute(
+                "SELECT p.record_id AS event_id,p.timestamp,p.detector_id,p.reason,"
+                "p.details,NULL AS score,NULL AS model_version,NULL AS username,"
+                "'preauth' AS outcome,json_extract(r.raw_json,'$.MESSAGE') AS message "
+                "FROM preauth_evidence AS p "
+                "JOIN records AS r ON r.id=p.record_id "
+                "WHERE p.alert_id=? ORDER BY p.timestamp DESC LIMIT 100",
+                (alert_id,),
+            ).fetchall()
+            merged = [self._decode(r) for r in rows]
+            merged.extend(self._decode(r) for r in evidence)
+            merged.sort(key=lambda item: (item["timestamp"], item["event_id"]), reverse=True)
+            alert["findings"] = merged[:100]
+            alert["findings_truncated"] = alert["count"] > len(alert["findings"])
             return alert
 
     def dashboard(self, hours: int = 24) -> dict:
@@ -440,10 +558,20 @@ class Repository:
             events = db.execute("DELETE FROM events WHERE timestamp<?", (cutoff,)).rowcount
             records = db.execute("DELETE FROM records WHERE timestamp<?", (cutoff,)).rowcount
             db.execute(
-                "DELETE FROM alerts WHERE NOT EXISTS(SELECT 1 FROM findings WHERE alert_id=alerts.id)"
+                "DELETE FROM alerts WHERE "
+                "NOT EXISTS(SELECT 1 FROM findings WHERE alert_id=alerts.id) "
+                "AND NOT EXISTS(SELECT 1 FROM preauth_evidence WHERE alert_id=alerts.id)"
             )
             db.execute(
-                "UPDATE alerts SET count=(SELECT COUNT(*) FROM findings WHERE alert_id=alerts.id),first_seen=(SELECT MIN(timestamp) FROM findings WHERE alert_id=alerts.id)"
+                "UPDATE alerts SET "
+                "count=(SELECT COUNT(*) FROM findings WHERE alert_id=alerts.id)"
+                "+(SELECT COUNT(*) FROM preauth_evidence WHERE alert_id=alerts.id),"
+                "first_seen=(SELECT MIN(timestamp) FROM ("
+                "SELECT timestamp FROM findings WHERE alert_id=alerts.id UNION ALL "
+                "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id)),"
+                "last_seen=(SELECT MAX(timestamp) FROM ("
+                "SELECT timestamp FROM findings WHERE alert_id=alerts.id UNION ALL "
+                "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id))"
             )
         # Reuse freed pages; avoids blocking a live collector with a full VACUUM.
         return {"events": events, "records": records}

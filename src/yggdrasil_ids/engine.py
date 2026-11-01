@@ -12,6 +12,7 @@ from pathlib import Path
 from .config import AppConfig
 from .domain import Finding
 from .features import FEATURE_NAMES, SSHFeatureBuilder
+from .preauth import parse_preauth
 from .ml import IsolationForestDetector
 from .rules import SSHRuleDetector
 from .ssh import SSHParser
@@ -153,6 +154,29 @@ class AnalysisEngine:
                 counters["records"] += 1
                 if parsed.event is None:
                     counters["malformed" if parsed.status == "malformed" else "ignored"] += 1
+                    disconnect = parse_preauth(record) if parsed.status == "ignored" else None
+                    if disconnect is not None and 0 <= stamp <= received_at + 60:
+                        self.repository.insert_preauth_disconnect(
+                            db, record_id, stamp, disconnect.source_ip, disconnect.kind
+                        )
+                        previous_seen = self.repository.state_in(db, "preauth_max_seen", 0)
+                        if stamp >= previous_seen:
+                            self.repository.put_state(db, "preauth_max_seen", stamp)
+                            count = self.repository.preauth_window_count(
+                                db, disconnect.source_ip, stamp, self.config.rules.window_seconds
+                            )
+                            if count >= self.config.rules.preauth_threshold:
+                                self.repository.add_preauth_alert(
+                                    db,
+                                    record_id=record_id,
+                                    timestamp=stamp,
+                                    source_ip=disconnect.source_ip,
+                                    observed=count,
+                                    threshold=self.config.rules.preauth_threshold,
+                                    window_seconds=self.config.rules.window_seconds,
+                                    cooldown=self.config.rules.cooldown_seconds,
+                                )
+                                result["findings"] = 1
                     if parsed.status == "malformed":
                         self.repository.put_state(
                             db, "data_quality", {"at": received_at, "message": parsed.reason}

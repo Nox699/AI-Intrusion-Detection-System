@@ -43,6 +43,7 @@ from .storage import Repository
 
 DETECTORS = {
     "ssh.failed_burst": "Mange fejlede forsøg",
+    "ssh.preauth_burst": "Gentagne afbrud før login",
     "ssh.user_spray": "Flere brugernavne",
     "ssh.unexpected_success": "Uventet login",
     "ssh.isolation_forest": "Isolation Forest",

@@ -39,7 +39,7 @@ def test_existing_schema_and_authentication_counts_are_unchanged(tmp_path):
     assert data["preauth_count"] == 2
     assert data["totals"] == {"success": 0, "failure": 0, "events": 0, "alerts": 0}
     with reader.reader() as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 2
         assert db.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 0
         assert db.execute("SELECT COUNT(*) FROM observations").fetchone()[0] == 0
 

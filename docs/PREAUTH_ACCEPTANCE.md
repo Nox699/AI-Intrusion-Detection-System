@@ -2,8 +2,7 @@
 
 The new **Før login** page displays stored OpenSSH `Connection closed/reset
 by authenticating user ... [preauth]` messages separately from authentication
-successes and failures. It reads the original `records` table: no database
-migration, no retrospective cursor reset and no new ML features are required.
+successes and failures. It reads the original `records` table: a schema migration to version 2, no retrospective cursor reset and no new ML features are required.
 Existing authentication statistics and alerts remain unchanged.
 
 ## Before Pi update
@@ -15,7 +14,7 @@ Existing authentication statistics and alerts remain unchanged.
 
 ## Acceptance test after a controlled update
 
-1. Confirm both services are running and the database reports schema version 1.
+1. Confirm both services are running and the database reports schema version 2.
 2. Open **Før login** and confirm previously observed closed/reset records appear.
 3. Verify that `events`, `success`, `failure` and ML observations do not
    increase merely because a preauth record was displayed.
