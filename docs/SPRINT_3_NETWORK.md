@@ -76,9 +76,9 @@ så kernel-logmængde og I/O skal måles, inden driftsaktivering.
 SQLite-skema **4** tilføjer `firewall_events`, med unikke
 `event_id`-nøgler og indeks efter tidsstempel og kildedimensioner.
 Tabellen er adskilt fra `events`, `observations`, `findings`,
-`preauth_disconnects` og Discord-outbox. TCP-scanningsdetektoren
-**kører endnu ikke** i live collector; en firewallpost giver derfor ingen ny
-Discord-besked eller alarm i dette trin.
+`preauth_disconnects` og Discord-outbox. Dette var status ved afslutningen af **trin 2**, hvor TCP-scanningsdetektoren
+endnu ikke kørte i live collectoren. I **trin 3** er regler, alarmer og
+Discord-outbox integreret bag eksplicit opt-in, som beskrevet ovenfor.
 
 Firewallpost og journalcursor skrives i **samme transaktion**; en fejlet
 SQLite-skrivning skal rulle både post og checkpoint tilbage, så journalposten
@@ -195,7 +195,10 @@ kilder/destinationer, gentagne pakker, UDP/multicast, TCP-flag og afgrænset evi
 En bestået isoleret test er ikke en live-accepttest eller en test af netværkets
 fulde synlighed. Den eksisterende projekttestsuite skal desuden forblive grøn.
 
-## Næste implementeringsdel og acceptkrav
+## Implementeringskrav og resterende accept
+
+De første seks punkter nedenfor er implementeret og softwaretestet på
+udviklingsbranchen. Den sidste kontrollerede Pi-afprøvning er endnu ikke udført.
 
 - Tilføj en eksplicit, deaktiverbar netværkssektion i konfigurationen med
   validerede tærskler. De nuværende SSH-indstillinger skal være bagudkompatible.

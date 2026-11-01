@@ -26,7 +26,12 @@ Kommandoerne nedenfor er en skabelon, ikke en automatisk installation:
 (
   set -eu
   cd /home/vidar/AI-Intrusion-Detection-System
-  git status --short
+  # Stop i stedet for blot at udskrive en besked, hvis arbejdsområdet er ændret.
+  if [ -n "$(git status --porcelain)" ]; then
+    git status --short
+    echo "STOP: Repo har lokale ændringer. Undersøg dem før fortsættelse." >&2
+    exit 1
+  fi
   git fetch origin sprint-3/network-monitoring
 
   expected_sha="REPLACE_WITH_TESTED_COMMIT"
