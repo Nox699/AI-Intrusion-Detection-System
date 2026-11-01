@@ -11,8 +11,10 @@ import pytest
 from yggdrasil_ids.notify import (
     DeliveryError,
     DiscordNotifier,
+    InvalidWebhook,
     RetryLater,
     deliver,
+    secret_file,
 )
 from yggdrasil_ids.storage import Repository
 
@@ -239,3 +241,107 @@ def test_status_shows_queue_and_acknowledgements(tmp_path):
     assert status["delivered"] == 1
     assert status["cooldown_seconds"] == 0
     assert len(sent) == 1
+
+
+@pytest.mark.parametrize("code", [400, 401, 403, 404, 302, 307])
+def test_invalid_webhook_and_redirect_fail_without_leaking_token(monkeypatch, code):
+    secret = "A" * 60
+    webhook = "https://discord.com/api/webhooks/" + "1" * 18 + "/" + secret
+
+    class Opener:
+        def open(self, request, timeout):
+            raise urllib.error.HTTPError(
+                request.full_url,
+                code,
+                "not authorized",
+                {"Location": "https://example.invalid/steal"},
+                io.BytesIO(b""),
+            )
+
+    monkeypatch.setattr("yggdrasil_ids.notify.urllib.request.build_opener", lambda *args: Opener())
+    with pytest.raises(InvalidWebhook) as error:
+        deliver(webhook, "test")
+    assert secret not in str(error.value)
+    assert "example.invalid" not in str(error.value)
+
+
+def test_webhook_secret_must_be_private_and_discord_only(tmp_path):
+    webhook = "https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60
+    secret = tmp_path / "webhook.url"
+    secret.write_text(webhook)
+    secret.chmod(0o600)
+    assert secret_file(secret) == webhook
+
+    secret.chmod(0o644)
+    with pytest.raises(InvalidWebhook):
+        secret_file(secret)
+    secret.chmod(0o600)
+
+    secret.write_text(webhook.replace("discord.com", "attacker.example"))
+    with pytest.raises(InvalidWebhook):
+        secret_file(secret)
+
+    secret.write_text(webhook)
+    linked = tmp_path / "linked.url"
+    linked.symlink_to(secret)
+    with pytest.raises(InvalidWebhook):
+        secret_file(linked)
+
+
+def test_discord_transport_disables_mentions_and_requires_ack(monkeypatch):
+    webhook = "https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60
+    sent = {}
+
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self, size):
+            return b'{"id":"9876543210"}'
+
+    class Opener:
+        def open(self, request, timeout):
+            sent["url"] = request.full_url
+            sent["body"] = json.loads(request.data)
+            sent["timeout"] = timeout
+            return Response()
+
+    monkeypatch.setattr("yggdrasil_ids.notify.urllib.request.build_opener", lambda *args: Opener())
+    assert deliver(webhook, "@everyone TEST") == "9876543210"
+    assert sent["url"] == webhook + "?wait=true"
+    assert sent["body"] == {
+        "content": "@everyone TEST",
+        "allowed_mentions": {"parse": []},
+    }
+    assert sent["timeout"] == 10
+
+
+def test_new_alert_recorded_once_per_incident_even_with_multiple_findings(tmp_path):
+    from yggdrasil_ids.domain import Finding, SSHEvent
+
+    repo = Repository(tmp_path / "events.sqlite3")
+    repo.initialize()
+    with repo.transaction() as db:
+        for index in (1, 2):
+            event = SSHEvent(
+                str(index), time.time() + index, "192.0.2.3",
+                "test-user", "failure", "publickey", "yggdrasil", "test"
+            )
+            repo.insert_event(db, event)
+            repo.add_finding(
+                db,
+                Finding(
+                    "ssh.failed_burst", "many failed logins", "high", "test",
+                    event.source_ip, event.event_id, event.timestamp,
+                ),
+                cooldown=300,
+            )
+        row_count = db.execute("SELECT COUNT(*) FROM discord_outbox").fetchone()[0]
+        incident_count = db.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
+    assert incident_count == 1
+    assert row_count == 1

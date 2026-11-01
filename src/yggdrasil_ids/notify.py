@@ -110,6 +110,10 @@ def deliver(webhook: str, content: str) -> str:
             except (ValueError, TypeError):
                 pass
             raise RetryLater(delay) from None
+        if 300 <= exc.code < 400:
+            # A redirect may point off Discord. Never forward the webhook
+            # token or retry a broken endpoint without human intervention.
+            raise InvalidWebhook("Discord-omdirigering afvist") from None
         if exc.code in {400, 401, 403, 404}:
             raise InvalidWebhook("Webhook afvist; kontrollér Discord-opsætningen") from None
         raise RetryLater() from None
