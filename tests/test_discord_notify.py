@@ -329,15 +329,26 @@ def test_new_alert_recorded_once_per_incident_even_with_multiple_findings(tmp_pa
     with repo.transaction() as db:
         for index in (1, 2):
             event = SSHEvent(
-                str(index), time.time() + index, "192.0.2.3",
-                "test-user", "failure", "publickey", "yggdrasil", "test"
+                str(index),
+                time.time() + index,
+                "192.0.2.3",
+                "test-user",
+                "failure",
+                "publickey",
+                "yggdrasil",
+                "test",
             )
             repo.insert_event(db, event)
             repo.add_finding(
                 db,
                 Finding(
-                    "ssh.failed_burst", "many failed logins", "high", "test",
-                    event.source_ip, event.event_id, event.timestamp,
+                    "ssh.failed_burst",
+                    "many failed logins",
+                    "high",
+                    "test",
+                    event.source_ip,
+                    event.event_id,
+                    event.timestamp,
                 ),
                 cooldown=300,
             )
