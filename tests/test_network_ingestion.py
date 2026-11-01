@@ -190,8 +190,9 @@ def test_network_config_default_does_not_touch_kernel_source(tmp_path):
     assert count(disabled.repository, "firewall_events") == 0
 
 
-def scan_record(index, *, port=None, source="192.0.2.50", target="192.0.2.92",
-                interface="wlan0", timestamp=None):
+def scan_record(
+    index, *, port=None, source="192.0.2.50", target="192.0.2.92", interface="wlan0", timestamp=None
+):
     at = NOW + index if timestamp is None else timestamp
     return {
         "_TRANSPORT": "kernel",
@@ -247,13 +248,13 @@ def test_different_destinations_and_interfaces_have_separate_incidents(tmp_path)
     for index in range(6):
         assert engine.process(scan_record(index))["findings"] == (1 if index == 5 else 0)
     for index in range(6, 12):
-        assert engine.process(
-            scan_record(index, target="192.0.2.93")
-        )["findings"] == (1 if index == 11 else 0)
+        assert engine.process(scan_record(index, target="192.0.2.93"))["findings"] == (
+            1 if index == 11 else 0
+        )
     for index in range(12, 18):
-        assert engine.process(
-            scan_record(index, interface="tailscale0")
-        )["findings"] == (1 if index == 17 else 0)
+        assert engine.process(scan_record(index, interface="tailscale0"))["findings"] == (
+            1 if index == 17 else 0
+        )
     assert count(engine.repository, "alerts") == 3
     assert count(engine.repository, "discord_outbox") == 3
 

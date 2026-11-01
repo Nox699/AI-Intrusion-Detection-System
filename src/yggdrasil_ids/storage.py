@@ -366,9 +366,7 @@ class Repository:
         )
 
     @staticmethod
-    def add_network_alert(
-        db: sqlite3.Connection, finding: NetworkFinding, cooldown: int
-    ) -> int:
+    def add_network_alert(db: sqlite3.Connection, finding: NetworkFinding, cooldown: int) -> int:
         """Group by source and sensor/destination. A new alert feeds Discord once."""
         if type(cooldown) is not int or cooldown < 0:
             raise ValueError("Ugyldigt netværksalarm-cooldown")
@@ -413,8 +411,7 @@ class Repository:
         if row:
             alert_id = int(row["id"])
             db.execute(
-                "UPDATE alerts SET last_seen=?,count=count+1,reason=?,details=? "
-                "WHERE id=?",
+                "UPDATE alerts SET last_seen=?,count=count+1,reason=?,details=? WHERE id=?",
                 (finding.timestamp, finding.reason, encode(details), alert_id),
             )
         else:
