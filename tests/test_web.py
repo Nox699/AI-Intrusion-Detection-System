@@ -583,14 +583,14 @@ def test_activity_chart_uses_discrete_positive_only_markers():
     style = (root / "static" / "app.css").read_text(encoding="utf-8")
 
     assert 'type: "scatter", mode: "markers"' in script
-    assert 'const observed = plotRows.filter(row => row[field] > 0);' in script
+    assert "const observed = plotRows.filter(row => row[field] > 0);" in script
     assert "observed.map(row => row[field])" in script
     assert 'dots("Vellykkede", "success", "#68d8b6", "circle")' in script
     assert 'dots("Fejlede", "failure", "#ef6b6b", "diamond")' in script
     assert 'dots("Afbrud før login", "preauth", "#e8ad70", "square")' in script
     assert 'uirevision: "ssh-activity-dots"' in script
-    assert "mode: \"lines+markers\"" not in script
-    assert "mode: \"lines\"" not in script
+    assert 'mode: "lines+markers"' not in script
+    assert 'mode: "lines"' not in script
     assert ".legend-dot.success{background:#68d8b6}" in style
     assert ".legend-dot.failure{background:#ef6b6b}" in style
     assert ".legend-dot.preauth{background:#e8ad70}" in style
