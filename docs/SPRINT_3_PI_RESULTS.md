@@ -232,3 +232,51 @@ Derfor er portscan-accepten **ikke bestået endnu**.
 Næste skridt er read-only indsamling af aggregerede mål
 fra `deploy/sprint3_network_observe.py`, og kontrol af notifierstatus
 i sammenligning med baseline. UFW forbliver `low`.
+
+## Pi-kontrol efter første scanning – positiv trafik, utilstrækkelig regel-evidens
+
+Efter Nmap-testen blev den installerede databases UFW-/alarmhistorik
+kontrolleret med den privatlivsbeskyttende read-only-helper
+`deploy/sprint3_network_observe.py` fra kildecommit
+`2f550430e31e6763cd783b05b98166710319299a`.
+
+| Måling | 10 minutter | 60 minutter |
+| --- | ---: | ---: |
+| Firewallposter i vinduet | 16 | 62 |
+| Blokerede TCP SYN i vinduet | 0 | 8 |
+| Pakker til testportene 45010–45019 | 0 | 8 |
+| Grupperede kilder/sensorer for testportene | 0 | 1 |
+| Maks. forskellige testporte i 60 sekunder, samme gruppe | 0 | **5** |
+| Netværksscanningsalarmer | 0 | 0 |
+| Netværksevidens | 0 | 0 |
+| Discord-outboxposter for denne detektor | 0 | 0 |
+
+60-minuttersmålingen viste også **62 kumulative firewallhændelser**, nul
+registrerings-/analysefejl og ingen dataqualitetsflag. Collector var
+`running` og heartbeat var **0 sekunder gammel**.
+Den tidligere 10-minuttersmåling viste **21 kumulative hændelser**
+og heartbeat **3 sekunder gammel**, men ingen testportposter i netop dette
+kortere tidsvindue; det er ikke bevis for, at scanningen ikke blev opsamlet.
+
+Notifierens særskilte status efter 60-minutterskontrollen:
+`pending=0`, `delivered=1`, `last_seq=1`,
+`cooldown_seconds=0`. Dermed er der ikke evidens for en ny
+Discord-scanningsnotifikation.
+
+**Evaluering:** Testen er en kendt positiv scanning af 10 testporte
+(Nmap), men kun 5 forskellige porte blev set som blokerede SYN inden
+for regelens 60 sekunder. Den programmerede tærskel er 6, så **ingen
+alarm er korrekt ud fra observerede regeldata**.
+Målt end-to-end-detektion af denne scanning = **0/1**;
+en enkelt test giver ikke en robust estimeret detektionsrate.
+Dette er et observeret detektionsmiss i hele pipeline-kæden,
+**ikke** dokumentation for fejl i selve detektorfunktionen.
+
+Der er 8 loggede SYN-pakker fordelt over 5 forskellige destinationsporte;
+det kan skyldes gentagne forsøg mod nogle porte og manglende logging af
+andre. UFW `low` ratebegrænser logning, men fra disse aggregater alene
+kan man **ikke bevise**, at ratebegrænsning var den konkrete årsag.
+Før ny scanning måles fordeling pr. testport uden IP-oplysninger og
+evt. logprefix for at skelne dæknings- og regelsvigt.
+UFW `medium` er fortsat ratebegrænset, så en ren skift til medium
+garanterer ikke, at alle ti porte logges.

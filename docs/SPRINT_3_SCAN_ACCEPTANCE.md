@@ -88,3 +88,27 @@ the owner's own host and covers only this one TCP SYN rule, not all scans.
 References:
 https://manpages.debian.org/trixie/ufw/ufw.8.en.html
 https://nmap.org/book/man-performance.html
+
+## Første gennemførte scanning: registrering uden alarm
+
+Nmap 7.94SVN scannede 10 private TCP-porte på egen Pi
+den 2. november 2026 kl. 00:10 CET (alle `filtered`).
+Read-only databasekontrol over 60 minutter viste
+8 blokerede TCP SYN-poster til testportintervallet i **én**
+kilde-/sensorgruppe, men højst **5** forskellige porte inden for
+60 sekunder. Tærsklen er 6, og resultatet var derfor
+0 scanalarmer, 0 netværksevidens og 0 nye scan-outboxposter.
+Notifieren var konsistent med `pending=0`, `delivered=1`.
+Collector var `running` uden registrerede analysefejl.
+
+Denne test bekræfter reel modtagelse af scanrelateret
+firewalltrafik, men **ikke** ende-til-ende-alarmlevering.
+UFW `low` kan ratebegrænse; aggregater alene er ikke bevis
+for årsagen til de manglende unikke porte.
+
+**Næste diagnostik:** Read-only SQL-optælling pr. destinationsport
+i testintervallet og kontrol af præcist logvindue. Først efter
+denne gennemgang vælges en eventuel ny kontrolleret test.
+Undgå en automatisk omlægning til `medium` som løsning:
+også `medium` er ratebegrænset. Ændr ikke firewallregler,
+tærskel eller loggerens niveau for at få en kunstig bestået test.

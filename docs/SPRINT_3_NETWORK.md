@@ -229,8 +229,12 @@ Ingen ekstra logning genskaber pakker, der aldrig nåede Pi'en.
 Directed IPv4-broadcast afhænger af subnetkonfiguration; den rene detektor
 kender endnu ikke lokale subnet. Det skal håndteres ved integrationens
 sensor-/destinationsafgrænsning, ikke ved at antage at enhver adresse med
-sidste oktet 255 er broadcast. Følsomhed, falske positiver og ydelse er endnu
-ikke målt på et gennemgået netværksdatasæt.
+sidste oktet 255 er broadcast. Første kendte positive LAN-portscanning blev udført den 2. november 2026.
+Af ti undersøgte porte blev 8 blokerede TCP SYN-logposter til fem unikke
+testporte registreret i én gruppe og intet alert udløst ved tærskel 6.
+Dette er en konkret detektionsbegrænsning for én test, ikke en påvist
+fejl i detektorimplementeringen. Følsomhed, falske positiver og ydelse
+er fortsat ikke målt på et større gennemgået netværksdatasæt.
 
 ## Kilder
 
