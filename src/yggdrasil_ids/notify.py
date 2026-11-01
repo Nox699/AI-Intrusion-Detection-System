@@ -196,9 +196,7 @@ class DiscordNotifier:
             current = db.execute("SELECT instance,last_seq FROM meta").fetchone()
             if current is None:
                 last_seq = maximum
-                db.execute(
-                    "INSERT INTO meta(instance,last_seq) VALUES(?,?)", (instance, last_seq)
-                )
+                db.execute("INSERT INTO meta(instance,last_seq) VALUES(?,?)", (instance, last_seq))
                 log.info("Notifikationer starter efter historisk sekvens %d", last_seq)
             elif current[0] != instance:
                 raise DeliveryError("Databasens identitet er ændret; manuel kontrol påkrævet")

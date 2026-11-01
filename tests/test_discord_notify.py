@@ -111,7 +111,9 @@ def test_failed_delivery_does_not_skip_pending_after_restart(tmp_path):
     secret.write_text("https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60)
     secret.chmod(0o600)
     first = DiscordNotifier(
-        repo.path, path, webhook_file=secret,
+        repo.path,
+        path,
+        webhook_file=secret,
         sender=lambda _url, _message: (_ for _ in ()).throw(RetryLater(300)),
     )
     first.bootstrap()
@@ -153,13 +155,14 @@ def test_429_wait_uses_longer_server_delay(monkeypatch):
     class Opener:
         def open(self, req, timeout):
             raise urllib.error.HTTPError(
-                req.full_url, 429, "rate", {"Retry-After": "601.25"},
+                req.full_url,
+                429,
+                "rate",
+                {"Retry-After": "601.25"},
                 io.BytesIO(b'{"retry_after": 900.75, "global": true}'),
             )
 
-    monkeypatch.setattr(
-        "yggdrasil_ids.notify.urllib.request.build_opener", lambda *args: Opener()
-    )
+    monkeypatch.setattr("yggdrasil_ids.notify.urllib.request.build_opener", lambda *args: Opener())
     with pytest.raises(RetryLater) as exc:
         deliver("https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60, "test")
     assert exc.value.delay == 900.75
@@ -168,10 +171,13 @@ def test_429_wait_uses_longer_server_delay(monkeypatch):
 def test_realistic_discord_reply_over_1024_bytes(monkeypatch):
     class Reply:
         status = 200
+
         def __enter__(self):
             return self
+
         def __exit__(self, *args):
             return False
+
         def read(self, amount):
             assert amount >= 2000
             return json.dumps({"id": "12345", "embeds": [{"description": "x" * 1800}]}).encode()
@@ -180,21 +186,22 @@ def test_realistic_discord_reply_over_1024_bytes(monkeypatch):
         def open(self, req, timeout):
             return Reply()
 
-    monkeypatch.setattr("yggdrasil_ids.notify.urllib.request.build_opener",
-                        lambda *args: Opener())
+    monkeypatch.setattr("yggdrasil_ids.notify.urllib.request.build_opener", lambda *args: Opener())
     assert (
-        deliver("https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60, "test")
-        == "12345"
+        deliver("https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60, "test") == "12345"
     )
 
 
 def test_malformed_discord_reply_is_manual_review(monkeypatch):
     class Reply:
         status = 200
+
         def __enter__(self):
             return self
+
         def __exit__(self, *args):
             return False
+
         def read(self, amount):
             return b'{"id":'
 
@@ -202,7 +209,6 @@ def test_malformed_discord_reply_is_manual_review(monkeypatch):
         def open(self, req, timeout):
             return Reply()
 
-    monkeypatch.setattr("yggdrasil_ids.notify.urllib.request.build_opener",
-                        lambda *args: Opener())
+    monkeypatch.setattr("yggdrasil_ids.notify.urllib.request.build_opener", lambda *args: Opener())
     with pytest.raises(DeliveryError):
         deliver("https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60, "test")
