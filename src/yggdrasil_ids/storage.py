@@ -167,7 +167,7 @@ class Repository:
         db = self.connect()
         try:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, 2, SCHEMA_VERSION):
+            if version not in (0, 1, 2, 3, SCHEMA_VERSION):
                 raise ValueError(
                     f"Databaseversion {version} understøttes ikke; tag backup før migration"
                 )

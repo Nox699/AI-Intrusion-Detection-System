@@ -132,8 +132,8 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         ):
             raise ValueError(f"rules.{key} skal være en liste af korte tekster")
         rules[key] = tuple(value)
-    for network in rules["expected_sources"]:
-        ipaddress.ip_network(network, strict=False)
+    for expected_network in rules["expected_sources"]:
+        ipaddress.ip_network(expected_network, strict=False)
     for key, default, low, high in [
         ("window_seconds", 300, 10, 3600),
         ("min_samples", 80, 20, 10000),

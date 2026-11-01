@@ -75,6 +75,6 @@ def test_migration_preserves_existing_events(tmp_path):
         db.execute("PRAGMA user_version=1")
     repo.initialize()
     with repo.reader() as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 4
         assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     repo.initialize()
