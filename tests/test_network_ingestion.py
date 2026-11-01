@@ -188,3 +188,120 @@ def test_network_config_default_does_not_touch_kernel_source(tmp_path):
     disabled = AnalysisEngine(config(tmp_path, enabled=False), namespace="test")
     assert disabled.config.network.enabled is False
     assert count(disabled.repository, "firewall_events") == 0
+
+
+def scan_record(index, *, port=None, source="192.0.2.50", target="192.0.2.92",
+                interface="wlan0", timestamp=None):
+    at = NOW + index if timestamp is None else timestamp
+    return {
+        "_TRANSPORT": "kernel",
+        "_HOSTNAME": "test-sensor",
+        "_BOOT_ID": "a" * 32,
+        "__CURSOR": f"port-scan-{index}-{port}-{target}-{interface}",
+        "__REALTIME_TIMESTAMP": str(int(at * 1_000_000)),
+        "MESSAGE": (
+            f"[UFW BLOCK] IN={interface} OUT= SRC={source} DST={target} "
+            f"LEN=60 PROTO=TCP SPT=40000 DPT={port if port is not None else 1000 + index} SYN"
+        ),
+    }
+
+
+def test_network_scan_creates_one_incident_and_discord_outbox_message(tmp_path):
+    engine = AnalysisEngine(config(tmp_path), namespace="test")
+    for index in range(5):
+        assert engine.process(scan_record(index))["findings"] == 0
+    sixth = engine.process(scan_record(5))
+    assert sixth["status"] == "event"
+    assert sixth["findings"] == 1
+    assert count(engine.repository, "events") == 0
+    assert count(engine.repository, "observations") == 0
+    assert count(engine.repository, "alerts") == 1
+    assert count(engine.repository, "network_evidence") == 1
+    assert count(engine.repository, "discord_outbox") == 1
+    with engine.repository.reader() as db:
+        alert = db.execute("SELECT * FROM alerts").fetchone()
+        alert_id = alert["id"]
+        assert alert["detector_id"] == "network.tcp_port_scan"
+        assert alert["severity"] == "medium"
+        assert alert["count"] == 1
+    detail = engine.repository.alert_detail(alert_id)
+    assert len(detail["findings"]) == 1
+    assert detail["findings"][0]["outcome"] == "firewall"
+    assert len(detail["details"]["destination_ports"]) == 6
+    # A seventh port updates the same incident, but does not create a
+    # second Discord notification. Repeated source-port probes do not count.
+    assert engine.process(scan_record(6))["findings"] == 1
+    repeated = scan_record(7, port=1006)
+    assert engine.process(repeated)["findings"] == 0
+    assert count(engine.repository, "alerts") == 1
+    assert count(engine.repository, "network_evidence") == 2
+    assert count(engine.repository, "discord_outbox") == 1
+    assert engine.repository.alert_detail(alert_id)["count"] == 2
+    assert engine.process(scan_record(6))["status"] == "duplicate"
+    assert count(engine.repository, "network_evidence") == 2
+    assert count(engine.repository, "discord_outbox") == 1
+
+
+def test_different_destinations_and_interfaces_have_separate_incidents(tmp_path):
+    engine = AnalysisEngine(config(tmp_path), namespace="test")
+    for index in range(6):
+        assert engine.process(scan_record(index))["findings"] == (1 if index == 5 else 0)
+    for index in range(6, 12):
+        assert engine.process(
+            scan_record(index, target="192.0.2.93")
+        )["findings"] == (1 if index == 11 else 0)
+    for index in range(12, 18):
+        assert engine.process(
+            scan_record(index, interface="tailscale0")
+        )["findings"] == (1 if index == 17 else 0)
+    assert count(engine.repository, "alerts") == 3
+    assert count(engine.repository, "discord_outbox") == 3
+
+
+def test_firewall_errors_leave_ssh_and_discord_state_unchanged(tmp_path, monkeypatch):
+    engine = AnalysisEngine(config(tmp_path), namespace="test")
+    for index in range(5):
+        engine.process(scan_record(index))
+    original_cursor = engine.repository.get_state("cursor")
+    prior_counters = engine.repository.get_state("firewall_counters")
+    original = engine.repository.add_network_alert
+
+    def fail(*_args, **_kwargs):
+        raise sqlite3.OperationalError("simulated full disk")
+
+    monkeypatch.setattr(engine.repository, "add_network_alert", fail)
+    with pytest.raises(sqlite3.OperationalError, match="full disk"):
+        engine.process(scan_record(5))
+    assert engine.repository.get_state("cursor") == original_cursor
+    assert engine.repository.get_state("firewall_counters") == prior_counters
+    assert count(engine.repository, "firewall_events") == 5
+    assert count(engine.repository, "alerts") == 0
+    assert count(engine.repository, "discord_outbox") == 0
+    monkeypatch.setattr(engine.repository, "add_network_alert", original)
+    assert engine.process(scan_record(5))["findings"] == 1
+
+
+def test_replay_and_retention_do_not_regenerate_old_scan_notifications(tmp_path):
+    engine = AnalysisEngine(config(tmp_path), namespace="test")
+    for index in range(6):
+        engine.process(scan_record(index))
+    assert count(engine.repository, "discord_outbox") == 1
+    assert count(engine.repository, "network_evidence") == 1
+    restarted = AnalysisEngine(config(tmp_path), namespace="test")
+    assert restarted.process(scan_record(5))["status"] == "duplicate"
+    assert count(restarted.repository, "discord_outbox") == 1
+    assert restarted.repository.prune(NOW + 6)["firewall_events"] == 6
+    assert count(restarted.repository, "network_evidence") == 0
+    assert count(restarted.repository, "alerts") == 0
+    # Delivery outbox identity is retained even after incident history pruning.
+    assert count(restarted.repository, "discord_outbox") == 1
+
+
+def test_udp_multicast_and_repeat_port_never_trigger_scan(tmp_path):
+    engine = AnalysisEngine(config(tmp_path), namespace="test")
+    for entry in examples()[:2]:
+        assert engine.process(entry)["findings"] == 0
+    for index in range(12):
+        assert engine.process(scan_record(index, port=22))["findings"] == 0
+    assert count(engine.repository, "firewall_events") == 14
+    assert count(engine.repository, "alerts") == 0
