@@ -655,7 +655,9 @@ class Repository:
         with self.transaction() as db:
             events = db.execute("DELETE FROM events WHERE timestamp<?", (cutoff,)).rowcount
             records = db.execute("DELETE FROM records WHERE timestamp<?", (cutoff,)).rowcount
-            firewall_events = db.execute("DELETE FROM firewall_events WHERE timestamp<?", (cutoff,)).rowcount
+            firewall_events = db.execute(
+                "DELETE FROM firewall_events WHERE timestamp<?", (cutoff,)
+            ).rowcount
             db.execute(
                 "DELETE FROM alerts WHERE "
                 "NOT EXISTS(SELECT 1 FROM findings WHERE alert_id=alerts.id) "

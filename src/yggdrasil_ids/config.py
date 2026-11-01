@@ -158,8 +158,7 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         network.get("window_seconds", 60), "network.window_seconds", 10, 3600
     )
     network["distinct_ports_threshold"] = _int(
-        network.get("distinct_ports_threshold", 6),
-        "network.distinct_ports_threshold", 2, 64
+        network.get("distinct_ports_threshold", 6), "network.distinct_ports_threshold", 2, 64
     )
     executable = collector.get("executable", "journalctl")
     if not isinstance(executable, str) or not executable or "\x00" in executable:

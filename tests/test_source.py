@@ -272,9 +272,7 @@ def test_network_opt_in_uses_disjoint_kernel_match_without_relaxing_ssh(config):
         "+",
         "_TRANSPORT=kernel",
     ]
-    assert "_TRANSPORT" in next(
-        value for value in cmd if value.startswith("--output-fields=")
-    )
+    assert "_TRANSPORT" in next(value for value in cmd if value.startswith("--output-fields="))
 
 
 def test_mixed_fake_journal_stream_keeps_ssh_and_firewall_separate(config, tmp_path):

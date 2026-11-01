@@ -40,12 +40,19 @@ def test_schema3_migrates_to4_without_changing_existing_ssh_alert_outbox(tmp_pat
         db.execute(
             "INSERT INTO alerts(detector_id,title,severity,reason,source_ip,"
             "first_seen,last_seen,count,details) VALUES(?,?,?,?,?,?,?,1,?)",
-            ("ssh.preauth_burst", "Previous alert", "medium", "kept",
-             "192.0.2.77", NOW - 10, NOW - 9, "{}"),
+            (
+                "ssh.preauth_burst",
+                "Previous alert",
+                "medium",
+                "kept",
+                "192.0.2.77",
+                NOW - 10,
+                NOW - 9,
+                "{}",
+            ),
         )
         db.execute(
-            "INSERT INTO records(id,cursor,timestamp,status,reason,raw_json)"
-            " VALUES(?,?,?,?,?,?)",
+            "INSERT INTO records(id,cursor,timestamp,status,reason,raw_json) VALUES(?,?,?,?,?,?)",
             ("existing", "ssh-cursor", NOW - 15, "ignored", "old", "{}"),
         )
         repo.put_state(db, "cursor", "ssh-cursor")
@@ -86,7 +93,9 @@ def test_mixed_ssh_and_ufw_are_isolated_and_duplicate_idempotent(tmp_path):
     assert count(engine.repository, "discord_outbox") == 0
     assert engine.repository.get_state("counters", {}) == {}
     assert engine.repository.get_state("firewall_counters") == {
-        "events": 4, "duplicates": 1, "malformed": 0
+        "events": 4,
+        "duplicates": 1,
+        "malformed": 0,
     }
     with engine.repository.reader() as db:
         udp_row = db.execute(
@@ -107,7 +116,8 @@ def test_mixed_ssh_and_ufw_are_isolated_and_duplicate_idempotent(tmp_path):
 def test_non_ufw_kernel_records_are_not_kept_as_raw_ssh_logs(tmp_path):
     engine = AnalysisEngine(config(tmp_path), namespace="test")
     non_ufw = {
-        "_TRANSPORT": "kernel", "__CURSOR": "kernel-other",
+        "_TRANSPORT": "kernel",
+        "__CURSOR": "kernel-other",
         "MESSAGE": "Unrelated kernel message",
     }
     assert engine.process(non_ufw)["status"] == "ignored"
