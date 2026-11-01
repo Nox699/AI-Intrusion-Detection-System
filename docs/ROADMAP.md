@@ -50,7 +50,7 @@ fuld maskingenstart og dokumenteret drift under belastning.
 
 ## Sprint 3 · UFW-observation og mulig TCP-portscanning
 
-**Status: Softwaretestet og kopimigration på Pi bestået; endnu ikke installeret på Pi.**
+**Status: Installeret på Pi med schema v4; live netværksindsamling endnu ikke aktiveret.**
 
 Parseren og den eksperimentelle TCP-portscanningsregel er softwaretestet.
 En separat `firewall_events`-historik, opt-in kernel-journalintegration,
@@ -59,9 +59,11 @@ TCP-scanningsalarmer med særskilt evidens og Discord-outbox samt en privat
 kontrolleret migration **på en kopi** af Pi'ens schema-v3-database med
 bevarede SSH- og Discord-data. En første 5-minutters måling fandt
 15 kernelposter, alle UFW-poster; længere belastningsmålinger afventer.
-Normaldriften fortsætter på Sprint 2-versionen, og produktionsmigration,
-installation, kontrolleret netværksopt-in og langtidsaccept afventer.
-UFW `low` bevares indtil en særskilt bevidst prøve.
+Den 1. november 2026 bestod driftsmigrationen til schema v4, og alle tre
+IDS-tjenester blev genstartet og kontrolleret med bevaret SSH-historik
+og Discord-outbox. Kontrolleret netværksopt-in, scanningsevaluering og
+langtidsaccept afventer. UFW `low` bevares indtil en særskilt
+bevidst prøve.
 
 [Arkitektur, dækningsgrænser og status](SPRINT_3_NETWORK.md) ·
 [Pi-resultater](SPRINT_3_PI_RESULTS.md) ·

@@ -161,3 +161,32 @@ Derfor må den fulde driftsopgradering ikke markeres som bestået endnu.
 En senere rettelse af scriptet må ikke markeres som en bestået
 produktionsaccept, før Pi'ens faktiske import, schema, servicekonti,
 journal og dashboard er testet efter genstart.
+
+## Produktionsmigration og genstart efter rettighedsreparation: bestået
+
+Ejeren gennemførte `deploy/sprint3_resume_after_permissions.sh` og
+rapporterede følgende uafhængige kontroller som `PASS`:
+
+| Kontrol | Observeret resultat |
+| --- | --- |
+| `yggdrasil-worker`, `yggdrasil-web`, `yggdrasil-notifier` | Kan alle importere Sprint 3 |
+| Frisk v3-backup og drift før migration | Samme data, SQLite-integritet OK |
+| Discord-notifier checkpoint og outbox | Konsistente før migration |
+| Produktionsmigration v3 til v4 | Bestået |
+| SQLite-integritet og eksisterende SSH-/Discord-historik | Bevaret |
+| Collector doctor og journaladgang | Bestået |
+| Collector-service | Aktiv |
+| Web doctor | Bestået |
+| Lokalt dashboard-login | HTTP 200 |
+| Discord notifier efter genstart | `pending=0`, `delivered=1` |
+| Alle tre IDS-tjenester | Aktive og kontrolleret |
+| `network.enabled` | Stadig `false` |
+
+Eksisterende rollback-backups blev bevaret i den private mappe
+`/var/backups/yggdrasil-ids/sprint3-offline-Ga0vDrfK`.
+SSH, UFW og Tailscale blev ikke ændret.
+
+**Fortolkning:** Den installerede Sprint 3-kode og produktionsskema v4
+er nu praktisk verificeret; dette er **ikke** en accept af live
+firewallindsamling, en dokumenteret TCP-scanningsalarm, 24-timers
+stabilitet eller målt falsk-positiv-rate. De kræver særskilte prøver.

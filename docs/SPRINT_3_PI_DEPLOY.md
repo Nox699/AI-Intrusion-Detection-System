@@ -253,3 +253,19 @@ ikke hvis senere serviceopstart fejler.
 
 Kør kun efter grøn CI på det nye script og med bevidst operatørhandling.
 `network.enabled=false` og UFW `low` fastholdes.
+
+## E. Status efter sikker genoptagelse
+
+Den afbrudte produktionsopgradering er nu afsluttet med en separat
+genoptagelseskørsel efter rettighedsreparation. Den faktiske
+produktionsdatabase er schema v4 med bevaret SSH-/Discord-historik.
+Collector, privat webdashboard og notifier er alle aktive; notifier
+rapporterede `pending=0, delivered=1`. Der blev **ikke** aktiveret
+netværksindsamling; `network.enabled=false` indtil særskilt opt-in.
+
+Der er dermed **ikke behov for at genkøre** hverken
+`sprint3_upgrade.sh` eller
+`sprint3_resume_after_permissions.sh`. Begge er historiske
+migrationsprocedurer. Nye handlinger må udelukkende vedrøre
+den særskilte opt-in-test og efterfølgende verifikation.
+Se [Pi-resultater](SPRINT_3_PI_RESULTS.md).
