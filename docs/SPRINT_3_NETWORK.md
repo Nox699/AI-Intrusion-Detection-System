@@ -8,14 +8,59 @@
 **Første del:** isoleret UFW-parser og ren detektionsfunktion med tests.
 **Anden del:** opt-in UFW-logindsamling til separat SQLite-tabel i skema v4,
 med migration, transaktionel cursor, dubletkontrol, retention og backup.
-**Ikke tilkoblet endnu:** TCP-scanningsreglen som live alarm, dashboard eller
-Discord. Denne udviklingsversion er ikke accepteret på Pi; den skal ikke
-installeres i drift, før kontrolleret migration og kildetest er planlagt.
-`main` ændres ikke.
+**Tredje del:** den afgrænsede TCP SYN-detektor kan nu skabe
+`network.tcp_port_scan`-alarmer, gruppere fund og indsætte en
+Discord-outboxpost pr. nyt alarmforløb. Dashboardet har en privat
+`/network`-side med pakketal, kilde/protokol-filtre og tydelige
+logningsbegrænsninger. Netværksalarmer er integreret med alarmdetaljer
+uden at oprette falske SSH-events eller ML-data.
+
+**Ikke dokumenteret på Pi endnu:** skema 3→4 i driftsdatabasen,
+ressourceforbrug ved flere kernelposter og en kontrolleret live-scanning.
+Netværksindsamling er stadig `enabled=false` som standard. Denne
+udviklingsversion må ikke aktiveres i driften uden kontrolleret
+backup, migration og opt-in. `main` ændres ikke.
 
 Der ændres ingen UFW-regler eller logniveauer. UFW forbliver på `low` under
 udviklingen. En eventuel senere prøve med `medium` kræver en bevidst handling
 på målmaskinen; dette bliver ikke udført af IDS-koden.
+
+## Tredje del: live regler, alarmer og dashboard
+
+Når netværksindsamling eksplicit er aktiveret, beregnes et TCP SYN-vindue
+fra allerede gemte `firewall_events`, med samme gruppering af
+namespace, boot, host, kilde, destination og indgående interface.
+Kun **nye destinationsporte** kan producere et nyt scanfund:
+gentagne pakker til en kendt port øger ikke alarmens antal.
+For sene/fremtidige poster gemmes hændelsen, men der foretages ingen
+retroaktiv alarmering. Historikoverløb giver `network_analysis_error`
+i database-state frem for et tvivlsomt normalresultat.
+
+`network_evidence` er separat fra SSH-`findings` og
+`preauth_evidence` og bruger en unik
+`(event_id,detector_id)`-nøgle. Fund fra den samme destination,
+interface og sensor grupperes efter cooldown; nyt forløb opretter ét
+alert og derved én transaktionel Discord-outboxpost.
+En senere post inden for cooldown opdaterer forløbet, ikke
+Discord-outboxen. Ved oprydning slettes forældet evidens og
+alarmernes resterende antal/tidspunkter genberegnes.
+
+Den autentificerede read-only side `/network` viser registrerede
+firewallpakker, kilde, destination, port, protokol, interface og
+paginering. Den advarer, hvis netværksindsamling ikke er aktiveret,
+og om at UFW-logning kan være ratebegrænset. Alarmdetaljer
+linker til netværkshistorikken for samme kilde i stedet for
+at påstå, at der er tale om SSH-forsøg.
+Discord-beskeden siger kun `Mulig TCP-portscanning (UFW)`,
+tidspunkt og intern hændelsesreference, ikke kilde-IP, MAC eller rå log.
+
+CI-testene dækker nye fund, gruppede forløb, flere destinationer,
+genafspilning, rollback ved fejlet SQLite-write, deletion/retention,
+webadgangskontrol og at rå IP-data ikke står i Discord-teksten.
+Desuden testes migration mod en **kopi af det faktiske SQL-skema v3**
+fra Sprint 2 i `tests/fixtures/schema_v3.sql`, frem for kun en
+simuleret nedgradering af skema v4. Kildeskemaet indeholder
+ingen private logposter.
 
 ## Anden del: opt-in journalintegration og database
 

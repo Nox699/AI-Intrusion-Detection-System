@@ -53,9 +53,10 @@ fuld maskingenstart og dokumenteret drift under belastning.
 **Status: Under udvikling på `sprint-3/network-monitoring`; ikke installeret på Pi.**
 
 Parseren og den eksperimentelle TCP-portscanningsregel er softwaretestet.
-En separat `firewall_events`-historik og opt-in kernel-journalintegration
-er implementeret i skema v4; live netværksalarmer, dashboardvisning, Discord,
-ressourceprøve og Pi-migration afventer. Normaldriften fortsætter på
+En separat `firewall_events`-historik, opt-in kernel-journalintegration,
+TCP-scanningsalarmer med særskilt evidens og Discord-outbox samt en privat
+`/network`-side er implementeret i skema v4. Ressourceprøve og
+kontrolleret Pi-migration/accept afventer. Normaldriften fortsætter på
 Sprint 2-versionen. UFW `low` bevares, indtil en senere bevidst test.
 
 [Arkitektur, dækningsgrænser og status](SPRINT_3_NETWORK.md).
