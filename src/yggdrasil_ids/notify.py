@@ -245,6 +245,7 @@ class DiscordNotifier:
             "ssh.user_spray": "Forsøg mod flere brugernavne",
             "ssh.unexpected_success": "Uventet SSH-login",
             "ssh.isolation_forest": "Usædvanligt SSH-mønster",
+            "network.tcp_port_scan": "Mulig TCP-portscanning (UFW)",
         }.get(event["detector_id"], "Sikkerhedsalarm")
         stamp = datetime.fromtimestamp(event["happened_at"], self.zone)
         return (

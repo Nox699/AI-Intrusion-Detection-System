@@ -14,6 +14,7 @@ from .domain import Finding
 from .features import FEATURE_NAMES, SSHFeatureBuilder
 from .firewall import UFWParser
 from .ml import IsolationForestDetector
+from .network_rules import NetworkRuleConfig, TCPPortScanDetector
 from .preauth import parse_preauth
 from .rules import SSHRuleDetector
 from .ssh import SSHParser
@@ -60,6 +61,12 @@ class AnalysisEngine:
             )
         self.parser = SSHParser()
         self.firewall_parser = UFWParser()
+        self.network_rules = TCPPortScanDetector(
+            NetworkRuleConfig(
+                window_seconds=config.network.window_seconds,
+                distinct_ports_threshold=config.network.distinct_ports_threshold,
+            )
+        )
         self.rules = SSHRuleDetector(config.rules)
         self.features = SSHFeatureBuilder(config.ml.window_seconds)
         self.model = None
@@ -331,6 +338,7 @@ class AnalysisEngine:
         if not isinstance(cursor, str) or len(cursor) > 4096:
             cursor = ""
         stamp = parsed.event.timestamp if parsed.event is not None else received_at
+        result_findings = 0
         with self.repository.transaction() as db:
             counters = self.repository.state_in(
                 db, "firewall_counters", {"events": 0, "duplicates": 0, "malformed": 0}
@@ -342,6 +350,39 @@ class AnalysisEngine:
                     status = "historical"
                 elif self.repository.insert_firewall_event(db, parsed.event):
                     counters["events"] += 1
+                    event = parsed.event
+                    previous = self.repository.state_in(db, "firewall_max_seen", 0)
+                    future = self.config.mode == "live" and stamp > received_at + 60
+                    if stamp < previous or future:
+                        status = "late"
+                        counters["late"] = counters.get("late", 0) + 1
+                    else:
+                        self.repository.put_state(db, "firewall_max_seen", stamp)
+                        try:
+                            history = self.repository.firewall_history(
+                                db, event, self.config.network.window_seconds
+                            )
+                            # Repeated packets to the same port cannot create
+                            # additional findings, even when source ports differ.
+                            if not any(
+                                item.event_id != event.event_id
+                                and item.destination_port == event.destination_port
+                                for item in history
+                            ):
+                                finding = self.network_rules.evaluate(event, history)
+                                if finding is not None:
+                                    self.repository.add_network_alert(
+                                        db, finding, self.config.rules.cooldown_seconds
+                                    )
+                                    counters["findings"] = counters.get("findings", 0) + 1
+                                    result_findings = 1
+                        except (ValueError, TypeError, KeyError) as exc:
+                            counters["analysis_errors"] = counters.get("analysis_errors", 0) + 1
+                            self.repository.put_state(
+                                db,
+                                "network_analysis_error",
+                                {"at": received_at, "message": str(exc)[:250]},
+                            )
                 else:
                     counters["duplicates"] += 1
                     status = "duplicate"
@@ -366,7 +407,7 @@ class AnalysisEngine:
                     "namespace": self.namespace,
                 },
             )
-        return {"status": status, "findings": 0}
+        return {"status": status, "findings": result_findings}
 
     def replay(self, path: Path) -> dict:
         if self.config.mode != "demo":

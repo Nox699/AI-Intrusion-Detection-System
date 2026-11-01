@@ -47,6 +47,7 @@ DETECTORS = {
     "ssh.user_spray": "Flere brugernavne",
     "ssh.unexpected_success": "Uventet login",
     "ssh.isolation_forest": "Isolation Forest",
+    "network.tcp_port_scan": "Mulig TCP-portscanning",
 }
 PERIODS = (
     (1, "Seneste time"),
