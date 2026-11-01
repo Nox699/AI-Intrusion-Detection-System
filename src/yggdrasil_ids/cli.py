@@ -203,6 +203,7 @@ def parser() -> argparse.ArgumentParser:
         ("export-features", "Eksportér gemte observationer fra en udvalgt periode"),
         ("backup", "Tag en konsistent SQLite-backup"),
         ("prune", "Håndhæv retention"),
+        ("notify", "Send alarmer fra en separat Discord-tjeneste"),
     ]:
         sub = commands.add_parser(name, help=help_text)
         sub.add_argument("--config", type=Path, default=None)
@@ -214,6 +215,11 @@ def parser() -> argparse.ArgumentParser:
                 action="store_true",
                 help="Udskift eksisterende login og afslut gamle sessioner",
             )
+        if name == "notify":
+            sub.add_argument("--state-file", type=Path, required=True)
+            sub.add_argument("--webhook-file", type=Path)
+            sub.add_argument("--test", action="store_true")
+            sub.add_argument("--bootstrap", action="store_true")
         if name == "doctor":
             sub.add_argument("--journal", action="store_true")
             sub.add_argument(
@@ -374,6 +380,26 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "backup":
             Repository(config.database_path, readonly=True).backup(args.output)
             print("Backup oprettet.")
+        elif args.command == "notify":
+            from .notify import DiscordNotifier
+
+            notifier = DiscordNotifier(
+                database=config.database_path,
+                state_path=args.state_file,
+                host_label=config.host_label,
+                zone=config.timezone,
+                webhook_file=args.webhook_file,
+            )
+            if args.test:
+                notifier.test()
+                print("Discord kvitterede for testbeskeden.")
+            elif args.bootstrap:
+                _json(notifier.bootstrap())
+            else:
+                stop = threading.Event()
+                for sig in (signal.SIGTERM, signal.SIGINT):
+                    signal.signal(sig, lambda *_: stop.set())
+                notifier.run(stop)
         elif args.command == "prune":
             with CollectorLock(config.database_path):
                 _json(

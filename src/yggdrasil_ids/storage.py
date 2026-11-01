@@ -13,7 +13,7 @@ from typing import Any, Iterator
 
 from .domain import Finding, SSHEvent
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # Previously ignored trusted journal records remain visible after migration.
 # Preauth disconnects are never authentication events, rule inputs or ML features.
@@ -78,6 +78,24 @@ CREATE TABLE IF NOT EXISTS preauth_evidence (
  PRIMARY KEY (record_id,detector_id)
 );
 CREATE INDEX IF NOT EXISTS preauth_evidence_alert ON preauth_evidence(alert_id,timestamp);
+-- Independent notification identities survive deletion or reuse of alert IDs.
+-- Never cascade-delete outbox rows when the alert history is pruned.
+CREATE TABLE IF NOT EXISTS discord_outbox (
+ seq INTEGER PRIMARY KEY AUTOINCREMENT,
+ ref TEXT NOT NULL UNIQUE,
+ detector_id TEXT NOT NULL, severity TEXT NOT NULL,
+ happened_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS discord_outbox_meta (
+ id INTEGER PRIMARY KEY CHECK(id=1), instance TEXT NOT NULL
+);
+INSERT OR IGNORE INTO discord_outbox_meta(id,instance)
+VALUES(1,lower(hex(randomblob(16))));
+CREATE TRIGGER IF NOT EXISTS alert_discord_outbox AFTER INSERT ON alerts
+BEGIN
+ INSERT INTO discord_outbox(ref,detector_id,severity,happened_at)
+ VALUES(lower(hex(randomblob(16))),NEW.detector_id,NEW.severity,NEW.first_seen);
+END;
 CREATE TABLE IF NOT EXISTS state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
 
@@ -133,7 +151,7 @@ class Repository:
         db = self.connect()
         try:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, SCHEMA_VERSION):
+            if version not in (0, 1, 2, SCHEMA_VERSION):
                 raise ValueError(
                     f"Databaseversion {version} understøttes ikke; tag backup før migration"
                 )
