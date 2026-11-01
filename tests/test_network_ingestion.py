@@ -304,8 +304,7 @@ def test_ssh_and_network_alerts_have_independent_grouping_and_outbox(tmp_path):
         categories = {
             row["detector_id"]: row["n"]
             for row in db.execute(
-                "SELECT detector_id, COUNT(*) AS n FROM discord_outbox "
-                "GROUP BY detector_id"
+                "SELECT detector_id, COUNT(*) AS n FROM discord_outbox GROUP BY detector_id"
             )
         }
     assert categories == {"network.tcp_port_scan": 1, "ssh.failed_burst": 1}
