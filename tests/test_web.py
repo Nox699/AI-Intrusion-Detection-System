@@ -658,3 +658,16 @@ def test_authenticated_network_page_displays_firewall_history_and_scan_alert(con
     assert "6 forskellige" in detail_html
     assert "/network?source=192.0.2.55" in detail_html
     assert repo.list_events()["total"] == 1
+
+
+def test_network_page_displays_data_quality_error_without_exposing_raw_journal(configured, client):
+    _cfg, repo = configured
+    repo.set_state(
+        "network_analysis_error",
+        {"at": time.time(), "message": "Netværkshistorikken er for stor til pålidelig analyse"},
+    )
+    login(client)
+    html = client.get("/network").get_data(as_text=True)
+    assert "Netværksanalysen kræver opmærksomhed" in html
+    assert "Netværkshistorikken er for stor" in html
+    assert "SRC=" not in html

@@ -432,7 +432,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
         source, protocol = query_text("source", 64), query_text("protocol", 16)
         if protocol not in {"", "TCP", "UDP", "IGMP", "ICMP", "ICMPV6"}:
             abort(400, description="Ukendt netværksprotokol.")
-        read_status()
+        raw = read_status()
         result = call("list_firewall", hours=period, source=source, protocol=protocol, **paging())
         summary = call("firewall_summary", hours=period)
         return render_template(
@@ -442,6 +442,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
             hours=period,
             source=source,
             protocol=protocol,
+            network_error=raw.get("network_analysis_error"),
         )
 
     @app.get("/preauth")
