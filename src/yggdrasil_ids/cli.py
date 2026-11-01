@@ -203,6 +203,7 @@ def parser() -> argparse.ArgumentParser:
         ("export-features", "Eksportér gemte observationer fra en udvalgt periode"),
         ("backup", "Tag en konsistent SQLite-backup"),
         ("prune", "Håndhæv retention"),
+        ("notify", "Send nye alarmer via privat Discord-notifier"),
     ]:
         sub = commands.add_parser(name, help=help_text)
         sub.add_argument("--config", type=Path, default=None)
@@ -214,6 +215,10 @@ def parser() -> argparse.ArgumentParser:
                 action="store_true",
                 help="Udskift eksisterende login og afslut gamle sessioner",
             )
+        if name == "notify":
+            sub.add_argument("--webhook-file", type=Path, required=True)
+            sub.add_argument("--state-file", type=Path, required=True)
+            sub.add_argument("--test", action="store_true")
         if name == "doctor":
             sub.add_argument("--journal", action="store_true")
             sub.add_argument(
@@ -374,6 +379,25 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "backup":
             Repository(config.database_path, readonly=True).backup(args.output)
             print("Backup oprettet.")
+        elif args.command == "notify":
+            from .notify import DiscordNotifier, notifier_lock
+
+            notifier = DiscordNotifier(
+                config.database_path,
+                args.webhook_file,
+                args.state_file,
+                config.host_label,
+                config.timezone,
+            )
+            if args.test:
+                notifier.test_message()
+                print("Discord har kvitteret for testbeskeden.")
+            else:
+                stop = threading.Event()
+                for sig in (signal.SIGTERM, signal.SIGINT):
+                    signal.signal(sig, lambda *_: stop.set())
+                with notifier_lock(args.state_file):
+                    notifier.loop(stop)
         elif args.command == "prune":
             with CollectorLock(config.database_path):
                 _json(

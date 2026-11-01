@@ -1,0 +1,40 @@
+[Unit]
+Description=Yggdrasil IDS Discord alert notifier
+After=network-online.target yggdrasil-collector.service
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=yggdrasil-notifier
+Group=yggdrasil-notifier
+SupplementaryGroups=yggdrasil-data
+StateDirectory=yggdrasil-notifier
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/yggdrasil-notifier
+ExecStart=/opt/yggdrasil-ids/venv/bin/yggdrasil-ids notify --config /etc/yggdrasil-ids/config.toml --webhook-file /etc/yggdrasil-ids/discord-webhook.url --state-file /var/lib/yggdrasil-notifier/state.json
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=15
+UMask=0077
+Environment=PYTHONUNBUFFERED=1
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/var/lib/yggdrasil-ids
+CapabilityBoundingSet=
+AmbientCapabilities=
+MemoryMax=128M
+TasksMax=32
+
+[Install]
+WantedBy=multi-user.target
