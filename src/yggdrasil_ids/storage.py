@@ -609,6 +609,40 @@ class Repository:
             "pages": pages,
         }
 
+    def list_firewall(
+        self, hours: int = 24, source: str = "", protocol: str = "",
+        page: int = 1, per_page: int = 25
+    ) -> dict:
+        start, end = self._period(hours)
+        where, args = "timestamp>=? AND timestamp<=?", [start, end]
+        if source:
+            where += " AND source_ip=?"
+            args.append(source)
+        if protocol:
+            where += " AND protocol=?"
+            args.append(protocol)
+        return self._page(
+            "firewall_events", where, args, page, per_page, "timestamp DESC,event_id DESC"
+        )
+
+    def firewall_summary(self, hours: int = 24) -> dict:
+        start, end = self._period(hours)
+        with self.reader() as db:
+            row = db.execute(
+                "SELECT COUNT(*) AS recorded, "
+                "COUNT(DISTINCT source_ip) AS sources, "
+                "SUM(CASE WHEN protocol='TCP' THEN 1 ELSE 0 END) AS tcp, "
+                "SUM(CASE WHEN protocol='UDP' THEN 1 ELSE 0 END) AS udp "
+                "FROM firewall_events WHERE timestamp>=? AND timestamp<=?",
+                (start, end),
+            ).fetchone()
+        return {
+            "recorded": int(row["recorded"]),
+            "sources": int(row["sources"]),
+            "tcp": int(row["tcp"] or 0),
+            "udp": int(row["udp"] or 0),
+        }
+
     def list_alerts(
         self, hours: int = 24, detector: str = "", page: int = 1, per_page: int = 25
     ) -> dict:
