@@ -129,3 +129,33 @@ def test_absolute_paths_remain_absolute(tmp_path):
     config = load_config(config_file(tmp_path, f'[paths]\ndatabase="{absolute}"'))
     assert isinstance(config.database_path, Path)
     assert config.database_path == absolute
+
+
+def test_network_logging_is_opt_in_and_configured_separately(tmp_path):
+    assert load_config(config_file(tmp_path)).network.enabled is False
+    config = load_config(
+        config_file(
+            tmp_path,
+            "[network]\nenabled=true\nwindow_seconds=120\ndistinct_ports_threshold=8\n",
+        )
+    )
+    assert config.network.enabled is True
+    assert config.network.window_seconds == 120
+    assert config.network.distinct_ports_threshold == 8
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[network]\nenabled=1\n",
+        '[network]\nenabled="true"\n',
+        "[network]\nwindow_seconds=true\n",
+        "[network]\nwindow_seconds=0\n",
+        "[network]\ndistinct_ports_threshold=1\n",
+        "[network]\ndistinct_ports_threshold=65\n",
+        "[network]\nunknown=1\n",
+    ],
+)
+def test_invalid_network_config_is_rejected(tmp_path, text):
+    with pytest.raises(ValueError):
+        load_config(config_file(tmp_path, text))

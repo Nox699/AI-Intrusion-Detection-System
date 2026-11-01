@@ -268,7 +268,7 @@ def test_retention_cascades_and_recounts_retained_incident_evidence(repository):
             )
             alert_ids.append(repository.add_finding(db, finding(item), 300))
     assert alert_ids[0] == alert_ids[1]
-    assert repository.prune(BASE + 200) == {"events": 2, "records": 2}
+    assert repository.prune(BASE + 200) == {"events": 2, "records": 2, "firewall_events": 0}
     assert repository.alert_detail(alert_ids[2]) is None
     retained = repository.alert_detail(alert_ids[0])
     assert retained["count"] == 1
