@@ -90,49 +90,32 @@
     const tickCount = compact ? 3 : 7;
     const ticks = Array.from({ length: tickCount }, (_value, index) => start + (end - start) * index / (tickCount - 1));
     const intervalLabel = (timestamp) => `${date(timestamp, dayFormat)} ${date(timestamp, timeFormat)}`;
-    // A missing time bucket does not prove that monitoring was continuous.
-    // Put a null point between non-adjacent observed buckets. Plotly then
-    // breaks each curve instead of drawing a misleading line across the gap.
-    const points = [];
-    let previous = null;
-    for (const row of plotRows) {
-      if (previous && row.left - previous.right > 1) {
-        points.push({ x: (previous.right + row.left) * 500,
-          label: null, success: null, failure: null, preauth: null });
-      }
-      points.push({ x: (row.left + row.right) * 500,
-        label: `${intervalLabel(row.left)}–${intervalLabel(row.right)}`,
-        success: row.success, failure: row.failure, preauth: row.preauth });
-      previous = row;
-    }
-    const x = points.map(point => point.x);
-    const hover = points.map(point => point.label);
+    // Discrete counts are observations per interval, not a continuous trend.
+    // Plot only positive values: no connecting lines or invented zero samples.
+    // Separate traces keep login successes, failures and preauth distinct.
     const maxCount = Math.max(0, ...plotRows.flatMap(row => [row.success, row.failure, row.preauth]));
-    // Other types of events in the same bucket are not zero-valued samples
-    // of this category. Hide category zeros to avoid misleading up/down
-    // spikes and keep the true observed positive counts as visible dots.
-    const observed = (point, category) => point[category] > 0 ? point[category] : null;
-    // Counts remain measured per bucket. Straight segments are visual guides,
-    // not interpolated measurements, and missing buckets stay unconnected.
-    const base = { type: "scatter", mode: "lines+markers", connectgaps: false,
-      x, customdata: hover,
-      hovertemplate: "%{customdata}<br>%{y} registrerede hændelser<extra>%{fullData.name}</extra>" };
+    const dots = (name, field, color, symbol) => {
+      const observed = plotRows.filter(row => row[field] > 0);
+      return {
+        type: "scatter", mode: "markers", name,
+        x: observed.map(row => (row.left + row.right) * 500),
+        y: observed.map(row => row[field]),
+        customdata: observed.map(row => `${intervalLabel(row.left)}–${intervalLabel(row.right)}`),
+        marker: { color, symbol, size: compact ? 8 : 10,
+          line: { color: "#101b2b", width: 1.3 } },
+        hovertemplate: "%{customdata}<br>%{y} registrerede hændelser<extra>%{fullData.name}</extra>"
+      };
+    };
     const traces = [
-      { ...base, name: "Vellykkede", y: points.map(point => observed(point, "success")),
-        line: { color: "#68d8b6", width: 2.5, shape: "linear" },
-        marker: { color: "#68d8b6", size: 7 } },
-      { ...base, name: "Fejlede", y: points.map(point => observed(point, "failure")),
-        line: { color: "#ef6b6b", width: 2.5, shape: "linear" },
-        marker: { color: "#ef6b6b", size: 7 } },
-      { ...base, name: "Afbrud før login", y: points.map(point => observed(point, "preauth")),
-        line: { color: "#e8ad70", width: 2.5, shape: "linear" },
-        marker: { color: "#e8ad70", size: 7 } }
+      dots("Vellykkede", "success", "#68d8b6", "circle"),
+      dots("Fejlede", "failure", "#ef6b6b", "diamond"),
+      dots("Afbrud før login", "preauth", "#e8ad70", "square")
     ];
     const layout = {
       paper_bgcolor: "transparent", plot_bgcolor: "transparent",
       font: { family: '"Segoe UI",Arial,sans-serif', color: "#8797ad", size: 10 },
       margin: { l: 46, r: 24, t: 15, b: showDates ? 56 : 38 }, showlegend: false,
-      hovermode: "closest", uirevision: "ssh-activity-lines", dragmode: false,
+      hovermode: "closest", uirevision: "ssh-activity-dots", dragmode: false,
       xaxis: { type: "linear", range: [start * 1000, end * 1000], tickmode: "array", tickvals: ticks.map(value => value * 1000),
         ticktext: ticks.map(value => `${date(value, shortFormat)}${showDates ? `<br>${date(value, dayFormat)}` : ""}`),
         showgrid: false, zeroline: false, fixedrange: true, ticks: "", ticklabelstandoff: 6, tickfont: { size: 11 } },
