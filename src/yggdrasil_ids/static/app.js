@@ -106,7 +106,36 @@
         hovertemplate: "%{customdata}<br>%{y} registrerede hændelser<extra>%{fullData.name}</extra>"
       };
     };
+    // Thin connectors are visual guides between *actual* positive samples.
+    // When a category has empty buckets between two samples, mark the
+    // connection as dashed: no data are inferred for those missing intervals.
+    // Never connect across gaps longer than six hours.
+    const connectors = (field, color) => {
+      const observed = plotRows.filter(row => row[field] > 0);
+      const solid = { x: [], y: [] };
+      const dashed = { x: [], y: [] };
+      for (let index = 1; index < observed.length; index++) {
+        const previous = observed[index - 1];
+        const current = observed[index];
+        const distance = current.timestamp - previous.timestamp;
+        if (distance > 6 * 3600) continue;
+        const segment = distance <= bucketSeconds ? solid : dashed;
+        segment.x.push((previous.left + previous.right) * 500, (current.left + current.right) * 500, null);
+        segment.y.push(previous[field], current[field], null);
+      }
+      return [
+        { type: "scatter", mode: "lines", x: solid.x, y: solid.y,
+          line: { color, width: 1.8, dash: "solid" }, opacity: 0.65,
+          hoverinfo: "skip", showlegend: false },
+        { type: "scatter", mode: "lines", x: dashed.x, y: dashed.y,
+          line: { color, width: 1.6, dash: "dot" }, opacity: 0.55,
+          hoverinfo: "skip", showlegend: false }
+      ];
+    };
     const traces = [
+      ...connectors("success", "#68d8b6"),
+      ...connectors("failure", "#ef6b6b"),
+      ...connectors("preauth", "#e8ad70"),
       dots("Vellykkede", "success", "#68d8b6", "circle"),
       dots("Fejlede", "failure", "#ef6b6b", "diamond"),
       dots("Afbrud før login", "preauth", "#e8ad70", "square")
@@ -115,7 +144,7 @@
       paper_bgcolor: "transparent", plot_bgcolor: "transparent",
       font: { family: '"Segoe UI",Arial,sans-serif', color: "#8797ad", size: 10 },
       margin: { l: 46, r: 24, t: 15, b: showDates ? 56 : 38 }, showlegend: false,
-      hovermode: "closest", uirevision: "ssh-activity-dots", dragmode: false,
+      hovermode: "closest", uirevision: "ssh-activity-connected-dots", dragmode: false,
       xaxis: { type: "linear", range: [start * 1000, end * 1000], tickmode: "array", tickvals: ticks.map(value => value * 1000),
         ticktext: ticks.map(value => `${date(value, shortFormat)}${showDates ? `<br>${date(value, dayFormat)}` : ""}`),
         showgrid: false, zeroline: false, fixedrange: true, ticks: "", ticklabelstandoff: 6, tickfont: { size: 11 } },

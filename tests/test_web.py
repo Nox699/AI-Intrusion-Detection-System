@@ -574,8 +574,8 @@ def test_plotly_is_local_and_requires_authentication(client):
     assert "cdn.plot.ly" not in page and "fonts.googleapis" not in page
 
 
-def test_activity_chart_uses_discrete_positive_only_markers():
-    """A sparse activity chart must not suggest a continuous time series."""
+def test_activity_chart_connects_positive_markers_without_inventing_samples():
+    """Solid/dashed guide lines must never create fake events or zero samples."""
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1] / "src" / "yggdrasil_ids"
@@ -588,9 +588,16 @@ def test_activity_chart_uses_discrete_positive_only_markers():
     assert 'dots("Vellykkede", "success", "#68d8b6", "circle")' in script
     assert 'dots("Fejlede", "failure", "#ef6b6b", "diamond")' in script
     assert 'dots("Afbrud før login", "preauth", "#e8ad70", "square")' in script
-    assert 'uirevision: "ssh-activity-dots"' in script
+    assert 'uirevision: "ssh-activity-connected-dots"' in script
     assert 'mode: "lines+markers"' not in script
-    assert 'mode: "lines"' not in script
+    assert 'type: "scatter", mode: "lines"' in script
+    assert 'distance <= bucketSeconds ? solid : dashed' in script
+    assert 'if (distance > 6 * 3600) continue;' in script
+    assert 'segment.x.push((previous.left + previous.right) * 500' in script
+    assert 'segment.y.push(previous[field], current[field], null)' in script
+    assert 'dash: "dot"' in script
+    assert 'hoverinfo: "skip", showlegend: false' in script
+    assert '...connectors("preauth", "#e8ad70")' in script
     assert ".legend-dot.success{background:#68d8b6}" in style
     assert ".legend-dot.failure{background:#ef6b6b}" in style
     assert ".legend-dot.preauth{background:#e8ad70}" in style
