@@ -130,13 +130,16 @@ class DiscordNotifier:
 
     def _source(self):
         with self.source.reader() as db:
-            instance = db.execute(
-                "SELECT instance FROM discord_outbox_meta WHERE id=1"
-            ).fetchone()[0]
-            rows = [dict(r) for r in db.execute(
-                "SELECT seq,ref,detector_id,severity,happened_at "
-                "FROM discord_outbox ORDER BY seq"
-            ).fetchall()]
+            instance = db.execute("SELECT instance FROM discord_outbox_meta WHERE id=1").fetchone()[
+                0
+            ]
+            rows = [
+                dict(r)
+                for r in db.execute(
+                    "SELECT seq,ref,detector_id,severity,happened_at "
+                    "FROM discord_outbox ORDER BY seq"
+                ).fetchall()
+            ]
         return instance, rows
 
     def _connect(self):
@@ -149,7 +152,9 @@ class DiscordNotifier:
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         instance, events = self._source()
         with self._connect() as db:
-            db.execute("CREATE TABLE IF NOT EXISTS meta(instance TEXT NOT NULL,last_seq INTEGER NOT NULL)")
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS meta(instance TEXT NOT NULL,last_seq INTEGER NOT NULL)"
+            )
             db.execute(
                 "CREATE TABLE IF NOT EXISTS deliveries("
                 "ref TEXT PRIMARY KEY,discord_id TEXT NOT NULL,sent_at REAL NOT NULL)"
@@ -215,8 +220,7 @@ class DiscordNotifier:
             with self._connect() as db:
                 if discord_id is not None:
                     db.execute(
-                        "INSERT OR IGNORE INTO deliveries(ref,discord_id,sent_at) "
-                        "VALUES(?,?,?)",
+                        "INSERT OR IGNORE INTO deliveries(ref,discord_id,sent_at) VALUES(?,?,?)",
                         (event["ref"], discord_id, time.time()),
                     )
                 db.execute(
