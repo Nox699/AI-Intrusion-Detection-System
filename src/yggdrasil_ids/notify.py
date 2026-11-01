@@ -131,9 +131,8 @@ class DiscordNotifier:
     def _source(self, after: int | None = None):
         """Return instance, monotonic high watermark and up to 20 events."""
         with self.source.reader() as db:
-            instance = db.execute(
-                "SELECT instance FROM discord_outbox_meta WHERE id=1"
-            ).fetchone()[0]
+            row = db.execute("SELECT instance FROM discord_outbox_meta WHERE id=1").fetchone()
+            instance = row[0]
             maximum = db.execute("SELECT COALESCE(MAX(seq),0) FROM discord_outbox").fetchone()[0]
             rows = []
             if after is not None:
