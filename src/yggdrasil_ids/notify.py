@@ -13,10 +13,10 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
-from datetime import datetime
 
 from .storage import Repository
 

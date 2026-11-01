@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from yggdrasil_ids.notify import DiscordNotifier, DeliveryError
+from yggdrasil_ids.notify import DeliveryError, DiscordNotifier
 from yggdrasil_ids.storage import Repository
 
 
