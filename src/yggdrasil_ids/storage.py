@@ -253,7 +253,6 @@ class Repository:
         )
         return int(alert_id)
 
-
     @staticmethod
     def insert_preauth_disconnect(
         db: sqlite3.Connection, record_id: str, timestamp: float, source_ip: str, kind: str
