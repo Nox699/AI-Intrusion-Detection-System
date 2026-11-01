@@ -206,3 +206,29 @@ The private opt-in backup is stored under:
 
 This verifies journal ingestion for one event, **not** scan detection or
 Discord delivery. See SPRINT_3_SCAN_ACCEPTANCE.md for the next bounded test.
+
+## Første kontrollerede LAN-portscanning – Nmap-resultat
+
+**Dato:** 2. november 2026 kl. 00:10 CET (Nmap-klientens tidsangivelse).  
+**Klient:** Ejerens Ubuntu på laptop, Nmap 7.94SVN.  
+**Destination:** Egen Raspberry Pi på privat LAN (IP udeladt af offentlig rapport).
+
+Nmap TCP connect-test med `-sT -Pn -n --scan-delay 2s
+--max-retries 0 --host-timeout 90s -p 45010-45019`:
+
+- Alle **10/10** undersøgte TCP-porte rapporteret som `filtered`.
+- Nmap rapporterede `Host is up`.
+- Varighed: **22,28 sekunder**.
+- Advarsel om, at nul retransmissioner var tilladt.
+- Ingen åbne porte fundet i det afgrænsede interval.
+
+**Vigtig adskillelse:** `filtered` angiver, at Nmap ikke fik
+tilstrækkeligt svar til at fastslå porttilstand. Det er foreneligt
+med blokering, men dokumenterer **ikke** i sig selv UFW-logning.
+Endnu ingen SQLite-optælling efter testen, ingen verificeret
+`network.tcp_port_scan`-alarm og ingen bekræftet Discord-levering.
+Derfor er portscan-accepten **ikke bestået endnu**.
+
+Næste skridt er read-only indsamling af aggregerede mål
+fra `deploy/sprint3_network_observe.py`, og kontrol af notifierstatus
+i sammenligning med baseline. UFW forbliver `low`.
