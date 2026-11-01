@@ -1,11 +1,19 @@
 """Isolation tests of the private notifier and transactional outbox."""
 
+import io
+import json
 import sqlite3
 import time
+import urllib.error
 
 import pytest
 
-from yggdrasil_ids.notify import DeliveryError, DiscordNotifier
+from yggdrasil_ids.notify import (
+    DeliveryError,
+    DiscordNotifier,
+    RetryLater,
+    deliver,
+)
 from yggdrasil_ids.storage import Repository
 
 
@@ -93,3 +101,108 @@ def test_send_error_retains_cursor(tmp_path):
         n.poll()
     with sqlite3.connect(n.path) as db:
         assert db.execute("SELECT last_seq FROM meta").fetchone()[0] == 0
+
+
+def test_failed_delivery_does_not_skip_pending_after_restart(tmp_path):
+    repo = Repository(tmp_path / "events.sqlite3")
+    repo.initialize()
+    path = tmp_path / "private/state.sqlite3"
+    secret = tmp_path / "secret"
+    secret.write_text("https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60)
+    secret.chmod(0o600)
+    first = DiscordNotifier(
+        repo.path, path, webhook_file=secret,
+        sender=lambda _url, _message: (_ for _ in ()).throw(RetryLater(300)),
+    )
+    first.bootstrap()
+    add_alert(repo)
+    with pytest.raises(RetryLater):
+        first.poll()
+    with sqlite3.connect(path) as db:
+        assert db.execute("SELECT last_seq FROM meta").fetchone()[0] == 0
+        not_before = db.execute("SELECT not_before FROM meta").fetchone()[0]
+        assert not_before > time.time() + 250
+    delivered = []
+    restarted = DiscordNotifier(
+        repo.path, path, webhook_file=secret,
+        sender=lambda _url, msg: delivered.append(msg) or "234567890",
+    )
+    restarted.bootstrap()
+    with pytest.raises(RetryLater):
+        restarted.poll()
+    assert delivered == []
+    with sqlite3.connect(path) as db:
+        db.execute("UPDATE meta SET not_before=0")
+    assert restarted.poll() == 1
+    assert len(delivered) == 1
+
+
+def test_lock_refuses_second_process(tmp_path):
+    from yggdrasil_ids.notify import exclusive_notifier as lock
+
+    path = tmp_path / "private/state.sqlite3"
+    with lock(path):
+        with pytest.raises(DeliveryError, match="allerede"):
+            with lock(path):
+                pass
+    with lock(path):
+        pass
+
+
+def test_429_wait_uses_longer_server_delay(monkeypatch):
+    class Opener:
+        def open(self, req, timeout):
+            raise urllib.error.HTTPError(
+                req.full_url, 429, "rate", {"Retry-After": "601.25"},
+                io.BytesIO(b'{"retry_after": 900.75, "global": true}'),
+            )
+
+    monkeypatch.setattr(
+        "yggdrasil_ids.notify.urllib.request.build_opener", lambda *args: Opener()
+    )
+    with pytest.raises(RetryLater) as exc:
+        deliver("https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60, "test")
+    assert exc.value.delay == 900.75
+
+
+def test_realistic_discord_reply_over_1024_bytes(monkeypatch):
+    class Reply:
+        status = 200
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self, amount):
+            assert amount >= 2000
+            return json.dumps({"id": "12345", "embeds": [{"description": "x" * 1800}]}).encode()
+
+    class Opener:
+        def open(self, req, timeout):
+            return Reply()
+
+    monkeypatch.setattr("yggdrasil_ids.notify.urllib.request.build_opener",
+                        lambda *args: Opener())
+    assert (
+        deliver("https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60, "test")
+        == "12345"
+    )
+
+
+def test_malformed_discord_reply_is_manual_review(monkeypatch):
+    class Reply:
+        status = 200
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return False
+        def read(self, amount):
+            return b'{"id":'
+
+    class Opener:
+        def open(self, req, timeout):
+            return Reply()
+
+    monkeypatch.setattr("yggdrasil_ids.notify.urllib.request.build_opener",
+                        lambda *args: Opener())
+    with pytest.raises(DeliveryError):
+        deliver("https://discord.com/api/webhooks/" + "1" * 18 + "/" + "a" * 60, "test")

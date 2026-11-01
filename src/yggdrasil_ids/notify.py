@@ -87,6 +87,8 @@ def deliver(webhook: str, content: str) -> str:
             if not isinstance(reply, dict) or not str(reply.get("id", "")).isdigit():
                 raise DeliveryError("Discord-kvittering mangler besked-ID")
             return str(reply["id"])
+    except (ValueError, TypeError, UnicodeDecodeError):
+        raise DeliveryError("Discord-svar kunne ikke verificeres; manuel kontrol") from None
     except urllib.error.HTTPError as exc:
         if exc.code == 429:
             raw = exc.headers.get("Retry-After", "30")
@@ -167,10 +169,15 @@ class DiscordNotifier:
                 ]
         return instance, maximum, rows
 
+    @contextmanager
     def _connect(self):
         db = sqlite3.connect(self.path, timeout=5)
-        db.execute("PRAGMA busy_timeout=5000")
-        return db
+        try:
+            db.execute("PRAGMA busy_timeout=5000")
+            with db:
+                yield db
+        finally:
+            db.close()
 
     def bootstrap(self):
         """Explicitly skip existing alarms once; never reset on restart."""
@@ -178,7 +185,9 @@ class DiscordNotifier:
         instance, maximum, _ = self._source()
         with self._connect() as db:
             db.execute(
-                "CREATE TABLE IF NOT EXISTS meta(instance TEXT NOT NULL,last_seq INTEGER NOT NULL)"
+                "CREATE TABLE IF NOT EXISTS meta("
+                "instance TEXT NOT NULL,last_seq INTEGER NOT NULL,not_before REAL NOT NULL DEFAULT 0)"
+
             )
             db.execute(
                 "CREATE TABLE IF NOT EXISTS deliveries("
@@ -187,7 +196,9 @@ class DiscordNotifier:
             current = db.execute("SELECT instance,last_seq FROM meta").fetchone()
             if current is None:
                 last_seq = maximum
-                db.execute("INSERT INTO meta VALUES(?,?)", (instance, last_seq))
+                db.execute(
+                    "INSERT INTO meta(instance,last_seq) VALUES(?,?)", (instance, last_seq)
+                )
                 log.info("Notifikationer starter efter historisk sekvens %d", last_seq)
             elif current[0] != instance:
                 raise DeliveryError("Databasens identitet er ændret; manuel kontrol påkrævet")
@@ -217,10 +228,13 @@ class DiscordNotifier:
 
     def poll(self):
         with self._connect() as db:
-            row = db.execute("SELECT instance,last_seq FROM meta").fetchone()
+            row = db.execute("SELECT instance,last_seq,not_before FROM meta").fetchone()
             if row is None:
                 raise DeliveryError("Notifieren skal initialiseres med --bootstrap")
-            expected_instance, cursor = row
+            expected_instance, cursor, not_before = row
+        remaining = not_before - time.time()
+        if remaining > 0:
+            raise RetryLater(remaining)
         instance, maximum, events = self._source(cursor)
         if expected_instance != instance:
             raise DeliveryError("Databasens identitet er ændret")
@@ -239,7 +253,15 @@ class DiscordNotifier:
                             raise InvalidWebhook("Systemd credential mangler")
                         webhook_path = Path(folder) / "discord-webhook.url"
                     webhook = secret_file(webhook_path)
-                discord_id = self.sender(webhook, self.message(event))
+                try:
+                    discord_id = self.sender(webhook, self.message(event))
+                except RetryLater as exc:
+                    with self._connect() as db:
+                        db.execute(
+                            "UPDATE meta SET not_before=MAX(not_before,?)",
+                            (time.time() + exc.delay,),
+                        )
+                    raise
             else:
                 discord_id = None
             with self._connect() as db:
