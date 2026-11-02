@@ -45,6 +45,16 @@ sudo sha256sum --check --status "$stage/sha256sums.txt" || stop "Staged SHA-256 
 sudo tar -tzf "$snapshot" | grep -Fx 'venv/bin/yggdrasil-ids' >/dev/null \
   || stop "Rollback venv archive invalid."
 sudo test ! -e "$model" || stop "Production model already exists."
+# The optional lab Gunicorn process uses this same venv; stop it first.
+python3 - <<'PY'
+import socket
+with socket.socket() as sock:
+    try:
+        sock.bind(("127.0.0.1", 8766))
+    except OSError:
+        raise SystemExit("STOP: Isolated demo still listening on 8766; close its terminal first.")
+print("PASS: Demo port 8766 is free for safe package replacement.")
+PY
 sudo ufw status verbose | grep -F "Logging: on (low)" >/dev/null \
   || stop "UFW logging differs from accepted state."
 for service in yggdrasil-collector.service yggdrasil-web.service yggdrasil-notifier.service; do
