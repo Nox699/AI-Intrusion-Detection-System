@@ -55,6 +55,16 @@ sudo -u yggdrasil-web "$venv/bin/yggdrasil-ids" doctor \
   --config "$config" --role web >/dev/null || stop "Web doctor fejlede."
 sudo "$venv/bin/python" -m pip check >/dev/null || stop "Installerede afhængigheder fejlede."
 
+expected_changes="$(git diff --name-only 07fab99c88fe51a2cc455f51788bb17fd6c37fa4 "$sha" -- src pyproject.toml requirements.lock requirements-dev.txt)"
+while IFS= read -r changed; do
+  [[ -z "$changed" ]] && continue
+  case "$changed" in
+    src/yggdrasil_ids/storage.py|src/yggdrasil_ids/web.py|    src/yggdrasil_ids/templates/network.html|src/yggdrasil_ids/static/app.css|    src/yggdrasil_ids/static/network.js) ;;
+    *) stop "Uventet kode-/dependencyændring siden installeret release: $changed" ;;
+  esac
+done <<< "$expected_changes"
+printf 'PASS: Kun godkendte graf-/dashboardfiler ændret siden installeret release\n'
+
 phase="staging"
 stage="/var/backups/yggdrasil-ids/sprint3-charts-prepared-$sha"
 sudo test ! -e "$stage" || stop "Stagingmappen eksisterer allerede."
@@ -91,6 +101,9 @@ sudo tar -C /opt/yggdrasil-ids -czf "$stage/previous-venv.tar.gz" venv
 sudo chmod 0600 "$stage/previous-venv.tar.gz"
 sudo tar -tzf "$stage/previous-venv.tar.gz" | grep -Fx 'venv/bin/yggdrasil-ids' >/dev/null \
   || stop "Backup af installeret venv indeholder ikke CLI."
+sudo sha256sum "$stage/yggdrasil_ids-0.1.0-py3-none-any.whl"   "$stage/previous-venv.tar.gz" | sudo tee "$stage/sha256sums.txt" >/dev/null
+sudo chmod 0600 "$stage/sha256sums.txt"
+sudo sha256sum --check --status "$stage/sha256sums.txt"   || stop "SHA-256-kontrol på release-/rollbackfiler fejlede."
 for service in yggdrasil-collector.service yggdrasil-web.service yggdrasil-notifier.service; do
   systemctl is-active --quiet "$service" || stop "$service stoppede under staging."
 done
