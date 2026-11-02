@@ -224,9 +224,8 @@ def analyse(directory: Path) -> dict[str, Any]:
             for item in observations
             if item["case"] == "simulated_preauth_disconnect_surge" and item["hour"] == hour
         ]
-        identical = (
-            len(benign) == len(suspicious) == 14
-            and all(a["vector"] == b["vector"] for a, b in zip(benign, suspicious, strict=True))
+        identical = len(benign) == len(suspicious) == 14 and all(
+            a["vector"] == b["vector"] for a, b in zip(benign, suspicious, strict=True)
         )
         if not identical:
             raise ValueError("Matched opposite-label control is not feature-identical")
