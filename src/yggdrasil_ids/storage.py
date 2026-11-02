@@ -647,6 +647,61 @@ class Repository:
             "udp": int(row["udp"] or 0),
         }
 
+    def firewall_charts(self, hours: int = 24) -> dict:
+        """Read-only aggregate timeline and top-ten blocked TCP SYN destination ports.
+
+        Time buckets include only recorded activity. No IP addresses or raw
+        firewall events are returned, regardless of how many ports were hit.
+        """
+        start, end = self._period(hours)
+        bucket = 300 if hours <= 6 else 1800 if hours <= 24 else 7200 if hours <= 168 else 21600
+        condition = """
+            timestamp>=? AND timestamp<=?
+            AND action IN ('BLOCK','REJECT','LIMIT BLOCK')
+            AND direction='incoming' AND in_interface!='' AND out_interface=''
+            AND protocol_number=6 AND destination_port IS NOT NULL
+            AND instr(tcp_flags, '"SYN"')>0
+            AND instr(tcp_flags, '"ACK"')=0
+            AND instr(tcp_flags, '"FIN"')=0
+            AND instr(tcp_flags, '"RST"')=0
+        """
+        with self.reader() as db:
+            timeline = db.execute(
+                "SELECT CAST(timestamp / ? AS INTEGER) * ? AS bucket_start, "
+                "COUNT(*) AS packets FROM firewall_events WHERE "
+                + condition
+                + " GROUP BY bucket_start ORDER BY bucket_start",
+                (bucket, bucket, start, end),
+            ).fetchall()
+            top = db.execute(
+                "SELECT destination_port AS port, COUNT(*) AS packets "
+                "FROM firewall_events WHERE "
+                + condition
+                + " GROUP BY destination_port ORDER BY packets DESC, port ASC LIMIT 10",
+                (start, end),
+            ).fetchall()
+            totals = db.execute(
+                "SELECT COUNT(*) AS packets, "
+                "COUNT(DISTINCT destination_port) AS unique_ports "
+                "FROM firewall_events WHERE " + condition,
+                (start, end),
+            ).fetchone()
+        top_ports = [
+            {"port": int(row["port"]), "packets": int(row["packets"])} for row in top
+        ]
+        total_packets = int(totals["packets"])
+        return {
+            "bucket_seconds": bucket,
+            "series": [
+                {"timestamp": int(row["bucket_start"]), "packets": int(row["packets"])}
+                for row in timeline
+            ],
+            "top_ports": top_ports,
+            "other_ports_packets": total_packets - sum(row["packets"] for row in top_ports),
+            "total_packets": total_packets,
+            "unique_ports": int(totals["unique_ports"]),
+        }
+
     def list_alerts(
         self, hours: int = 24, detector: str = "", page: int = 1, per_page: int = 25
     ) -> dict:
