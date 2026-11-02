@@ -69,3 +69,24 @@ Ved senere produktion skal vi holde testangreb ude af normaltræningen, bevare e
 ## Eksamen: observation og metode
 
 Dette er dokumentation for **en datakildebegrænsning**: journalisering, parserdækning og faktisk ML-observation er tre forskellige ting. Manglende `Failed`-rækker betyder ikke, at OpenSSH har ignoreret forsøget. Det nuværende hybrid-ML-system er allerede teknisk testet med én normal live-score; en preauth-ML-model er derimod endnu ikke udviklet eller valideret på live Pi. Det skal skelnes klart i rapporten.
+
+## Fase A – verificeret på Pi, 2. november 2026
+
+Den versionspinnede read-only audit fra commit `f0c7047a7d15e8a4015b90a7c8fcbdb893d0d224` blev gennemført under eksisterende `yggdrasil-worker` uden installation, modeltræning eller serviceændring.
+
+| Faktisk måling | Antal |
+| --- | ---: |
+| Gennemgåede/troværdige root-OpenSSH-poster | 13 / 13 |
+| Mulige preauth-signalposter | **3** |
+| `invalid_user_notice` | 1 |
+| `invalid_user_disconnect` | 1 |
+| `authenticating_user_disconnect` | 1 |
+| `invalid_user_disconnected` | 0 |
+| Approksimerede forskellige forbindelse-nøgler | **2** |
+| Testrelaterede logposter | **2** |
+| Approksimerede forbindelser fra testmarkør | **1** |
+| Genkendt af gammel preauth-parser | 1 |
+| Betroede poster uden match til disse fire kandidattyper | 10 |
+| Malformed eller untrusted poster | 0 |
+
+**Konklusion:** SSH har registreret de to journalposter for invalid-user-testen, men de ser ud til at tilhøre **samme forbindelse**. Den eksisterende `Accepted/Failed`-model modtager ingen observation for testen. Eksisterende preauth-parser genkender kun én af de tre kandidatposter. Der er således et faktisk **observabilitets-/featuredækningshul**, ikke dokumenteret fravær af angreb eller påvist svigt i den trænede SSH-Isolation-Forest. Realdata (2 forbindelser) er ikke et selvstændigt tilstrækkeligt normaltræningsgrundlag for en ny preauth-model. Ingen private kilder/identiteter eller loglinjer er uploadet.
