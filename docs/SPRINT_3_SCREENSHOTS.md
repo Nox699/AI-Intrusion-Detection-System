@@ -99,3 +99,21 @@ Foreslåede billedtekster:
   IDS én alarm med ti tilknyttede detektionsfund.*
 - *Discord modtog én automatisk portscanningsnotifikation;
   køen havde ingen ventende meddelelser.*
+
+## Bilag S3-J – Graf over portaktivitet (efter live-installation)
+
+Den nye `/network`-side er udviklet med to grafer: registrerede
+blokerede TCP SYN-pakker over tid og de ti mest berørte
+destinationsporte plus `Øvrige porte`.
+
+**Screenshot S3-J** skal først tages efter en særskilt
+live-installation og kontrol af graferne på Pi. Beskær til
+graferne samt teksten om logdækning; undgå at vise IP-adresser
+i hændelsestabellen i et offentligt rapportbilag.
+
+Forslag til billedtekst:
+
+*Visualisering af faktisk registrerede UFW-pakker.
+De ti mest observerede destinationporte vises separat,
+mens resten aggregeres. Grafen er ikke et komplet
+billede af afsendte forbindelsesforsøg.*
