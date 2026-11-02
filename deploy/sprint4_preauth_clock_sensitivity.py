@@ -91,13 +91,9 @@ def analyse(directory: Path) -> dict[str, Any]:
     for split in ("validation", "test"):
         conn = connections_from_records(records[split], classify)
         rows = feature_rows(conn)
-        label_map = {
-            item["cursor"]: item for item in labels["split_labels"][split]
-        }
+        label_map = {item["cursor"]: item for item in labels["split_labels"][split]}
         intent = [label_map[item.cursor] for item in conn]
-        expected = [
-            item["expected"] == "simulated_suspicious" for item in intent
-        ]
+        expected = [item["expected"] == "simulated_suspicious" for item in intent]
         baseline = [model.score(row)["is_anomaly"] for row in rows]
         original = counts(expected, baseline)
         for key, value in original.items():
@@ -111,10 +107,7 @@ def analyse(directory: Path) -> dict[str, Any]:
             if hours == 0:
                 predictions = baseline
             else:
-                predictions = [
-                    model.score(shift_clock(row, hours))["is_anomaly"]
-                    for row in rows
-                ]
+                predictions = [model.score(shift_clock(row, hours))["is_anomaly"] for row in rows]
             first_by_scenario: dict[str, int | None] = {}
             scenario_index: dict[str, int] = defaultdict(int)
             for item, flag in zip(intent, predictions, strict=True):
@@ -128,8 +121,7 @@ def analyse(directory: Path) -> dict[str, Any]:
             offsets[str(hours)] = {
                 "ml": counts(expected, predictions),
                 "ml_decisions_changed_from_original": sum(
-                    current != old
-                    for current, old in zip(predictions, baseline, strict=True)
+                    current != old for current, old in zip(predictions, baseline, strict=True)
                 ),
                 "first_detection_by_scenario": first_by_scenario,
             }
