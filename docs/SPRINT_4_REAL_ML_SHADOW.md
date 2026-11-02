@@ -81,3 +81,11 @@ Når det er gjort og verificeret, bør dashboardet på det rigtige **8765** vise
 Simulerede mislykkede SSH-loginforsøg og username spraying hører til *test*, **aldrig normaltræning**. Før vi laver virkelige forsøg, kontrollerer vi key-/password-auth, firewall og Fail2ban og sikrer, at fjernadministration via Tailscale fortsat fungerer. Under skoleeksamen kan vi også replay'e dokumenterede syntetiske SSH-scenarier i et isoleret lab, mens den skyggebaserede model scorer rigtige normalhændelser uden at overdrive datagrundlaget.
 
 **Afgrænsning:** Denne model er *eksperimentelt bootstrappet*, ikke valideret produktion. En høj score er ikke angrebssandsynlighed; synthetic-only precision/recall/FPR er ikke real-world metrics. 15 reelle success-events er stærkt begrænsede og tæt tidskorrelerede.
+
+## Status på Pi – read-only eksport gennemført, godkendelse afventer
+
+**2. november 2026:** Brugeren kørte den CI-verificerede eksport på commit `7cb1cd8355c652533bc1c94a0f5c493fcf3de316` via `git show`, og eksportscriptet rapporterede **17 samlede SSH-hændelser, 17 kandidater til normaltræning** og `reviewed_as_normal=false`. Kommandoen oprettede `$HOME/yggdrasil-ml-private/real-candidates.json` lokalt. **Intet er sendt til GitHub**, og produktionsmodel, collector, web, UFW og Discord blev ikke ændret.
+
+17 vellykkede login er **ikke automatisk dokumentation for 17 legitime logins**. Den nødvendige næste handling er manuel identitetskontrol i den read-only SQLite-database: genkend brugernavn, kildeadresse, autentificeringsmetode og tidsperiode. Disse oplysninger skal ses på Pi lokalt, **ikke kopieres til et offentligt repo**. Kun brugeren kan godkende alle 17 som faktisk kendt, legitim adfærd; ellers skal eksperimentets normaltræningsdata udvælges på ny uden fremmede eller usikre observationer.
+
+**Hvis brugeren godkender alle 17:** Den eksisterende preview reserverer fem af de 17 som en lille tidsmæssigt korreleret kontrol og anvender 12 som godkendt virkeligt supplement til de 312 syntetiske normale træningsrækker. Dette er **324 blandede træningsrækker** og fem ikke-uafhængige virkelige succes-observationer til forsigtig shadow-inspektion, ikke en måling af real-world precision/recall/falsk-positiv-rate. Det syntetiske hold-out-testsæt forbliver uden for træningen. **Der er endnu ingen ny træning udført eller model aktiveret.**
