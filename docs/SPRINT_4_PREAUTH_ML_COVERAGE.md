@@ -178,3 +178,20 @@ dokumenteret sikkerhedsdetektion på rigtige angreb. Live-scoring af
 preauth kræver separat parser-/storage-/dashboard-udvidelse,
 modelevaluering og backup/rollback. Den eksisterende
 `ssh-if-7cc1f15288d0c73b` fortsætter i shadow-mode indtil da.
+
+## Fase B – faktisk Pi-laboratorietest af preauth-Isolation-Forest
+
+**2. november 2026, verificeret på Yggdrasil:** Pi-ejer kørte det isolerede syntetiske preauth-ML-laboratorium fra kildecommit `79424449be2274bc2ac04cb8f95fbc579c13e1e5`, og alle slutkontroller bestod. Modellen `preauth-if-c117b4177053846a` blev trænet på **321 særskilte syntetiske normale preauth-forbindelseskandidater**, med en modelgrænse på **0,6570063583**. Der blev ikke læst live-SSH-logs, ændret produktionsdatabasen eller installeret en ny live preauth-model; collector, web og notifier blev bekræftet aktive før og efter.
+
+| Datasplit | Metode | TP | FP | TN | FN | Precision | Recall | FP-rate |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Validering (54 kandidater) | Isolation Forest | 15 | 0 | 16 | 23 | 100,0 % | 39,5 % | 0,0 % |
+| Validering (54 kandidater) | Regler | 22 | 0 | 16 | 16 | 100,0 % | 57,9 % | 0,0 % |
+| Sluttest (49 kandidater) | Isolation Forest | 17 | 0 | 14 | 18 | 100,0 % | 48,6 % | 0,0 % |
+| Sluttest (49 kandidater) | Regler | 19 | 0 | 14 | 16 | 100,0 % | 54,3 % | 0,0 % |
+
+**Testgrundlag:** Sluttestens 49 korrelerede forbindelseskandidater er **35 mærket simuleret mistænkelige og 14 mærket normale**, ikke 49 uafhængige angreb. Valideringens 54 er 38 mistænkelige og 16 normale. Tidlige observationer i samme scenario kan være under begge metoders tærskel, og samme scenarios hændelser deler kilde og rullende tidsvindue. Precision=100 % og FP-rate=0 % gælder kun de konstruerede sæt med hhv. 16/14 normale kandidater; ingen virkelighedsbaseret rate kan udledes.
+
+**Faglig konklusion:** De fastsatte regler klarede sig **bedre end Isolation Forest** på begge splits i dette konkrete, konstruerede laboratorium (validerings-recall 57,9 vs. 39,5 %; sluttest-recall 54,3 vs. 48,6 %). Modellen er teknisk trænet, versionsbestemt og evalueret, men **ikke tilstrækkeligt god til at blive fremstillet som bedre end de nuværende regler**. Vi må ikke optimere mod sluttestens labels; i stedet skal vi diagnosticere på de allerede gemte scenarie-opdelinger og kun evt. justere features eller model ud fra trænings- og valideringsdata før en helt ny låst sluttest.
+
+**Private labfiler** blev gemt under `~/yggdrasil-preauth-ml-private/preauth-if-*/` på Pi. Ingen modelbyte, journalposter, kilde-IP'er eller private identiteter er lagt i GitHub. Dette afsnit indeholder kun de af brugeren bekræftede aggregerede evalueringstal.
