@@ -37,12 +37,15 @@ def test_history_audit_aggregates_trusted_authentication_only(tool, synthetic_jo
     assert result["ssh_auth_events"] == 312
     assert result["ssh_auth_events"] == result["ssh_success"] + result["ssh_failure"]
     assert result["unique_feature_vectors"] > 4
-    assert 1 <= result["unique_behavioral_feature_vectors_without_time"] <= result[
-        "unique_feature_vectors"
-    ]
-    assert result["ignored_records"] + result["malformed_records"] == result[
-        "ignored_or_malformed_records"
-    ]
+    assert (
+        1
+        <= result["unique_behavioral_feature_vectors_without_time"]
+        <= result["unique_feature_vectors"]
+    )
+    assert (
+        result["ignored_records"] + result["malformed_records"]
+        == result["ignored_or_malformed_records"]
+    )
     assert result["distinct_sources_count_only"] >= 1
     assert len(result["daily_ssh_auth_counts_utc"]) >= 1
     assert not result["sufficiently_vetted_training_data"]
