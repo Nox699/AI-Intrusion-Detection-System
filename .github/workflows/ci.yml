@@ -50,13 +50,13 @@ jobs:
       - name: Validate Sprint 4 isolated ML tooling
         run: |
           bash -n deploy/sprint4_run_synthetic_lab.sh deploy/sprint4_ml_demo_dashboard.sh
-          python -m py_compile deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py
+          python -m py_compile deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py
 
       - name: Lint
-        run: python -m ruff check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py
+        run: python -m ruff check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py
 
       - name: Check formatting
-        run: python -m ruff format --check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py
+        run: python -m ruff format --check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py
 
       - name: Run tests
         run: python -m pytest --junitxml=test-results/pytest.xml
