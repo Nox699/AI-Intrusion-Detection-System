@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Any, Iterable
 
 from sprint5_sudo_trusted_exe_audit import read_journal
+
 from yggdrasil_ids.sudo_rules import KINDS, SudoRuleDetector, parse_sudo
 
 MAX_PREVIEW_ROWS = 10_000
