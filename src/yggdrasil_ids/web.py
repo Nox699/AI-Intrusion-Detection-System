@@ -445,6 +445,16 @@ def create_app(config: AppConfig | None = None) -> Flask:
             network_error=raw.get("network_analysis_error"),
         )
 
+    @app.get("/api/network-charts")
+    def api_network_charts() -> Any:
+        period = hours()
+        read_status()
+        return jsonify(
+            data=call("firewall_charts", hours=period),
+            hours=period,
+            server_time=time.time(),
+        )
+
     @app.get("/preauth")
     def preauth() -> Any:
         period = hours()
