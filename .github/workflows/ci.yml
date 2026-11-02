@@ -49,7 +49,7 @@ jobs:
 
       - name: Validate Sprint 4 isolated ML tooling
         run: |
-          bash -n deploy/sprint4_run_synthetic_lab.sh
+          bash -n deploy/sprint4_run_synthetic_lab.sh deploy/sprint4_ml_demo_dashboard.sh
           python -m py_compile deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py
 
       - name: Lint
