@@ -17,6 +17,7 @@ from typing import Any
 
 from sprint4_preauth_ml_lab import _load
 from sprint4_preauth_signal_audit import classify
+
 from yggdrasil_ids.preauth_ml import (
     PreauthIsolationForest,
     connections_from_records,
