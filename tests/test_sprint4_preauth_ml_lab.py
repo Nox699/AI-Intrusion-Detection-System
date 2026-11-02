@@ -90,7 +90,8 @@ def test_correlates_dual_line_invalid_user_into_one_connection(lab):
     assert conn[0].cursor == "first"
     assert conn[0].invalid_user and conn[0].disconnected
     assert feature_rows(conn)[0][:5] == [1.0, 1.0, 1.0, 1.0, 1.0]
-    assert all("source_ip" not in name and "username" not in name for name in FEATURE_NAMES)
+    assert "source_ip" not in FEATURE_NAMES and "username" not in FEATURE_NAMES
+    assert "unique_usernames_300s" in FEATURE_NAMES  # aggregate count, not an identity
 
 
 def test_model_schemas_are_independent_and_model_fingerprint_verified(synthetic, lab):
