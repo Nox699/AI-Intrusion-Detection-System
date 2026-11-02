@@ -40,6 +40,7 @@ Træningskvalitet skal derfor diskuteres via repræsentativitet, feature-variati
 - deploy/sprint4_ml_readiness.py – aggregeret read-only audit af produktions-SSH, uden secrets.
 - deploy/sprint4_verify_lab.py – verificerer datasplits, filhashes og forudsigelser mod confusion-matricer.
 - deploy/sprint4_run_synthetic_lab.sh – opretter privat nyt lab med installeret CLI, træner og validerer syntetisk model uden at stoppe services.
+- deploy/sprint4_ml_demo_dashboard.sh – valgfrit, separat syntetisk dashboard med trænet model på 127.0.0.1:8766 til screenshot. Ændrer ikke live model eller systemd.
 - tests/test_sprint4_ml_evaluation.py – regressionstest for metrics, datalækage mellem splits, hash-tampering, autorisation og ingen databasewrites.
 - docs/SPRINT_4_PI_RUNBOOK.md – præcise kommandoer til Pi, når ejeren er klar.
 
