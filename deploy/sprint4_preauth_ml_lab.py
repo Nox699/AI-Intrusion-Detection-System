@@ -34,8 +34,18 @@ SEED = 42
 ANCHOR = 1_793_500_000
 NORMAL_NAMES = ("labuser", "backup", "operator")
 SUSPICIOUS_NAMES = (
-    "admin", "guest", "root", "oracle", "postgres", "support",
-    "deploy", "test", "ubuntu", "git", "monitor", "service",
+    "admin",
+    "guest",
+    "root",
+    "oracle",
+    "postgres",
+    "support",
+    "deploy",
+    "test",
+    "ubuntu",
+    "git",
+    "monitor",
+    "service",
 )
 DISCLAIMER = (
     "Synthetic event-level preauth simulation only; the small real Pi journal "
@@ -93,8 +103,7 @@ def generate(directory: Path, seed: int = SEED, anchor: int = ANCHOR) -> dict[st
             messages = (
                 [
                     f"Invalid user {username} from {source} port {port}",
-                    f"Connection closed by invalid user {username} "
-                    f"{source} port {port} [preauth]",
+                    f"Connection closed by invalid user {username} {source} port {port} [preauth]",
                 ]
                 if invalid
                 else [
@@ -136,20 +145,43 @@ def generate(directory: Path, seed: int = SEED, anchor: int = ANCHOR) -> dict[st
 
     def heldout(prefix: str, beginning: int, extra: int) -> None:
         specs = [
-            ("short_legitimate", "normal", NORMAL_SOURCES[0],
-             [(NORMAL_NAMES[0], False)] * (3 + extra)),
-            ("legitimate_typo", "normal", NORMAL_SOURCES[1],
-             [("typo", True)] + [(NORMAL_NAMES[1], False)] * 2),
-            ("routine_maintenance", "normal", NORMAL_SOURCES[2],
-             [(NORMAL_NAMES[2], False)] * (6 + extra)),
-            ("new_legitimate_source", "normal", "203.0.113.77",
-             [(NORMAL_NAMES[0], False)] * 2),
-            ("invalid_user_spray", "simulated_suspicious", SUSPICIOUS_SOURCE,
-             [(SUSPICIOUS_NAMES[i], True) for i in range(9 + extra)]),
-            ("invalid_user_burst", "simulated_suspicious", SUSPICIOUS_SOURCE,
-             [("guest", True)] * (12 + extra)),
-            ("preauth_disconnect_surge", "simulated_suspicious", SUSPICIOUS_SOURCE,
-             [(NORMAL_NAMES[0], False)] * (14 + extra)),
+            (
+                "short_legitimate",
+                "normal",
+                NORMAL_SOURCES[0],
+                [(NORMAL_NAMES[0], False)] * (3 + extra),
+            ),
+            (
+                "legitimate_typo",
+                "normal",
+                NORMAL_SOURCES[1],
+                [("typo", True)] + [(NORMAL_NAMES[1], False)] * 2,
+            ),
+            (
+                "routine_maintenance",
+                "normal",
+                NORMAL_SOURCES[2],
+                [(NORMAL_NAMES[2], False)] * (6 + extra),
+            ),
+            ("new_legitimate_source", "normal", "203.0.113.77", [(NORMAL_NAMES[0], False)] * 2),
+            (
+                "invalid_user_spray",
+                "simulated_suspicious",
+                SUSPICIOUS_SOURCE,
+                [(SUSPICIOUS_NAMES[i], True) for i in range(9 + extra)],
+            ),
+            (
+                "invalid_user_burst",
+                "simulated_suspicious",
+                SUSPICIOUS_SOURCE,
+                [("guest", True)] * (12 + extra),
+            ),
+            (
+                "preauth_disconnect_surge",
+                "simulated_suspicious",
+                SUSPICIOUS_SOURCE,
+                [(NORMAL_NAMES[0], False)] * (14 + extra),
+            ),
         ]
         for position, (name, expected, source, actions) in enumerate(specs):
             scenario(prefix, name, expected, beginning + position * 900, source, actions)
@@ -171,8 +203,7 @@ def generate(directory: Path, seed: int = SEED, anchor: int = ANCHOR) -> dict[st
         "schema": 1,
         "kind": "synthetic_preauth_manifest",
         "files": {
-            name: hashlib.sha256((directory / name).read_bytes()).hexdigest()
-            for name in FAMILIES
+            name: hashlib.sha256((directory / name).read_bytes()).hexdigest() for name in FAMILIES
         },
         "record_counts": {split: len(records[split]) for split in SPLITS},
         "warning": DISCLAIMER,
@@ -194,9 +225,9 @@ def _load(directory: Path) -> tuple[dict[str, list[dict]], dict]:
         if hashlib.sha256(path.read_bytes()).hexdigest() != sha:
             raise ValueError("Synthetic preauth lab input hash mismatch")
     labels = json.loads((directory / "labels.json").read_text(encoding="utf-8"))
-    if labels.get("kind") != "synthetic_preauth_lab" or set(
-        labels.get("split_labels", {})
-    ) != set(SPLITS):
+    if labels.get("kind") != "synthetic_preauth_lab" or set(labels.get("split_labels", {})) != set(
+        SPLITS
+    ):
         raise ValueError("Unrecognized synthetic label sidecar")
     result = {}
     global_cursors: set[str] = set()
@@ -232,7 +263,10 @@ def _metrics(expected: list[bool], predicted: list[bool]) -> dict[str, Any]:
     tn = sum(not a and not p for a, p in zip(expected, predicted, strict=True))
     fn = sum(a and not p for a, p in zip(expected, predicted, strict=True))
     return {
-        "tp": tp, "fp": fp, "tn": tn, "fn": fn,
+        "tp": tp,
+        "fp": fp,
+        "tn": tn,
+        "fn": fn,
         "precision": tp / (tp + fp) if tp + fp else None,
         "recall": tp / (tp + fn) if tp + fn else None,
         "false_positive_rate": fp / (fp + tn) if fp + tn else None,
@@ -309,10 +343,10 @@ def evaluate(directory: Path) -> dict[str, Any]:
             "training_data_source": "synthetic_benign_only",
             "trained_on_any_real_pi_data": False,
         },
-        "manifest_sha256": hashlib.sha256(
-            (directory / "manifest.json").read_bytes()
-        ).hexdigest(),
-        "validation": _score_split(inputs["validation"], labels["split_labels"]["validation"], loaded),
+        "manifest_sha256": hashlib.sha256((directory / "manifest.json").read_bytes()).hexdigest(),
+        "validation": _score_split(
+            inputs["validation"], labels["split_labels"]["validation"], loaded
+        ),
         "test": _score_split(inputs["test"], labels["split_labels"]["test"], loaded),
         "limits": [
             DISCLAIMER,

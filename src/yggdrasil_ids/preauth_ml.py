@@ -80,10 +80,7 @@ def connections_from_records(
         previous_conn = found.get(key)
         is_invalid = signal.category.startswith("invalid_user")
         is_disconnect = "disconnect" in signal.category
-        if (
-            previous_conn is None
-            or timestamp - previous_conn.timestamp > CONNECTION_GAP
-        ):
+        if previous_conn is None or timestamp - previous_conn.timestamp > CONNECTION_GAP:
             current = PreauthConnection(
                 cursor=cursor,
                 timestamp=timestamp,
@@ -185,8 +182,11 @@ class PreauthIsolationForest:
             raise ValueError("Preauth normal training has too little behavioral variation")
         self._rows = matrix
         self.model = IsolationForest(
-            contamination=0.03, n_estimators=128, random_state=42,
-            max_samples=min(256, len(matrix)), n_jobs=1,
+            contamination=0.03,
+            n_estimators=128,
+            random_state=42,
+            max_samples=min(256, len(matrix)),
+            n_jobs=1,
         )
         self.model.fit(matrix)
         self.threshold = float(-self.model.offset_)
@@ -249,6 +249,7 @@ class PreauthIsolationForest:
             encoded = handle.read(MAX_MODEL_BYTES + 1)
         if len(encoded) > MAX_MODEL_BYTES:
             raise ValueError("Preauth model file too large")
+
         def reject_duplicates(items: list[tuple[str, Any]]) -> dict[str, Any]:
             result: dict[str, Any] = {}
             for key, value in items:
@@ -256,11 +257,19 @@ class PreauthIsolationForest:
                     raise ValueError("Repeated preauth model field")
                 result[key] = value
             return result
+
         data = json.loads(encoded, object_pairs_hook=reject_duplicates)
         if not isinstance(data, dict) or set(data) != {
-            "format", "features", "window_seconds", "sklearn_version",
-            "normal_only", "provenance", "trained_at", "training_rows",
-            "threshold", "sha256",
+            "format",
+            "features",
+            "window_seconds",
+            "sklearn_version",
+            "normal_only",
+            "provenance",
+            "trained_at",
+            "training_rows",
+            "threshold",
+            "sha256",
         }:
             raise ValueError("Unrecognized preauth model artifact structure")
         if (
