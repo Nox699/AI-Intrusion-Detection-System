@@ -103,16 +103,16 @@ def journal_stream(since: str) -> Iterable[dict[str, Any]]:
         "_UID=0",
         *PRODUCERS,
     ]
-    with subprocess.Popen(
+    process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
         text=True,
         encoding="utf-8",
         errors="replace",
-    ) as process:
+    )
+    try:
         assert process.stdout is not None
-        assert process.stderr is not None
         for line in process.stdout:
             try:
                 item = json.loads(line)
@@ -123,6 +123,16 @@ def journal_stream(since: str) -> Iterable[dict[str, Any]]:
         status = process.wait()
         if status:
             raise RuntimeError("Journal read failed (no raw logs disclosed)")
+    finally:
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+        if process.stdout is not None:
+            process.stdout.close()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -137,7 +147,11 @@ def main(argv: list[str] | None = None) -> int:
         # Reject shell control characters even though subprocess uses no shell.
         if not 10 <= len(args.since) <= 32 or any(ord(c) < 32 for c in args.since):
             raise ValueError("Invalid start date")
-        output = summarize(journal_stream(args.since))
+        records = journal_stream(args.since)
+        try:
+            output = summarize(records)
+        finally:
+            records.close()
     except (OSError, RuntimeError, ValueError, TypeError) as error:
         print(f"Historical journal audit failed: {type(error).__name__}", file=sys.stderr)
         return 1
