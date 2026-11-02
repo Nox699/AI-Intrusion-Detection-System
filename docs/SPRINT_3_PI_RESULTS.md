@@ -459,3 +459,18 @@ Collector, web og notifier aktive efter genstart; UFW stadig `low`.
 Faktisk browser-rendering af grafer og screenshot S3-J **afventer**.
 Observation af normale perioder og falske positiver er ikke afsluttet.
 Installationsscriptet skal **ikke** genkøres efter vellykket installation.
+
+## Afgrænset observation efter grafopdatering (2. november 2026)
+
+Ejeren kørte en **read-only** SQLite-optælling fra
+**2. november kl. 01:15 CET** til tidspunktet for forespørgslen.
+Resultat: **139 lagrede `firewall_events`**, men **0 nye
+`network.tcp_port_scan`-alarmer** målt på `first_seen` i samme periode.
+
+Resultatet bekræfter aktivitet i loghistorikken uden nye
+scanalarmer i dette udsnit. Der er endnu **ikke** givet en
+uafhængig klassifikation af alle 139 poster som normaltrafik;
+målingen dokumenterer derfor **ikke** nul falske positiver eller
+en bestemt falsk-positiv-rate. En eventuel anden scanner i perioden
+er ikke udelukket på grundlag af de aggregerede tal alene.
+Dashboardets faktiske browser-rendering og screenshot S3-J afventer.
