@@ -31,7 +31,19 @@ PY
 
 demo="$(mktemp -d -p "$HOME" yggdrasil-ml-demo-XXXXXXXX)"
 echo "=== Opretter separat syntetisk model og database ==="
-"$cli" demo --directory "$demo" || stop "Kunne ikke oprette isoleret demo."
+demo_result="$("$cli" demo --directory "$demo")" || stop "Kunne ikke oprette isoleret demo."
+# The standard demo CLI prints a default port 8765 URL before our explicit
+# port override. Suppress that misleading URL to avoid opening production.
+printf '%s\n' "$demo_result" | "$py" -c '
+import json
+import sys
+
+result = json.load(sys.stdin)
+assert result["mode"] == "demo"
+assert result["evaluation"]["events"] > 0
+print("PASS: Separate synthetic lab database and model generated.")
+print("SYNTHETIC_TEST_EVENTS=" + str(result["evaluation"]["events"]))
+' || stop "Demoens metadata kunne ikke verificeres."
 cat >> "$demo/config.toml" <<'TOML'
 
 [web]
@@ -62,7 +74,7 @@ PY
 
 echo "=== Kun SYNTHETISK demo; intet produktions-IDS er ændret ==="
 echo "DEMO_DIR=$demo"
-echo "DEMO_URL=http://127.0.0.1:8766"
+echo "DEMO_URL=http://127.0.0.1:8766/model"
 echo "DEMO_LOGIN=demo-yggdrasil (offentligt kendt LAB-adgangskode)"
 echo "Opret SSH-tunnel fra laptop: ssh -N -L 8766:127.0.0.1:8766 homelab"
 echo "Tryk Ctrl+C i denne Pi-terminal for at stoppe demo-webserveren."
