@@ -72,4 +72,12 @@ Laboratorie-verifikatoren kontrollerede separate splits, SHA-256 på datasæt og
 **ML-C:** Valgfri ML-demo på 127.0.0.1:8766 gennem SSH-tunnel, med *trained/ready* i et særskilt LAB-dashboard og screenshot privat.
 **ML-D:** CI/pytest/ruff-dokumentation samt Git-commit for koden.
 
-**Demostart bekræftet på Pi:** Det isolerede script fra commit `470052c465b65ace1188d78f64b0b474438c104d` gennemførte syntetisk model-/databaseoprettelse med `model.state=ready` og **41 scorede SSH-hændelser**. Gunicorn startede og loggede **`Listening at: http://127.0.0.1:8766`**. Pi's live-IDS på port 8765 var ikke ændret. **Visuel browseraccept af demo på port 8766 afventer**. Brugeren sendte to screenshots fra produktionsdashboardet, der korrekt fortsat viste `Model ikke trænet`; de må ikke beskrives som screenshots af den trænede labmodel. Billederne er ikke uploadet til GitHub.
+**Demostart bekræftet på Pi:** Det isolerede script fra commit `470052c465b65ace1188d78f64b0b474438c104d` gennemførte syntetisk model-/databaseoprettelse med `model.state=ready` og **41 scorede SSH-hændelser**. Gunicorn startede og loggede **`Listening at: http://127.0.0.1:8766`**. Pi's live-IDS på port 8765 var ikke ændret. **Visuel browseraccept af demoen på port 8766 er nu bestået** (screenshot af ML-status modtaget i samtalen). Brugeren sendte to screenshots fra produktionsdashboardet, der korrekt fortsat viste `Model ikke trænet`; de må ikke beskrives som screenshots af den trænede labmodel. Billederne er ikke uploadet til GitHub.
+
+## Syntetisk ML-demo – browseraccept med screenshot
+
+Brugeren loggede ind på den separate syntetiske demo på `127.0.0.1:8766/model` og sendte screenshot, der viser **`Model indlæst`** i grønt, 312 træningsobservationer, alarmgrænse **0,615**, scikit-learn **1.8.0**, træningstidspunkt **02.11.2026 kl. 03:44:45** og en tydelig provenance: *syntetiske normale SSH-labforløb fra train.jsonl; ingen validerings- eller testobservationer i træningen*.
+
+**Demo-modelversion:** `ssh-if-bc574f0291c96358`. Det er en **ny og særskilt syntetisk demo-træning** og skal ikke forveksles med den verificerede, isolerede evalueringsmodels version `ssh-if-16ae0fc3a05948df` fra Pi's hold-out-forsøg. Der er derfor **to forskellige syntetiske modelartefakter**, hvilket er forventet.
+
+**Bilag ML-C1:** screenshot af modelgrundlaget er modtaget i samtalen, **ikke uploadet til GitHub** og ikke automatisk indsat i eksamensrapporten. Ejer gemmer eventuelt originalen lokalt. **Bilag ML-C2:** screenshot af scorede modelvurderinger (41 testhændelser i demo) afventer stadig, helst med score og udfald. Slør private detaljer før offentlig rapportdeling. Produktionsmodellen på port 8765 er fortsat `untrained`.
