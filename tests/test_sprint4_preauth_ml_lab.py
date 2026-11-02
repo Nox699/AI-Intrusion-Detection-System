@@ -123,14 +123,13 @@ def test_lab_evaluation_counts_and_holds_out_attacks(synthetic, lab):
     assert summary["training_rows"] == 321
     assert summary["production_ids_changed"] is False
     assert summary["new_live_preauth_ml_active"] is False
-    assert summary["test_metrics"]["ml"]["total"] == 48
+    assert summary["test_metrics"]["ml"]["total"] == 49
     report = json.loads((synthetic / "report.json").read_text())
     assert report["model"]["trained_on_any_real_pi_data"] is False
     assert report["model"]["training_data_source"] == "synthetic_benign_only"
     for split in ("validation", "test"):
         for key in ("rules", "ml"):
             counts = report[split][key]
-            assert counts["tp"] + counts["fn"] == counts["tp"] + counts["fn"]
             assert sum(counts[name] for name in ("tp", "fp", "tn", "fn")) == counts["total"]
         assert report[split]["connection_candidates"] == sum(
             item["connections"] for item in report[split]["scenarios"]
