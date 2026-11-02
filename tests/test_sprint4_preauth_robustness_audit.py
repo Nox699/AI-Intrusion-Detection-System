@@ -35,10 +35,7 @@ def test_stress_records_are_fixed_and_have_independent_labels(modules):
         "192.0.2." in record["MESSAGE"] and "test@example.com" not in record["MESSAGE"]
         for record in records
     )
-    assert all(
-        "expected" not in record and "scenario" not in record
-        for record in records
-    )
+    assert all("expected" not in record and "scenario" not in record for record in records)
     assert {value[1] for value in labels.values()} == set(audit.HOURS_UTC)
     assert len(audit.cases()) == 11
     assert sum(len(case.steps) for case in audit.cases()) == 112
@@ -83,9 +80,12 @@ def test_model_and_original_lab_files_unchanged(tmp_path, modules):
             counts = metric[method]
             assert counts["tp"] + counts["fn"] == 69
             assert counts["tn"] + counts["fp"] == 43
-        assert result["opposite_label_identical_features"][
-            "feature_vectors_identical_at_each_utc_hour"
-        ][str(hour)] is True
+        assert (
+            result["opposite_label_identical_features"][
+                "feature_vectors_identical_at_each_utc_hour"
+            ][str(hour)]
+            is True
+        )
 
     by_name = {case["scenario"]: case for case in result["cases"]}
     benign = by_name["benign_connection_retry_storm"]
