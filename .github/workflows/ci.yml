@@ -61,6 +61,9 @@ jobs:
       - name: Validate read-only SSH preauth audit tool
         run: python -m py_compile deploy/sprint4_preauth_signal_audit.py deploy/sprint4_preauth_ml_lab.py
 
+      - name: Validate isolated preauth lab shell runner syntax
+        run: bash -n deploy/sprint4_run_preauth_ml_lab.sh
+
       - name: Lint
         run: python -m ruff check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py deploy/sprint5_sudo_journal_audit.py deploy/sprint4_real_ml_export.py deploy/sprint4_hybrid_ml_preview.py deploy/sprint4_preauth_signal_audit.py deploy/sprint4_preauth_ml_lab.py
 
