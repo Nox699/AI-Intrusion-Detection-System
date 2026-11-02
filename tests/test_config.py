@@ -159,3 +159,12 @@ def test_network_logging_is_opt_in_and_configured_separately(tmp_path):
 def test_invalid_network_config_is_rejected(tmp_path, text):
     with pytest.raises(ValueError):
         load_config(config_file(tmp_path, text))
+
+
+def test_ml_shadow_mode_is_explicit_and_type_checked(tmp_path):
+    assert load_config(config_file(tmp_path)).ml.alert_mode == "alert"
+    shadow = load_config(config_file(tmp_path, '[ml]\nalert_mode="shadow"\n'))
+    assert shadow.ml.alert_mode == "shadow"
+    for value in ['"unknown"', "false", '["shadow"]']:
+        with pytest.raises(ValueError):
+            load_config(config_file(tmp_path, f"[ml]\nalert_mode={value}\n"))

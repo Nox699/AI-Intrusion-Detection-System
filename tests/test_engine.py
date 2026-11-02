@@ -6,7 +6,7 @@ from dataclasses import replace
 
 import pytest
 
-from yggdrasil_ids.config import AppConfig, CollectorConfig, RulesConfig
+from yggdrasil_ids.config import AppConfig, CollectorConfig, MLConfig, RulesConfig
 from yggdrasil_ids.engine import AnalysisEngine
 from yggdrasil_ids.ml import IsolationForestDetector
 from yggdrasil_ids.storage import Repository
@@ -274,3 +274,63 @@ def test_replaying_same_file_again_only_increments_duplicates(config, tmp_path):
     assert second["events"] == first["events"] == 2
     assert second["duplicates"] == 2
     assert table_count(engine.repository, "findings") == 1
+
+
+def test_ml_shadow_scores_real_collector_events_without_ml_alerts(config):
+    """Experimental IF can score live SSH without creating ML findings or Discord outbox."""
+    cfg = replace(
+        config,
+        ml=MLConfig(alert_mode="shadow"),
+        rules=RulesConfig(failure_threshold=2),
+    )
+    engine = AnalysisEngine(cfg, "test")
+
+    class ExperimentalModel:
+        def score(self, vector):
+            return {
+                "score": 0.8,
+                "threshold": 0.6,
+                "is_anomaly": True,
+                "model_version": "test-experimental",
+            }
+
+    engine.model = ExperimentalModel()
+    first = record(
+        1,
+        message="Accepted publickey for labuser from 192.0.2.10 port 54321 ssh2",
+    )
+    assert engine.process(first)["findings"] == 0
+    with engine.repository.reader() as db:
+        observation = db.execute(
+            "SELECT state,is_anomaly,score,threshold FROM observations"
+        ).fetchone()
+    assert observation["state"] == "scored"
+    assert observation["is_anomaly"] == 1
+    assert observation["score"] == 0.8
+    assert observation["threshold"] == 0.6
+    assert table_count(engine.repository, "findings") == 0
+    assert table_count(engine.repository, "discord_outbox") == 0
+
+    # Pre-existing rule detections still work when the experimental model is shadowed.
+    assert engine.process(record(2))["findings"] == 0
+    assert engine.process(record(3))["findings"] == 1
+    assert engine.repository.list_alerts()["items"][0]["detector_id"] == "ssh.failed_burst"
+    assert table_count(engine.repository, "findings") == 1
+
+
+def test_default_ml_alert_mode_remains_active(config):
+    cfg = replace(config, ml=MLConfig(alert_mode="alert"), rules=RulesConfig(failure_threshold=100))
+    engine = AnalysisEngine(cfg, "test")
+
+    class ExperimentalModel:
+        def score(self, vector):
+            return {
+                "score": 0.8,
+                "threshold": 0.6,
+                "is_anomaly": True,
+                "model_version": "test-active",
+            }
+
+    engine.model = ExperimentalModel()
+    assert engine.process(record(1))["findings"] == 1
+    assert engine.repository.list_alerts()["items"][0]["detector_id"] == "ssh.isolation_forest"

@@ -28,6 +28,7 @@ class MLConfig:
     contamination: float = 0.03
     n_estimators: int = 128
     random_state: int = 42
+    alert_mode: str = "alert"  # shadow = score/store only; no ML findings or Discord
 
 
 @dataclass(frozen=True)
@@ -145,6 +146,12 @@ def load_config(path: Path | str | None = None) -> AppConfig:
     if type(contamination) not in {int, float} or not 0 < contamination <= 0.5:
         raise ValueError("ml.contamination skal være større end 0 og højst 0.5")
     ml["contamination"] = float(contamination)
+    if type(ml.get("alert_mode", "alert")) is not str or ml.get("alert_mode", "alert") not in {
+        "alert",
+        "shadow",
+    }:
+        raise ValueError("ml.alert_mode skal være 'alert' eller 'shadow'")
+    ml["alert_mode"] = ml.get("alert_mode", "alert")
     for key, default, low, high in [
         ("initial_history_hours", 24, 1, 168),
         ("heartbeat_seconds", 5, 1, 30),
