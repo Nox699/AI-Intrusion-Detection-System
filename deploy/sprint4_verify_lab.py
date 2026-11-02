@@ -67,8 +67,9 @@ def check_metrics(actual: dict, records: list[dict], method: str) -> dict:
         if value is None and candidate is not None:
             raise ValueError("Undefined metric must remain null")
         if value is not None and (
-            type(candidate) not in (int, float) or
-            not math.isfinite(candidate) or not math.isclose(candidate, value, abs_tol=1e-10)
+            type(candidate) not in (int, float)
+            or not math.isfinite(candidate)
+            or not math.isclose(candidate, value, abs_tol=1e-10)
         ):
             raise ValueError("Reported evaluation metric does not match confusion matrix")
     return {**counts, **expected, "total": len(records)}
@@ -155,7 +156,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         summary = verify(args.directory)
     except (OSError, ValueError, KeyError, TypeError, IndexError) as exc:
-        print(f"Lab verification failed ({type(exc).__name__}); no files modified.", file=sys.stderr)
+        print(
+            f"Lab verification failed ({type(exc).__name__}); no files modified.", file=sys.stderr
+        )
         return 1
     print(json.dumps(summary, indent=2, sort_keys=True, ensure_ascii=False))
     return 0
