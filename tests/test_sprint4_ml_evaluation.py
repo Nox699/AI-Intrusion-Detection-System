@@ -96,6 +96,28 @@ def test_synthetic_verifier_rejects_overlap_across_splits(tmp_path, lab):
         verifier.verify(folder)
 
 
+def test_synthetic_verifier_rejects_labels_changed_only_in_report(tmp_path, lab):
+    verifier = load_script("sprint4_verify_lab")
+    shutil.copytree(lab, tmp_path / "lab")
+    folder = tmp_path / "lab"
+    report = json.loads((folder / "report.json").read_text())
+    report["test"]["observations"][0]["expected_positive"] = True
+    (folder / "report.json").write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="label differs"):
+        verifier.verify(folder)
+
+
+def test_synthetic_verifier_rejects_score_prediction_disagreement(tmp_path, lab):
+    verifier = load_script("sprint4_verify_lab")
+    shutil.copytree(lab, tmp_path / "lab")
+    folder = tmp_path / "lab"
+    report = json.loads((folder / "report.json").read_text())
+    report["test"]["observations"][0]["score"] = 1.0
+    (folder / "report.json").write_text(json.dumps(report))
+    with pytest.raises(ValueError, match="anomaly score"):
+        verifier.verify(folder)
+
+
 def test_readonly_readiness_audit_redacts_identities_and_never_writes(tmp_path):
     audit = load_script("sprint4_ml_readiness")
     db_path = tmp_path / "events.sqlite3"
