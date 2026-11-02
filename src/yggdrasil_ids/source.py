@@ -16,7 +16,7 @@ from pathlib import Path
 from .config import AppConfig
 from .engine import AnalysisEngine
 
-FIELDS = "MESSAGE,_COMM,_UID,_PID,_HOSTNAME,_SYSTEMD_UNIT,SYSLOG_IDENTIFIER,__CURSOR,__REALTIME_TIMESTAMP,_BOOT_ID"
+FIELDS = "MESSAGE,_COMM,_UID,_PID,_HOSTNAME,_SYSTEMD_UNIT,SYSLOG_IDENTIFIER,__CURSOR,__REALTIME_TIMESTAMP,_BOOT_ID,_TRANSPORT"
 log = logging.getLogger(__name__)
 
 
@@ -106,7 +106,11 @@ class JournalCollector:
             cmd.append(f"--since=@{since:.6f}")
         else:
             cmd.append(f"--since=-{self.config.collector.initial_history_hours}h")
-        return cmd + ["_COMM=sshd", "_COMM=sshd-session", "_COMM=sshd-auth", "_UID=0"]
+        matches = ["_COMM=sshd", "_COMM=sshd-session", "_COMM=sshd-auth", "_UID=0"]
+        if self.config.network.enabled:
+            # The "+" separates OR groups. The SSH group retains its UID guard.
+            matches.extend(["+", "_TRANSPORT=kernel"])
+        return cmd + matches
 
     def _cursor_exists(self, cursor: str) -> bool:
         # +1 requests the FIRST item at the cursor, not the latest journal item.
@@ -207,7 +211,12 @@ class JournalCollector:
                         raise RuntimeError(
                             "Databasens lagerbudget er overskredet; kontrollér retention og diskforbrug"
                         )
-                    self.engine.heartbeat("running", "Læser SSH-hændelser fra systemjournalen")
+                    self.engine.heartbeat(
+                        "running",
+                        "Læser SSH og UFW fra systemjournalen"
+                        if self.config.network.enabled
+                        else "Læser SSH-hændelser fra systemjournalen",
+                    )
                     last_heartbeat = clock
                 if clock - last_prune >= 3600:
                     self.engine.repository.prune(time.time() - self.config.retention_days * 86400)

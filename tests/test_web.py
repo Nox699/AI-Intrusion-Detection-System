@@ -200,7 +200,9 @@ def login(client):
     return response
 
 
-@pytest.mark.parametrize("path", ["/", "/events", "/alerts", "/alerts/1", "/model", "/status"])
+@pytest.mark.parametrize(
+    "path", ["/", "/events", "/network", "/alerts", "/alerts/1", "/model", "/status"]
+)
 def test_sensitive_pages_require_login(client, path):
     response = client.get(path)
     assert response.status_code == 302
@@ -326,7 +328,9 @@ def test_secure_headers_and_cookie_flags(client):
     assert "'unsafe-eval'" not in response.headers["Content-Security-Policy"]
 
 
-@pytest.mark.parametrize("path", ["/", "/events", "/alerts", "/alerts/1", "/model", "/status"])
+@pytest.mark.parametrize(
+    "path", ["/", "/events", "/network", "/alerts", "/alerts/1", "/model", "/status"]
+)
 def test_all_readonly_pages_render_real_repository_data(client, path):
     login(client)
     response = client.get(path)
@@ -602,3 +606,103 @@ def test_activity_chart_connects_positive_markers_without_inventing_samples():
     assert ".legend-dot.success{background:#68d8b6}" in style
     assert ".legend-dot.failure{background:#ef6b6b}" in style
     assert ".legend-dot.preauth{background:#e8ad70}" in style
+
+
+def test_network_charts_are_authenticated_local_and_bounded(configured, client):
+    assert client.get("/api/network-charts").status_code == 401
+    login(client)
+    html = client.get("/network").get_data(as_text=True)
+    assert "Blokerede TCP SYN over tid" in html
+    assert "Højst 10 porte" in html
+    assert "/assets/plotly.min.js" in html
+    assert "/static/network.js" in html
+    assert "cdn.plot.ly" not in html
+
+    response = client.get("/api/network-charts?hours=1")
+    assert response.status_code == 200
+    report = response.get_json()["data"]
+    assert report["total_packets"] == 0
+    assert report["top_ports"] == []
+    assert report["other_ports_packets"] == 0
+    assert report["series"] == []
+    assert "source_ip" not in json.dumps(report)
+    assert client.get("/api/network-charts?hours=0").status_code == 400
+    assert client.get("/api/network-charts?hours=721").status_code == 400
+    assert client.get("/api/network-charts?hours=1&hours=2").status_code == 400
+
+
+def test_network_charts_js_limits_visible_ports():
+    from pathlib import Path
+
+    script = (
+        Path(__file__).resolve().parents[1] / "src" / "yggdrasil_ids" / "static" / "network.js"
+    ).read_text(encoding="utf-8")
+    assert ".slice(0, 10)" in script
+    assert 'labels.push("Øvrige porte")' in script
+    assert "/api/network-charts?hours=" in script
+    assert "newPlot(ports" in script
+
+
+def test_authenticated_network_page_displays_firewall_history_and_scan_alert(configured, client):
+    from yggdrasil_ids.firewall import UFWParser
+    from yggdrasil_ids.network_rules import TCPPortScanDetector
+
+    _cfg, repo = configured
+    recorded = []
+    timestamp = time.time() - 20
+    for index in range(6):
+        record = {
+            "_TRANSPORT": "kernel",
+            "__CURSOR": f"network-web-{index}",
+            "__REALTIME_TIMESTAMP": str(int((timestamp + index) * 1_000_000)),
+            "MESSAGE": (
+                "[UFW BLOCK] IN=wlan0 OUT= SRC=192.0.2.55 DST=192.0.2.92 "
+                f"LEN=60 PROTO=TCP SPT=40000 DPT={3000 + index} SYN"
+            ),
+        }
+        parsed = UFWParser().parse(record, namespace="live")
+        assert parsed.event is not None
+        recorded.append(parsed.event)
+    with repo.transaction() as db:
+        for item in recorded:
+            assert repo.insert_firewall_event(db, item)
+        finding = TCPPortScanDetector().evaluate(recorded[-1], recorded)
+        assert finding is not None
+        incident = repo.add_network_alert(db, finding, cooldown=300)
+    login(client)
+    response = client.get("/network")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Netværkshændelser" in body
+    assert "192.0.2.55:40000" in body
+    assert "192.0.2.92:3005" in body
+    assert "6 logposter" in body
+    assert "Netværksindsamling er ikke aktiveret" in body
+    assert client.get("/network?source=192.0.2.55&protocol=TCP").status_code == 200
+    assert "192.0.2.92:3005" not in client.get("/network?source=192.0.2.55&protocol=UDP").get_data(
+        as_text=True
+    )
+    assert client.get("/network?protocol=bogus").status_code == 400
+    alerts = client.get("/alerts?detector=network.tcp_port_scan")
+    assert alerts.status_code == 200
+    assert "Mulig TCP-portscanning" in alerts.get_data(as_text=True)
+    detail = client.get(f"/alerts/{incident}")
+    assert detail.status_code == 200
+    detail_html = detail.get_data(as_text=True)
+    assert "Se registrerede firewallhændelser" in detail_html
+    assert "6 forskellige" in detail_html
+    assert "/network?source=192.0.2.55" in detail_html
+    assert repo.list_events()["total"] == 1
+
+
+def test_network_page_displays_data_quality_error_without_exposing_raw_journal(configured, client):
+    _cfg, repo = configured
+    repo.set_state(
+        "network_analysis_error",
+        {"at": time.time(), "message": "Netværkshistorikken er for stor til pålidelig analyse"},
+    )
+    login(client)
+    html = client.get("/network").get_data(as_text=True)
+    assert "Netværksanalysen kræver opmærksomhed" in html
+    assert "Netværkshistorikken er for stor" in html
+    assert "SRC=" not in html

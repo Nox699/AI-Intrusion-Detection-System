@@ -255,3 +255,52 @@ def test_stream_deep_invalid_json_does_not_prevent_next_valid_event(config, tmp_
     counts = engine.repository.get_state("counters")
     assert counts["malformed"] == 1
     assert counts["events"] == 1
+
+
+def test_network_opt_in_uses_disjoint_kernel_match_without_relaxing_ssh(config):
+    from yggdrasil_ids.config import NetworkConfig
+
+    existing = JournalCollector(config, AnalysisEngine(config)).command()
+    assert "+" not in existing
+    enabled = replace(config, network=NetworkConfig(enabled=True))
+    cmd = JournalCollector(enabled, AnalysisEngine(enabled)).command()
+    assert cmd[-6:] == [
+        "_COMM=sshd",
+        "_COMM=sshd-session",
+        "_COMM=sshd-auth",
+        "_UID=0",
+        "+",
+        "_TRANSPORT=kernel",
+    ]
+    assert "_TRANSPORT" in next(value for value in cmd if value.startswith("--output-fields="))
+
+
+def test_mixed_fake_journal_stream_keeps_ssh_and_firewall_separate(config, tmp_path):
+    from yggdrasil_ids.config import NetworkConfig
+
+    ufw = {
+        "_TRANSPORT": "kernel",
+        "__CURSOR": "kernel-1",
+        "__REALTIME_TIMESTAMP": str(int(NOW * 1_000_000)),
+        "MESSAGE": (
+            "[UFW BLOCK] IN=wlan0 OUT= SRC=192.0.2.55 DST=192.0.2.92 "
+            "LEN=60 PROTO=TCP SPT=40000 DPT=22 SYN"
+        ),
+    }
+    payload = b"\n".join(json.dumps(item).encode() for item in [record(1), ufw]) + b"\n"
+    executable = fake_journal(tmp_path, payload)
+    config = replace(
+        config,
+        network=NetworkConfig(enabled=True),
+        collector=replace(config.collector, executable=str(executable)),
+    )
+    engine = AnalysisEngine(config)
+    stop = threading.Event()
+    stop_after_records(engine, stop, 2)
+    JournalCollector(config, engine).run(stop)
+    assert engine.repository.list_events()["total"] == 1
+    with engine.repository.reader() as db:
+        assert db.execute("SELECT COUNT(*) FROM firewall_events").fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM records").fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM observations").fetchone()[0] == 1
+    assert engine.repository.get_state("cursor") == "kernel-1"

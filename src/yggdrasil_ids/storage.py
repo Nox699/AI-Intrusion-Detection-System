@@ -12,8 +12,10 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from .domain import Finding, SSHEvent
+from .firewall import FirewallEvent
+from .network_rules import NetworkFinding
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 # Previously ignored trusted journal records remain visible after migration.
 # Preauth disconnects are never authentication events, rule inputs or ML features.
@@ -43,6 +45,21 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS events_time ON events(timestamp);
 CREATE INDEX IF NOT EXISTS events_source_time ON events(source_ip,timestamp);
+-- Separate packet history: no SSH event, ML or outbox foreign keys.
+CREATE TABLE IF NOT EXISTS firewall_events (
+ event_id TEXT PRIMARY KEY, namespace TEXT NOT NULL,
+ timestamp REAL NOT NULL, cursor TEXT NOT NULL, boot_id TEXT NOT NULL,
+ host TEXT NOT NULL, action TEXT NOT NULL, direction TEXT NOT NULL,
+ in_interface TEXT NOT NULL, out_interface TEXT NOT NULL,
+ source_ip TEXT NOT NULL, destination_ip TEXT NOT NULL,
+ ip_version INTEGER NOT NULL, protocol TEXT NOT NULL,
+ protocol_number INTEGER NOT NULL, source_port INTEGER,
+ destination_port INTEGER, packet_length INTEGER, transport_length INTEGER,
+ tcp_flags TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS firewall_events_time ON firewall_events(timestamp);
+CREATE INDEX IF NOT EXISTS firewall_events_group
+ ON firewall_events(namespace,source_ip,destination_ip,in_interface,timestamp);
 CREATE TABLE IF NOT EXISTS observations (
  event_id TEXT PRIMARY KEY REFERENCES events(event_id) ON DELETE CASCADE,
  timestamp REAL NOT NULL, source_ip TEXT NOT NULL, features TEXT NOT NULL,
@@ -78,6 +95,14 @@ CREATE TABLE IF NOT EXISTS preauth_evidence (
  PRIMARY KEY (record_id,detector_id)
 );
 CREATE INDEX IF NOT EXISTS preauth_evidence_alert ON preauth_evidence(alert_id,timestamp);
+CREATE TABLE IF NOT EXISTS network_evidence (
+ event_id TEXT NOT NULL REFERENCES firewall_events(event_id) ON DELETE CASCADE,
+ alert_id INTEGER NOT NULL REFERENCES alerts(id) ON DELETE CASCADE,
+ timestamp REAL NOT NULL, detector_id TEXT NOT NULL,
+ reason TEXT NOT NULL, details TEXT NOT NULL,
+ PRIMARY KEY(event_id,detector_id)
+);
+CREATE INDEX IF NOT EXISTS network_evidence_alert ON network_evidence(alert_id,timestamp);
 -- Independent notification identities survive deletion or reuse of alert IDs.
 -- Never cascade-delete outbox rows when the alert history is pruned.
 CREATE TABLE IF NOT EXISTS discord_outbox (
@@ -151,7 +176,7 @@ class Repository:
         db = self.connect()
         try:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, 2, SCHEMA_VERSION):
+            if version not in (0, 1, 2, 3, SCHEMA_VERSION):
                 raise ValueError(
                     f"Databaseversion {version} understøttes ikke; tag backup før migration"
                 )
@@ -206,6 +231,54 @@ class Repository:
         if len(rows) > 10000:
             raise ValueError("Observationsvinduet overstiger 10000 hændelser; analyse er pauset")
         return [SSHEvent(**dict(r)) for r in rows]
+
+    @staticmethod
+    def insert_firewall_event(db: sqlite3.Connection, event: FirewallEvent) -> bool:
+        """Persist normalized packet metadata, never raw logs or MAC addresses."""
+        fields = tuple(FirewallEvent.__dataclass_fields__)
+        values = [
+            encode(event.tcp_flags) if field == "tcp_flags" else getattr(event, field)
+            for field in fields
+        ]
+        result = db.execute(
+            "INSERT OR IGNORE INTO firewall_events ("
+            + ",".join(fields)
+            + ") VALUES ("
+            + ",".join("?" for _ in fields)
+            + ")",
+            values,
+        )
+        return result.rowcount == 1
+
+    @staticmethod
+    def firewall_history(
+        db: sqlite3.Connection, event: FirewallEvent, seconds: int, limit: int = 10000
+    ) -> list[FirewallEvent]:
+        """Bounded event-time history for one source, destination and sensor."""
+        if type(limit) is not int or not 1 <= limit <= 50000:
+            raise ValueError("Ugyldig netværkshistorikgrænse")
+        rows = db.execute(
+            "SELECT * FROM firewall_events WHERE namespace=? AND host=? AND boot_id=? "
+            "AND source_ip=? AND destination_ip=? AND in_interface=? "
+            "AND timestamp>? AND timestamp<=? ORDER BY timestamp,event_id LIMIT ?",
+            (
+                event.namespace,
+                event.host,
+                event.boot_id,
+                event.source_ip,
+                event.destination_ip,
+                event.in_interface,
+                event.timestamp - seconds,
+                event.timestamp,
+                limit + 1,
+            ),
+        ).fetchall()
+        if len(rows) > limit:
+            raise ValueError("Netværkshistorikken er for stor til pålidelig analyse")
+        return [
+            FirewallEvent(**{**dict(row), "tcp_flags": tuple(json.loads(row["tcp_flags"]))})
+            for row in rows
+        ]
 
     @staticmethod
     def add_finding(db: sqlite3.Connection, finding: Finding, cooldown: int) -> int:
@@ -291,6 +364,86 @@ class Repository:
                 (source_ip, timestamp - seconds, timestamp),
             ).fetchone()[0]
         )
+
+    @staticmethod
+    def add_network_alert(db: sqlite3.Connection, finding: NetworkFinding, cooldown: int) -> int:
+        """Group by source and sensor/destination. A new alert feeds Discord once."""
+        if type(cooldown) is not int or cooldown < 0:
+            raise ValueError("Ugyldigt netværksalarm-cooldown")
+        previous = db.execute(
+            "SELECT alert_id FROM network_evidence WHERE event_id=? AND detector_id=?",
+            (finding.event_id, finding.detector_id),
+        ).fetchone()
+        if previous:
+            return int(previous["alert_id"])
+        # Never merge different destination hosts, interfaces or sensor boots.
+        row = db.execute(
+            "SELECT a.id FROM alerts a "
+            "JOIN network_evidence ne ON ne.alert_id=a.id "
+            "JOIN firewall_events fe ON fe.event_id=ne.event_id "
+            "JOIN firewall_events current ON current.event_id=? "
+            "WHERE a.detector_id=? AND a.source_ip=? "
+            "AND a.last_seen>=? AND a.last_seen<=? "
+            "AND fe.namespace=current.namespace AND fe.host=current.host "
+            "AND fe.boot_id=current.boot_id "
+            "AND fe.destination_ip=current.destination_ip "
+            "AND fe.in_interface=current.in_interface "
+            "ORDER BY a.last_seen DESC LIMIT 1",
+            (
+                finding.event_id,
+                finding.detector_id,
+                finding.source_ip,
+                finding.timestamp - cooldown,
+                finding.timestamp,
+            ),
+        ).fetchone()
+        details = {
+            "destination_ip": finding.destination_ip,
+            "in_interface": finding.in_interface,
+            "window_seconds": finding.window_seconds,
+            "threshold": finding.threshold,
+            "distinct_ports": finding.distinct_ports,
+            "recorded_packets": finding.recorded_packets,
+            "destination_ports": list(finding.destination_ports),
+            "evidence_ids": list(finding.evidence_ids),
+            "evidence_truncated": finding.evidence_truncated,
+        }
+        if row:
+            alert_id = int(row["id"])
+            db.execute(
+                "UPDATE alerts SET last_seen=?,count=count+1,reason=?,details=? WHERE id=?",
+                (finding.timestamp, finding.reason, encode(details), alert_id),
+            )
+        else:
+            result = db.execute(
+                "INSERT INTO alerts(detector_id,title,severity,reason,source_ip,"
+                "first_seen,last_seen,count,score,model_version,details) "
+                "VALUES(?,?,?,?,?,?,?,1,NULL,NULL,?)",
+                (
+                    finding.detector_id,
+                    finding.title,
+                    finding.severity,
+                    finding.reason,
+                    finding.source_ip,
+                    finding.timestamp,
+                    finding.timestamp,
+                    encode(details),
+                ),
+            )
+            alert_id = int(result.lastrowid)
+        db.execute(
+            "INSERT INTO network_evidence(event_id,alert_id,timestamp,detector_id,"
+            "reason,details) VALUES(?,?,?,?,?,?)",
+            (
+                finding.event_id,
+                alert_id,
+                finding.timestamp,
+                finding.detector_id,
+                finding.reason,
+                encode(details),
+            ),
+        )
+        return alert_id
 
     @staticmethod
     def add_preauth_alert(
@@ -456,6 +609,97 @@ class Repository:
             "pages": pages,
         }
 
+    def list_firewall(
+        self,
+        hours: int = 24,
+        source: str = "",
+        protocol: str = "",
+        page: int = 1,
+        per_page: int = 25,
+    ) -> dict:
+        start, end = self._period(hours)
+        where, args = "timestamp>=? AND timestamp<=?", [start, end]
+        if source:
+            where += " AND source_ip=?"
+            args.append(source)
+        if protocol:
+            where += " AND protocol=?"
+            args.append(protocol)
+        return self._page(
+            "firewall_events", where, args, page, per_page, "timestamp DESC,event_id DESC"
+        )
+
+    def firewall_summary(self, hours: int = 24) -> dict:
+        start, end = self._period(hours)
+        with self.reader() as db:
+            row = db.execute(
+                "SELECT COUNT(*) AS recorded, "
+                "COUNT(DISTINCT source_ip) AS sources, "
+                "SUM(CASE WHEN protocol='TCP' THEN 1 ELSE 0 END) AS tcp, "
+                "SUM(CASE WHEN protocol='UDP' THEN 1 ELSE 0 END) AS udp "
+                "FROM firewall_events WHERE timestamp>=? AND timestamp<=?",
+                (start, end),
+            ).fetchone()
+        return {
+            "recorded": int(row["recorded"]),
+            "sources": int(row["sources"]),
+            "tcp": int(row["tcp"] or 0),
+            "udp": int(row["udp"] or 0),
+        }
+
+    def firewall_charts(self, hours: int = 24) -> dict:
+        """Read-only aggregate timeline and top-ten blocked TCP SYN destination ports.
+
+        Time buckets include only recorded activity. No IP addresses or raw
+        firewall events are returned, regardless of how many ports were hit.
+        """
+        start, end = self._period(hours)
+        bucket = 300 if hours <= 6 else 1800 if hours <= 24 else 7200 if hours <= 168 else 21600
+        condition = """
+            timestamp>=? AND timestamp<=?
+            AND action IN ('BLOCK','REJECT','LIMIT BLOCK')
+            AND direction='incoming' AND in_interface!='' AND out_interface=''
+            AND protocol_number=6 AND destination_port IS NOT NULL
+            AND instr(tcp_flags, '"SYN"')>0
+            AND instr(tcp_flags, '"ACK"')=0
+            AND instr(tcp_flags, '"FIN"')=0
+            AND instr(tcp_flags, '"RST"')=0
+        """
+        with self.reader() as db:
+            timeline = db.execute(
+                "SELECT CAST(timestamp / ? AS INTEGER) * ? AS bucket_start, "
+                "COUNT(*) AS packets FROM firewall_events WHERE "
+                + condition
+                + " GROUP BY bucket_start ORDER BY bucket_start",
+                (bucket, bucket, start, end),
+            ).fetchall()
+            top = db.execute(
+                "SELECT destination_port AS port, COUNT(*) AS packets "
+                "FROM firewall_events WHERE "
+                + condition
+                + " GROUP BY destination_port ORDER BY packets DESC, port ASC LIMIT 10",
+                (start, end),
+            ).fetchall()
+            totals = db.execute(
+                "SELECT COUNT(*) AS packets, "
+                "COUNT(DISTINCT destination_port) AS unique_ports "
+                "FROM firewall_events WHERE " + condition,
+                (start, end),
+            ).fetchone()
+        top_ports = [{"port": int(row["port"]), "packets": int(row["packets"])} for row in top]
+        total_packets = int(totals["packets"])
+        return {
+            "bucket_seconds": bucket,
+            "series": [
+                {"timestamp": int(row["bucket_start"]), "packets": int(row["packets"])}
+                for row in timeline
+            ],
+            "top_ports": top_ports,
+            "other_ports_packets": total_packets - sum(row["packets"] for row in top_ports),
+            "total_packets": total_packets,
+            "unique_ports": int(totals["unique_ports"]),
+        }
+
     def list_alerts(
         self, hours: int = 24, detector: str = "", page: int = 1, per_page: int = 25
     ) -> dict:
@@ -496,8 +740,17 @@ class Repository:
                 "WHERE p.alert_id=? ORDER BY p.timestamp DESC LIMIT 100",
                 (alert_id,),
             ).fetchall()
+            network = db.execute(
+                "SELECT n.event_id,n.timestamp,n.detector_id,n.reason,n.details,"
+                "NULL AS score,NULL AS model_version,NULL AS username,"
+                "'firewall' AS outcome,NULL AS message "
+                "FROM network_evidence n WHERE n.alert_id=? "
+                "ORDER BY n.timestamp DESC LIMIT 100",
+                (alert_id,),
+            ).fetchall()
             merged = [self._decode(r) for r in rows]
             merged.extend(self._decode(r) for r in evidence)
+            merged.extend(self._decode(r) for r in network)
             merged.sort(key=lambda item: (item["timestamp"], item["event_id"]), reverse=True)
             alert["findings"] = merged[:100]
             alert["findings_truncated"] = alert["count"] > len(alert["findings"])
@@ -591,24 +844,31 @@ class Repository:
         with self.transaction() as db:
             events = db.execute("DELETE FROM events WHERE timestamp<?", (cutoff,)).rowcount
             records = db.execute("DELETE FROM records WHERE timestamp<?", (cutoff,)).rowcount
+            firewall_events = db.execute(
+                "DELETE FROM firewall_events WHERE timestamp<?", (cutoff,)
+            ).rowcount
             db.execute(
                 "DELETE FROM alerts WHERE "
                 "NOT EXISTS(SELECT 1 FROM findings WHERE alert_id=alerts.id) "
-                "AND NOT EXISTS(SELECT 1 FROM preauth_evidence WHERE alert_id=alerts.id)"
+                "AND NOT EXISTS(SELECT 1 FROM preauth_evidence WHERE alert_id=alerts.id) "
+                "AND NOT EXISTS(SELECT 1 FROM network_evidence WHERE alert_id=alerts.id)"
             )
             db.execute(
                 "UPDATE alerts SET "
                 "count=(SELECT COUNT(*) FROM findings WHERE alert_id=alerts.id)"
-                "+(SELECT COUNT(*) FROM preauth_evidence WHERE alert_id=alerts.id),"
+                "+(SELECT COUNT(*) FROM preauth_evidence WHERE alert_id=alerts.id)"
+                "+(SELECT COUNT(*) FROM network_evidence WHERE alert_id=alerts.id),"
                 "first_seen=(SELECT MIN(timestamp) FROM ("
                 "SELECT timestamp FROM findings WHERE alert_id=alerts.id UNION ALL "
-                "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id)),"
+                "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id UNION ALL "
+                "SELECT timestamp FROM network_evidence WHERE alert_id=alerts.id)),"
                 "last_seen=(SELECT MAX(timestamp) FROM ("
                 "SELECT timestamp FROM findings WHERE alert_id=alerts.id UNION ALL "
-                "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id))"
+                "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id UNION ALL "
+                "SELECT timestamp FROM network_evidence WHERE alert_id=alerts.id))"
             )
         # Reuse freed pages; avoids blocking a live collector with a full VACUUM.
-        return {"events": events, "records": records}
+        return {"events": events, "records": records, "firewall_events": firewall_events}
 
     def backup(self, destination: Path) -> None:
         if destination.resolve() == self.path:

@@ -55,6 +55,47 @@ def insert(repository, *items):
             repository.insert_event(db, item)
 
 
+def test_firewall_charts_bound_port_count_and_preserve_private_sources(repository):
+    """Twelve ports become ten categories plus a single Other total."""
+    import json
+
+    from yggdrasil_ids.firewall import UFWParser
+
+    parser = UFWParser()
+    with repository.transaction() as db:
+        for index in range(14):
+            port = 45010 if index >= 12 else 45010 + index
+            raw = {
+                "_TRANSPORT": "kernel",
+                "_BOOT_ID": "a" * 32,
+                "_HOSTNAME": "test-sensor",
+                "__CURSOR": f"chart-{index}",
+                "__REALTIME_TIMESTAMP": str(int((NOW - 120 + index) * 1_000_000)),
+                "MESSAGE": (
+                    "[UFW BLOCK] IN=wlan0 OUT= SRC=192.0.2.33 DST=192.0.2.92 "
+                    f"PROTO=TCP SPT=40000 DPT={port} SYN"
+                ),
+            }
+            parsed = parser.parse(raw, namespace="test")
+            assert parsed.event is not None
+            assert repository.insert_firewall_event(db, parsed.event)
+
+    report = repository.firewall_charts(hours=1)
+    assert report["total_packets"] == 14
+    assert report["unique_ports"] == 12
+    assert len(report["top_ports"]) == 10
+    assert report["top_ports"][0] == {"port": 45010, "packets": 3}
+    assert report["other_ports_packets"] == 2
+    assert sum(row["packets"] for row in report["series"]) == 14
+    assert len(report["series"]) <= 12
+    assert "192.0.2.33" not in json.dumps(report)
+
+    before = repository.get_state("cursor")
+    reader = Repository(repository.path, readonly=True)
+    assert reader.firewall_charts(hours=1) == report
+    assert repository.get_state("cursor") == before
+
+
 def test_readonly_repository_cannot_write_even_if_query_only_is_disabled(repository):
     repository.set_state("collector", {"state": "running"})
     reader = Repository(repository.path, readonly=True)
@@ -268,7 +309,7 @@ def test_retention_cascades_and_recounts_retained_incident_evidence(repository):
             )
             alert_ids.append(repository.add_finding(db, finding(item), 300))
     assert alert_ids[0] == alert_ids[1]
-    assert repository.prune(BASE + 200) == {"events": 2, "records": 2}
+    assert repository.prune(BASE + 200) == {"events": 2, "records": 2, "firewall_events": 0}
     assert repository.alert_detail(alert_ids[2]) is None
     retained = repository.alert_detail(alert_ids[0])
     assert retained["count"] == 1

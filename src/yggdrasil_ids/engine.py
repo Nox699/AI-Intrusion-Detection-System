@@ -12,7 +12,9 @@ from pathlib import Path
 from .config import AppConfig
 from .domain import Finding
 from .features import FEATURE_NAMES, SSHFeatureBuilder
+from .firewall import UFWParser
 from .ml import IsolationForestDetector
+from .network_rules import NetworkRuleConfig, TCPPortScanDetector
 from .preauth import parse_preauth
 from .rules import SSHRuleDetector
 from .ssh import SSHParser
@@ -39,6 +41,10 @@ class AnalysisEngine:
                 )
             self.repository.put_state(db, "mode", config.mode)
             self.repository.put_state(db, "namespace", namespace)
+            if config.network.enabled and config.mode == "live":
+                # The first opt-in must not backfill or alert on old kernel logs.
+                if self.repository.state_in(db, "firewall_started_at") is None:
+                    self.repository.put_state(db, "firewall_started_at", time.time())
             self.repository.put_state(
                 db,
                 "settings",
@@ -54,6 +60,13 @@ class AnalysisEngine:
                 },
             )
         self.parser = SSHParser()
+        self.firewall_parser = UFWParser()
+        self.network_rules = TCPPortScanDetector(
+            NetworkRuleConfig(
+                window_seconds=config.network.window_seconds,
+                distinct_ports_threshold=config.network.distinct_ports_threshold,
+            )
+        )
         self.rules = SSHRuleDetector(config.rules)
         self.features = SSHFeatureBuilder(config.ml.window_seconds)
         self.model = None
@@ -129,6 +142,8 @@ class AnalysisEngine:
         cursor = record.get("__CURSOR", "")
         cursor = cursor if isinstance(cursor, str) and len(cursor) <= 4096 else ""
         record_id = hashlib.sha256((self.namespace + "\0" + (cursor or raw)).encode()).hexdigest()
+        if self.config.network.enabled and record.get("_TRANSPORT") == "kernel":
+            return self._process_firewall(record, received_at)
         parsed = self.parser.parse(record, namespace=self.namespace)
         stamp = received_at
         try:
@@ -311,6 +326,88 @@ class AnalysisEngine:
                 },
             )
         return result
+
+    def _process_firewall(self, record: dict, received_at: float) -> dict:
+        """Commit normalized kernel data and the shared cursor atomically.
+
+        Unrelated kernel messages are never saved as raw records, and SSH
+        counters/authentication/ML features remain unchanged.
+        """
+        parsed = self.firewall_parser.parse(record, namespace=self.namespace)
+        cursor = record.get("__CURSOR")
+        if not isinstance(cursor, str) or len(cursor) > 4096:
+            cursor = ""
+        stamp = parsed.event.timestamp if parsed.event is not None else received_at
+        result_findings = 0
+        with self.repository.transaction() as db:
+            counters = self.repository.state_in(
+                db, "firewall_counters", {"events": 0, "duplicates": 0, "malformed": 0}
+            )
+            status = parsed.status
+            if parsed.event is not None:
+                activation = self.repository.state_in(db, "firewall_started_at", 0)
+                if self.config.mode == "live" and stamp < activation:
+                    status = "historical"
+                elif self.repository.insert_firewall_event(db, parsed.event):
+                    counters["events"] += 1
+                    event = parsed.event
+                    previous = self.repository.state_in(db, "firewall_max_seen", 0)
+                    future = self.config.mode == "live" and stamp > received_at + 60
+                    if stamp < previous or future:
+                        status = "late"
+                        counters["late"] = counters.get("late", 0) + 1
+                    else:
+                        self.repository.put_state(db, "firewall_max_seen", stamp)
+                        try:
+                            history = self.repository.firewall_history(
+                                db, event, self.config.network.window_seconds
+                            )
+                            # Repeated packets to the same port cannot create
+                            # additional findings, even when source ports differ.
+                            if not any(
+                                item.event_id != event.event_id
+                                and item.destination_port == event.destination_port
+                                for item in history
+                            ):
+                                finding = self.network_rules.evaluate(event, history)
+                                if finding is not None:
+                                    self.repository.add_network_alert(
+                                        db, finding, self.config.rules.cooldown_seconds
+                                    )
+                                    counters["findings"] = counters.get("findings", 0) + 1
+                                    result_findings = 1
+                        except (ValueError, TypeError, KeyError) as exc:
+                            counters["analysis_errors"] = counters.get("analysis_errors", 0) + 1
+                            self.repository.put_state(
+                                db,
+                                "network_analysis_error",
+                                {"at": received_at, "message": str(exc)[:250]},
+                            )
+                else:
+                    counters["duplicates"] += 1
+                    status = "duplicate"
+            elif status == "malformed":
+                counters["malformed"] += 1
+                self.repository.put_state(
+                    db, "network_data_quality", {"at": received_at, "message": parsed.reason}
+                )
+            self.repository.put_state(db, "firewall_counters", counters)
+            if cursor:
+                self.repository.put_state(db, "cursor", cursor)
+                self.repository.put_state(db, "cursor_timestamp", stamp)
+            collector = self.repository.state_in(db, "collector", {})
+            self.repository.put_state(
+                db,
+                "collector",
+                {
+                    **collector,
+                    "last_record_at": received_at,
+                    "heartbeat_at": received_at,
+                    "state": "replay" if self.config.mode == "demo" else "running",
+                    "namespace": self.namespace,
+                },
+            )
+        return {"status": status, "findings": result_findings}
 
     def replay(self, path: Path) -> dict:
         if self.config.mode != "demo":

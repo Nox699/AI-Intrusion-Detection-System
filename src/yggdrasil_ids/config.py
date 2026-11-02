@@ -39,6 +39,14 @@ class CollectorConfig:
 
 
 @dataclass(frozen=True)
+class NetworkConfig:
+    # Explicit opt-in: upgrading the package never widens journal collection.
+    enabled: bool = False
+    window_seconds: int = 60
+    distinct_ports_threshold: int = 6
+
+
+@dataclass(frozen=True)
 class WebConfig:
     bind: str = "127.0.0.1"
     port: int = 8765
@@ -58,6 +66,7 @@ class AppConfig:
     rules: RulesConfig = field(default_factory=RulesConfig)
     ml: MLConfig = field(default_factory=MLConfig)
     collector: CollectorConfig = field(default_factory=CollectorConfig)
+    network: NetworkConfig = field(default_factory=NetworkConfig)
     web: WebConfig = field(default_factory=WebConfig)
     retention_days: int = 30
     max_database_mb: int = 512
@@ -83,7 +92,7 @@ def load_config(path: Path | str | None = None) -> AppConfig:
     path = Path(path or os.environ.get("YGGDRASIL_CONFIG", "config.toml")).resolve()
     with path.open("rb") as handle:
         data = tomllib.load(handle)
-    allowed = {"app", "paths", "rules", "ml", "collector", "web", "storage"}
+    allowed = {"app", "paths", "rules", "ml", "collector", "network", "web", "storage"}
     if set(data) - allowed:
         raise ValueError("Ukendte konfigurationssektioner: " + ", ".join(set(data) - allowed))
     app = _section(data, "app", {"mode", "host_label", "timezone"})
@@ -91,6 +100,7 @@ def load_config(path: Path | str | None = None) -> AppConfig:
     rules = _section(data, "rules", set(RulesConfig.__dataclass_fields__))
     ml = _section(data, "ml", set(MLConfig.__dataclass_fields__))
     collector = _section(data, "collector", set(CollectorConfig.__dataclass_fields__))
+    network = _section(data, "network", set(NetworkConfig.__dataclass_fields__))
     web = _section(data, "web", set(WebConfig.__dataclass_fields__))
     storage = _section(data, "storage", {"retention_days", "max_database_mb"})
     if not isinstance(app.get("mode", "live"), str) or app.get("mode", "live") not in {
@@ -122,8 +132,8 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         ):
             raise ValueError(f"rules.{key} skal være en liste af korte tekster")
         rules[key] = tuple(value)
-    for network in rules["expected_sources"]:
-        ipaddress.ip_network(network, strict=False)
+    for expected_network in rules["expected_sources"]:
+        ipaddress.ip_network(expected_network, strict=False)
     for key, default, low, high in [
         ("window_seconds", 300, 10, 3600),
         ("min_samples", 80, 20, 10000),
@@ -141,6 +151,15 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         ("max_record_bytes", 65536, 1024, 1048576),
     ]:
         collector[key] = _int(collector.get(key, default), f"collector.{key}", low, high)
+    if type(network.get("enabled", False)) is not bool:
+        raise ValueError("network.enabled skal være true eller false")
+    network["enabled"] = network.get("enabled", False)
+    network["window_seconds"] = _int(
+        network.get("window_seconds", 60), "network.window_seconds", 10, 3600
+    )
+    network["distinct_ports_threshold"] = _int(
+        network.get("distinct_ports_threshold", 6), "network.distinct_ports_threshold", 2, 64
+    )
     executable = collector.get("executable", "journalctl")
     if not isinstance(executable, str) or not executable or "\x00" in executable:
         raise ValueError("collector.executable skal være en sti eller et programnavn")
@@ -187,6 +206,7 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         rules=RulesConfig(**rules),
         ml=MLConfig(**ml),
         collector=CollectorConfig(**collector),
+        network=NetworkConfig(**network),
         web=WebConfig(**web),
         retention_days=retention,
         max_database_mb=budget,

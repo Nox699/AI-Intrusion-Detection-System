@@ -47,6 +47,7 @@ DETECTORS = {
     "ssh.user_spray": "Flere brugernavne",
     "ssh.unexpected_success": "Uventet login",
     "ssh.isolation_forest": "Isolation Forest",
+    "network.tcp_port_scan": "Mulig TCP-portscanning",
 }
 PERIODS = (
     (1, "Seneste time"),
@@ -423,6 +424,35 @@ def create_app(config: AppConfig | None = None) -> Flask:
         )
         return render_template(
             "events.html", result=result, hours=period, outcome=outcome, source=source, user=user
+        )
+
+    @app.get("/network")
+    def network() -> Any:
+        period = hours()
+        source, protocol = query_text("source", 64), query_text("protocol", 16)
+        if protocol not in {"", "TCP", "UDP", "IGMP", "ICMP", "ICMPV6"}:
+            abort(400, description="Ukendt netværksprotokol.")
+        raw = read_status()
+        result = call("list_firewall", hours=period, source=source, protocol=protocol, **paging())
+        summary = call("firewall_summary", hours=period)
+        return render_template(
+            "network.html",
+            result=result,
+            summary=summary,
+            hours=period,
+            source=source,
+            protocol=protocol,
+            network_error=raw.get("network_analysis_error"),
+        )
+
+    @app.get("/api/network-charts")
+    def api_network_charts() -> Any:
+        period = hours()
+        read_status()
+        return jsonify(
+            data=call("firewall_charts", hours=period),
+            hours=period,
+            server_time=time.time(),
         )
 
     @app.get("/preauth")

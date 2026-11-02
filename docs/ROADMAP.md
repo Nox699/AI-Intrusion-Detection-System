@@ -48,6 +48,29 @@ regelalarm er leveret. Simulerede transportfejl og genstart er afprøvet i tests
 Fuld accept afventer bl.a. fejltest på Pi, rettighedsrevision, outbox-retention,
 fuld maskingenstart og dokumenteret drift under belastning.
 
+## Sprint 3 · UFW-observation og mulig TCP-portscanning
+
+**Status: Funktionelt afsluttet på Pi den 2. november 2026. UFW-indsamling, TCP-scanning, Discord og browsergrafer er demonstreret; længere FP-/stabilitetsevaluering udestår.**
+
+Parseren og den eksperimentelle TCP-portscanningsregel er softwaretestet.
+En separat `firewall_events`-historik, opt-in kernel-journalintegration,
+TCP-scanningsalarmer med særskilt evidens og Discord-outbox samt en privat
+`/network`-side er implementeret i skema v4. Den 1. november 2026 bestod en
+kontrolleret migration **på en kopi** af Pi'ens schema-v3-database med
+bevarede SSH- og Discord-data. En første 5-minutters måling fandt
+15 kernelposter, alle UFW-poster; længere belastningsmålinger afventer.
+Den 1. november 2026 bestod driftsmigrationen til schema v4, og alle tre
+IDS-tjenester blev genstartet og kontrolleret med bevaret SSH-historik
+og Discord-outbox. UFW-opt-in er gennemført med logniveau `low`.
+Første Nmap-test gav ingen alarm ved tærskel 6; efter
+kalibrering til 5 gav en anden kontrolleret test én alarm
+og én leveret Discord-besked. Normaldrift, falske positiver,
+langtidsstabilitet og performance mangler stadig.
+
+[Arkitektur, dækningsgrænser og status](SPRINT_3_NETWORK.md) ·
+[Pi-resultater](SPRINT_3_PI_RESULTS.md) ·
+[Pi-opgraderingsplan](SPRINT_3_PI_DEPLOY.md).
+
 ## Backlog · prioriteres efter de første sprints
 
 | Område | Mulig funktion | Afklaring før implementering |

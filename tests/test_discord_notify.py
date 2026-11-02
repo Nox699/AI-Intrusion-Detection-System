@@ -356,3 +356,18 @@ def test_new_alert_recorded_once_per_incident_even_with_multiple_findings(tmp_pa
         incident_count = db.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
     assert incident_count == 1
     assert row_count == 1
+
+
+def test_network_discord_message_has_plain_label_but_no_raw_network_metadata(tmp_path):
+    notify = DiscordNotifier(tmp_path / "events.sqlite3", tmp_path / "private/state.sqlite3")
+    event = {
+        "detector_id": "network.tcp_port_scan",
+        "severity": "medium",
+        "happened_at": time.time(),
+        "ref": "fake-incident-ref",
+    }
+    message = notify.message(event)
+    assert "Mulig TCP-portscanning (UFW)" in message
+    assert "fake-incident-ref" in message
+    assert "192.0.2." not in message
+    assert "SRC=" not in message
