@@ -49,11 +49,17 @@ def lab_directory(tmp_path, lab_modules):
 
 def test_hybrid_reproduces_original_scores_without_touching_files(lab_directory, lab_modules):
     _, diagnostics = lab_modules
-    filenames = ("train.jsonl", "validation.jsonl", "test.jsonl", "labels.json",
-                 "manifest.json", "report.json", "preauth-lab-model.json")
+    filenames = (
+        "train.jsonl",
+        "validation.jsonl",
+        "test.jsonl",
+        "labels.json",
+        "manifest.json",
+        "report.json",
+        "preauth-lab-model.json",
+    )
     before = {
-        name: hashlib.sha256((lab_directory / name).read_bytes()).hexdigest()
-        for name in filenames
+        name: hashlib.sha256((lab_directory / name).read_bytes()).hexdigest() for name in filenames
     }
     data = diagnostics.analyse(lab_directory)
     after = {

@@ -81,9 +81,7 @@ def analyse(directory: Path) -> dict[str, Any]:
             suspicious = intent["expected"] == "simulated_suspicious"
             ml_flag = model.score(row)["is_anomaly"]
             connections, invalid, distinct, disconnect = row[:4]
-            rule_flag = bool(
-                invalid >= 5 or distinct >= 4 or disconnect >= 10 or connections >= 12
-            )
+            rule_flag = bool(invalid >= 5 or distinct >= 4 or disconnect >= 10 or connections >= 12)
             flags = {"ml": ml_flag, "rules": rule_flag, "hybrid": ml_flag or rule_flag}
             expected.append(suspicious)
             for method, flag in flags.items():
@@ -136,9 +134,7 @@ def analyse(directory: Path) -> dict[str, Any]:
 
         results[split] = {
             "connection_candidates": len(conns),
-            "connections_with_disconnected_equal_to_count": sum(
-                a[0] == a[3] for a in vectors
-            ),
+            "connections_with_disconnected_equal_to_count": sum(a[0] == a[3] for a in vectors),
             "metrics": totals,
             "scenario_coverage": scenario_recall,
             "scenarios": list(groups.values()),
