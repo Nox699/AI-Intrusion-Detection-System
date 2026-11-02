@@ -172,9 +172,7 @@ class SudoRuleDetector:
     def __init__(self, config: SudoRuleConfig | None = None):
         self.config = config or SudoRuleConfig()
         self.seen: dict[str, SudoSignal] = {}
-        self.failure_windows: dict[tuple[str, str], deque[tuple[float, int]]] = defaultdict(
-            deque
-        )
+        self.failure_windows: dict[tuple[str, str], deque[tuple[float, int]]] = defaultdict(deque)
         self.last_match: dict[tuple[str, str, str], float] = {}
         self.last_timestamp: float | None = None
 
@@ -205,9 +203,7 @@ class SudoRuleDetector:
                 window.append((event.timestamp, event.pid))
             if len(window) < self.config.failure_process_threshold:
                 return None
-            return self._maybe_match(
-                event, "sudo.repeated_auth_failure", len(window), "medium"
-            )
+            return self._maybe_match(event, "sudo.repeated_auth_failure", len(window), "medium")
 
         if event.kind == "not_in_sudoers":
             return self._maybe_match(event, "sudo.permission_denied", 1, "medium")
