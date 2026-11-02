@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Mapping
 
 MAX_MESSAGE_BYTES = 16_384
 MAX_TIMESTAMP_US = 4_102_444_800_000_000
