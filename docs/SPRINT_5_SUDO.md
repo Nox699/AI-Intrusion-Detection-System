@@ -101,3 +101,33 @@ serviceændringer, sudoers, SQLite, UFW eller Discord-ændringer.
 `git show SHA:deploy/sprint5_sudo_journal_metadata_diagnostic.py`
 og udfør det som `yggdrasil-worker`. Analyser de aggregerede
 resultater, før nogen produktionsdetektor designes.
+
+## Pi-fund: sudo-kilden findes, men root-UID-filteret var forkert (2. november 2026)
+
+Den første audit på Yggdrasil fandt 0 rækker med det fælles filter
+`_COMM=sudo AND _UID=0`. Den efterfølgende read-only metadataaudit
+(commit `c8f62f55bf38c2c155b605318a86ef758a435474`) viste
+**101 rækker** med `_COMM=sudo` og ikke-root UID og
+**109 rækker** med `SYSLOG_IDENTIFIER=sudo`. Alle 109 tag-matchede
+rækker havde `_EXE=/usr/bin/sudo`, otte med root-UID og et andet
+`_COMM`. Systemjournalen var tilgængelig.
+
+**Kildekonklusion:** Sudo logges; den første nulmåling skyldtes
+et for restriktivt filter. 109 rækker betyder ikke 109 sudo-kommandoer,
+endsige angreb. Kildeidentifikation via et sudo-tag alene er ikke sikker.
+
+En ny, selvstændig **read-only** audit,
+`deploy/sprint5_sudo_trusted_exe_audit.py`, anvender i stedet
+journalds betroede `_EXE=/usr/bin/sudo` uden at kræve root-UID eller
+`_COMM=sudo`. Den tæller kategorierne for command, auth failure,
+incorrect password, not-in-sudoers, PAM-session og ukendte formater,
+men udskriver aldrig rå journalposter, brugere, kommandoer eller stier.
+Den må kun udføres efter grøn CI med en pinnet commit af
+`yggdrasil-worker`. Ingen produktionsdetektor installeres,
+ingen ML-model trænes, og SQLite, systemd, SSH, sudoers, UFW og
+Discord forbliver uændrede.
+
+**Næste gate:** Se de faktiske aggregerede kategorier på Pi,
+derefter beslut hvilke konkrete sudo-formater det er meningsfuldt
+at lave regler for. Ret ikke produktionskonfigurationen på
+baggrund af metadataoptællingen alene.
