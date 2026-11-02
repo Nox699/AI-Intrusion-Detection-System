@@ -51,6 +51,37 @@ Scriptet opretter automatisk en **ny privat mappe** under vidars hjemmemappe, ge
 
 **Gem fra `LAB_DIR`, som scriptet selv udskriver:** report.md, report.json, SHA-256 for rapport og lab-model.json. Sidstnævnte er kun en syntetisk artefakt og må aldrig kopieres til `/var/lib/yggdrasil-ids/model.json`. Del ikke hele mappen offentligt.
 
+## Valgfrit trin B2 – trænet model synlig i separat dashboard
+
+Vi har også en **syntetisk dashboard-demonstration**, hvor modellen vises som trained/ready, mens Pi'ens rigtige dashboard fortsat er untrained og uændret. Den bruger en ny privat demomappe og **kun loopback-port 8766**. Dette er især nyttigt til en tydeligt LAB-mærket eksamensillustration.
+
+På Pi som vidar (ikke root):
+
+```bash
+(
+  set -euo pipefail
+  cd /home/vidar/AI-Intrusion-Detection-System
+  git fetch --no-tags origin sprint-4/ml-evaluation
+  sha='INDSAET_FULD_CI_BESTAAET_SHA'
+  test "$(git rev-parse origin/sprint-4/ml-evaluation)" = "$sha"
+  script_file="$(mktemp)"
+  trap 'rm -f "$script_file"' EXIT
+  git show "$sha:deploy/sprint4_ml_demo_dashboard.sh" > "$script_file"
+  bash -n "$script_file"
+  bash "$script_file" "$sha"
+)
+```
+
+Den proces bliver stående i Pi-terminalen, indtil den afsluttes med Ctrl+C. Fra laptoppen oprettes en **separat** SSH-tunnel:
+
+```bash
+ssh -N -L 8766:127.0.0.1:8766 homelab
+```
+
+Åbn **http://127.0.0.1:8766** (brug 127.0.0.1 frem for localhost for at holde democookien adskilt fra produktionsdashboardet). Demoens offentligt kendte *LAB-adgangskode* er `demo-yggdrasil`. Dette login må ikke benyttes til nogen live-IDS.
+
+Kontrollér at siden eksplicit angiver demonstration, at **Model klar** vises, og at SSH-scorede observationer er til stede. Gem et screenshot mærket **ML-demo – syntetiske data**, ikke som en model trænet på Yggdrasil-produktion. Kør ikke webserveren på `0.0.0.0`, og åbn ikke firewallporte.
+
 ## Trin C – eksamensbeviser
 
 - **ML-A:** Read-only produktionsaudit (event/featuretælling, modelstatus, begrænsning).
