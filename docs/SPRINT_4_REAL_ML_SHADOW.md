@@ -89,3 +89,22 @@ Simulerede mislykkede SSH-loginforsøg og username spraying hører til *test*, *
 17 vellykkede login er **ikke automatisk dokumentation for 17 legitime logins**. Den nødvendige næste handling er manuel identitetskontrol i den read-only SQLite-database: genkend brugernavn, kildeadresse, autentificeringsmetode og tidsperiode. Disse oplysninger skal ses på Pi lokalt, **ikke kopieres til et offentligt repo**. Kun brugeren kan godkende alle 17 som faktisk kendt, legitim adfærd; ellers skal eksperimentets normaltræningsdata udvælges på ny uden fremmede eller usikre observationer.
 
 **Hvis brugeren godkender alle 17:** Den eksisterende preview reserverer fem af de 17 som en lille tidsmæssigt korreleret kontrol og anvender 12 som godkendt virkeligt supplement til de 312 syntetiske normale træningsrækker. Dette er **324 blandede træningsrækker** og fem ikke-uafhængige virkelige succes-observationer til forsigtig shadow-inspektion, ikke en måling af real-world precision/recall/falsk-positiv-rate. Det syntetiske hold-out-testsæt forbliver uden for træningen. **Der er endnu ingen ny træning udført eller model aktiveret.**
+
+## Faktisk hybrid-preview på Raspberry Pi – 2. november 2026
+
+**Bestået, men ikke installeret:** Ejer kørte `deploy/sprint4_hybrid_ml_preview.py` fra source SHA `acb6a67abdc929fb9aced11e17d1268a378be2cb` som `vidar` på Pi'en med godkendte normale SSH-successkandidater. Programmet oprettede en **privat hybrid-kandidatmodel** i `~/yggdrasil-ml-private/preview-v1/candidate-model.json`; separat privat evalueringsrapport i `preview-v1/preview.json`. Ingen produktionsmodel blev installeret eller aktiveret.
+
+| Måling | Faktisk output |
+| --- | ---: |
+| Syntetiske normale træningsrækker | 312 |
+| Godkendte rigtige Pi-rækker til træning | 12 |
+| Rigtige hold-out-successrækker | 5 |
+| Afvigelser i disse 5 rækker | 0 |
+| Syntetisk sluttest – recall | 94,7 % |
+| Syntetisk sluttest – falsk positiv-rate | 13,6 % |
+| Modelversion | `ssh-if-7cc1f15288d0c73b` |
+| `production_model_activated` | `false` |
+
+**Forbehold:** `0/5` anomalier blandt rigtige succeser er ikke dokumentation for nul falske positiver: observationerne er få, deler kilde og kan være tidsmæssigt afhængige. Den syntetiske sluttest er stadig kun syntetisk. En ML-model med 312 syntetiske og 12 rigtige rækker er en *eksperimentel hybridmodel*, ikke en verificeret model for Pi'ens normalfordeling.
+
+**Næste gate:** Revideret wheel med `ml.alert_mode='shadow'`, frisk backup af schema-v4-SQLite, notifier-state, systemd-unit, konfiguration og tidligere venv; verifikation af kandidatmodellens sklearn-version/fingerprint og rettigheder. Skift til shadow-mode **før** collector indlæser modellen. Bekræft, at rigtige SSH-hændelser lagrer modelscore, og at der ikke opstår `ssh.isolation_forest`-fund eller Discord-beskeder. Ingen upload af private modelartefakter eller logs til GitHub.
