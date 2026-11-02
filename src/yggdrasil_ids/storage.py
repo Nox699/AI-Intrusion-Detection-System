@@ -686,9 +686,7 @@ class Repository:
                 "FROM firewall_events WHERE " + condition,
                 (start, end),
             ).fetchone()
-        top_ports = [
-            {"port": int(row["port"]), "packets": int(row["packets"])} for row in top
-        ]
+        top_ports = [{"port": int(row["port"]), "packets": int(row["packets"])} for row in top]
         total_packets = int(totals["packets"])
         return {
             "bucket_seconds": bucket,
