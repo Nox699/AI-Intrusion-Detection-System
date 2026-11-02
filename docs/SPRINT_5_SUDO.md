@@ -407,3 +407,37 @@ med unik testtag, og efterfølgende aggregeret journald-
 verifikation. Det tester kun logtransporten, ikke sudo-
 autorisering eller detektorens følsomhed. Ingen sudoers-,
 systemd-, SSH- eller IDS-ændringer.
+
+### Løst: `--system` udelukkede sudo fra brugerjournaler (3. november 2026)
+
+En sikker, skrivebeskyttet sammenligning af journal-**scope**
+fra 2. november, udført som root, viste:
+
+| Journalvisning | Testtag | Testbesked | `_EXE=/usr/bin/sudo` | `SYSLOG_IDENTIFIER=sudo` |
+| --- | ---: | ---: | ---: | ---: |
+| Med `journalctl --system` | 0 | 0 | 0 | 0 |
+| Uden `--system` (alle tilgængelige journaler) | 1 | 1 | **626** | **626** |
+
+**Revideret konklusion:** Sudo og syslog har faktisk logget.
+Alle tidligere påstande om, at sudo-logningen var ophørt
+fra 2. november, var forhastede: vi læste den forkerte
+journald-visning. Det er en konkret **kilde-/scope-fejl**
+i alle Sprint 5-probes, der bruger `--system`.
+Meddelelserne ser ud til at ligge i journaler uden for
+systemjournalen; et separat tjek af journalens metadata
+skal afgøre deres nøjagtige placering.
+
+**Næste gate (ingen produktion):** Verificér, at den eksisterende
+`yggdrasil-worker` også kan se disse sudo-poster **uden**
+`--system`, og sammenlign root/worker på nøjagtigt samme
+datointerval. Ellers kræves et bevidst adgangs- og
+privatlivsdesign inden integration. Opdater derefter
+kun Sprint 5's isolerede, skrivebeskyttede probes til
+korrekt scope og tilføj unit-regressionstest. En ændring
+af den aktive collector, systemd-tjenester eller sudoers
+er **ikke** udført eller godkendt.
+
+**Databegrænsning:** De 626 er journalposter, ikke unikke
+sudo-kommandoer eller angreb. Den oprindelige sudo-test med
+exit-kode 1 har fortsat ikke et verificeret label
+eller en bekræftet detektorrespons.
