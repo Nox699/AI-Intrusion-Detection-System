@@ -117,9 +117,7 @@ def test_cli_prints_counts_without_ssh_identity(audit, journal, monkeypatch, cap
     assert report["recognized_by_existing_preauth_parser"] == 1
 
 
-def test_cli_rejects_control_characters_before_running_journalctl(
-    audit, monkeypatch, capsys
-):
+def test_cli_rejects_control_characters_before_running_journalctl(audit, monkeypatch, capsys):
     monkeypatch.setattr(
         audit,
         "journal_records",

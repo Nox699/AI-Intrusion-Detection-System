@@ -159,15 +159,11 @@ def aggregate(records: Iterable[dict[str, Any]]) -> dict[str, Any]:
         },
         "candidate_signal_rows_total": sum(category_counts.values()),
         "distinct_candidate_source_port_keys_count_only": len(unique_connections),
-        "recognized_by_existing_preauth_parser": counts[
-            "recognized_by_existing_preauth_parser"
-        ],
+        "recognized_by_existing_preauth_parser": counts["recognized_by_existing_preauth_parser"],
         "trusted_root_ssh_rows_unclassified_as_candidate_signals": counts[
             "trusted_root_ssh_rows_unclassified_as_candidate_signals"
         ],
-        "journal_rows_mentioning_test_username": counts[
-            "journal_rows_mentioning_test_username"
-        ],
+        "journal_rows_mentioning_test_username": counts["journal_rows_mentioning_test_username"],
         "parsed_test_signal_rows": counts["parsed_test_signal_rows"],
         "test_distinct_source_port_keys_count_only": len(unique_test_connections),
         "producer_rule": "_UID=0 and _COMM in known OpenSSH executables",
