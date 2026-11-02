@@ -175,7 +175,7 @@ finally:
 print("PASS: Atomic config change sets shadow, preserving all other settings.")
 PY
 sudo test ! -e "$model" || stop "Model appeared before installation."
-sudo install -o yggdrasil-worker -g yggdrasil-data -m 0640 \
+sudo install -o yggdrasil-worker -g yggdrasil-data -m 0600 \
   "$candidate" "$model" || stop "Could not install private model as collector-owned file."
 
 phase="model-preflight"
