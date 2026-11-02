@@ -238,3 +238,26 @@ Undgå gentagne afvisningsforsøg indtil logdækningen
 er afklaret. Scriptet til meta-diagnostik er allerede
 tilgængeligt som `deploy/sprint5_sudo_journal_metadata_diagnostic.py`.
 Ingen sudo-funktion er koblet på live IDS eller Discord.
+
+### Opfølgning: ingen sudo-journalposter hele 2. november
+
+På Yggdrasil kl. **2026-11-02T22:41:31+01:00** blev den
+skrivebeskyttede `sprint5_sudo_journal_metadata_diagnostic.py`
+kørt på hele perioden fra `2026-11-02 00:00:00`. Resultatet:
+`recent_system_entry_visible=true`, men
+`comm_sudo_query.rows=0` og `tag_sudo_query.rows=0`.
+
+Der er dermed ingen matchende sudo-poster **for den dag under
+`yggdrasil-worker`s journalvisning**, selv om tidligere sudo-poster
+fandtes til og med 1. november. Den foregående kontrollerede
+`sudo -n`-test gav exit-kode 1, men dens stderr var undertrykt:
+hverken en præcis afvisningsgrund eller et verificeret
+`not_in_sudoers`-journalformat kan udledes.
+
+**Åbent problem:** Sammenlign, om root og collector-brugeren
+ser samme journald-poster; kontrollér om `rsyslog`
+eventuelt anvendes, og om en traditionel
+`/var/log/auth.log` eller `/var/log/sudo.log` findes.
+Udskriv kun antal og filmetadata – ikke faktiske loglinjer,
+kommandoargumenter eller brugernavne. Foretag ingen nye
+fejlede sudo-forsøg, før logdækningen er afklaret.
