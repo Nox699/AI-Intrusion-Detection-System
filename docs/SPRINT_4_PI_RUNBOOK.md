@@ -102,7 +102,7 @@ En produktionsmodel skal først trænes efter særskilt gennemgang af normaltraf
 
 **Trin A og B bestået** med den godkendte kildecommit `c3c9def02eba51e05c8ecd9902462c1a9a22d887`. Produktionsaudit: 15 SSH-events/observationer, 15 succesfulde logins, ingen fejl, én kilde, tre dage, 15 featurevektorer; minimum 80 og ingen live-modelfil. Syntetisk model: `ssh-if-16ae0fc3a05948df`, 312/44/41 split; evaluering og hashkontrol bestod. Collector, web og notifier var aktive før og efter. Alle artifacts er private på Pi.
 
-**Kun trin B2 mangler**, hvis et dashboard-screenshot af `ready`-modellen ønskes: start den eksisterende, CI-godkendte demo på **127.0.0.1:8766**, ikke på port 8765. Gem screenshot privat og mærk det syntetisk. Ingen geninstallation af applikationen er nødvendig.
+**Trin B2 er nu gennemført og verificeret i browseren** med screenshot `ML-C1` af en separat syntetisk model som `Model indlæst` (312 træningsobservationer). Et supplerende screenshot `ML-C2` af de scorede hændelser afventer. Den oprindelige instruktion for B2 var: start den eksisterende, CI-godkendte demo på **127.0.0.1:8766**, ikke på port 8765. Gem screenshot privat og mærk det syntetisk. Ingen geninstallation af applikationen er nødvendig.
 
 Se [Pi-resultatdokument](SPRINT_4_PI_RESULTS.md) for den faktiske matrix samt usikkerheder.
 
@@ -134,3 +134,9 @@ allerede fungerende demo-script alene for at få den tekstændring.**
 
 Screenshotet viser en privat Tailnet-adresse. Behold originalen privat,
 og slør identiteten ved eventuel deling i eksamensopgaven.
+
+## Status efter browseraccept
+
+**02.11.2026:** Ejerens screenshot fra den separate syntetiske `8766/model`-visning viste `Model indlæst`, 312 træningsobservationer, alarmgrænse 0,615 og modelversion `ssh-if-bc574f0291c96358`. Dette er **en anden labtræning** end den særskilt verificerede hold-out-evaluering `ssh-if-16ae0fc3a05948df`.
+
+Gem `ML-C1` privat; publicér ikke billedet automatisk på GitHub. Tag gerne `ML-C2` af *Seneste modelvurderinger*, så eksempler på afvigelsesscore og normal vurdering er dokumenteret. Den aktive produktionsmodel på 8765 er fortsat `untrained`; der er ingen plan om at erstatte den med syntetiske træningsdata.
