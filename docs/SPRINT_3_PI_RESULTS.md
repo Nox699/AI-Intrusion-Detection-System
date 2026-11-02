@@ -430,3 +430,32 @@ langtidsbelastning er endnu ikke målt.
 **Rapportbilag:** Discord-screenshot er modtaget i samtalen,
 men er ikke overført til repo eller rapport.
 Se `docs/SPRINT_3_SCREENSHOTS.md`.
+
+## Graf-release installeret på Pi – 2. november 2026
+
+**Source SHA:** `0cdcf4c3b6c62718f1ef4d5c5d35ee96362bd581` (CI bestået på Python 3.11 og 3.13).
+
+**Staging:** `sprint3_charts_prepare.sh` bestod; schema v4, produktionsprofil
+og kun godkendte graf-/dashboardfiler blev verificeret. Wheel på 100023 bytes
+inkluderede grafassets. Ingen IDS-tjenester blev stoppet under staging.
+
+- Wheel SHA-256: `56dbb6e369175a7a044c8752d675f024fc1db63ab25c37dd127f606a35ea0396`.
+- Tidligere venv SHA-256: `9477576d552dfe916ccf5128f67e416b62b3ddf6ecdfb53753ffca8ea767c67b`.
+- Privat stagingmappe: `/var/backups/yggdrasil-ids/sprint3-charts-prepared-0cdcf4c3b6c62718f1ef4d5c5d35ee96362bd581` (90 MB).
+
+**Live-deploy:** `sprint3_charts_deploy.sh` bestod uden fejl.
+Frisk offline schema-v4-backup er verificeret; ny wheel installeret.
+Alle tre servicekonti kan importere CLI. `yggdrasil-web` kunne læse graf-
+data og verificerede højst ti individuelle porte. Login-HTTP 200,
+ikke-autentificeret `/api/network-charts` HTTP 401.
+Discord checkpoint bevaret: `pending=0`, `delivered=2`.
+Eksisterende SSH-, netværks-, alarm- og notifierhistorik bevaret.
+Collector, web og notifier aktive efter genstart; UFW stadig `low`.
+
+- Offline-backup: `/var/backups/yggdrasil-ids/sprint3-charts-offline-PS5JlXUx`.
+- Rollback: `previous-venv.tar.gz` i ovenstående stagingmappe.
+
+**Status:** Pi-installation og server-side kontroller **bestået**.
+Faktisk browser-rendering af grafer og screenshot S3-J **afventer**.
+Observation af normale perioder og falske positiver er ikke afsluttet.
+Installationsscriptet skal **ikke** genkøres efter vellykket installation.
