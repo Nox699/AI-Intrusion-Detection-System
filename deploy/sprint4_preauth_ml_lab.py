@@ -18,8 +18,8 @@ from pathlib import Path
 from typing import Any
 
 from sprint4_preauth_signal_audit import classify
+
 from yggdrasil_ids.preauth_ml import (
-    CONNECTION_GAP,
     WINDOW,
     PreauthIsolationForest,
     connections_from_records,
