@@ -50,7 +50,7 @@ fuld maskingenstart og dokumenteret drift under belastning.
 
 ## Sprint 3 · UFW-observation og mulig TCP-portscanning
 
-**Status: Sprint 3 installeret, UFW-indsamling aktiv, og første TCP-scanningsalarm leveret i Discord.**
+**Status: Funktionelt afsluttet på Pi den 2. november 2026. UFW-indsamling, TCP-scanning, Discord og browsergrafer er demonstreret; længere FP-/stabilitetsevaluering udestår.**
 
 Parseren og den eksperimentelle TCP-portscanningsregel er softwaretestet.
 En separat `firewall_events`-historik, opt-in kernel-journalintegration,
