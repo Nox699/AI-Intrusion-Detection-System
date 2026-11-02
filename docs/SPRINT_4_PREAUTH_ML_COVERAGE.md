@@ -195,3 +195,23 @@ modelevaluering og backup/rollback. Den eksisterende
 **Faglig konklusion:** De fastsatte regler klarede sig **bedre end Isolation Forest** på begge splits i dette konkrete, konstruerede laboratorium (validerings-recall 57,9 vs. 39,5 %; sluttest-recall 54,3 vs. 48,6 %). Modellen er teknisk trænet, versionsbestemt og evalueret, men **ikke tilstrækkeligt god til at blive fremstillet som bedre end de nuværende regler**. Vi må ikke optimere mod sluttestens labels; i stedet skal vi diagnosticere på de allerede gemte scenarie-opdelinger og kun evt. justere features eller model ud fra trænings- og valideringsdata før en helt ny låst sluttest.
 
 **Private labfiler** blev gemt under `~/yggdrasil-preauth-ml-private/preauth-if-*/` på Pi. Ingen modelbyte, journalposter, kilde-IP'er eller private identiteter er lagt i GitHub. Dette afsnit indeholder kun de af brugeren bekræftede aggregerede evalueringstal.
+
+## Scenarievis analyse af den afsluttede preauth-test – 2. november 2026
+
+Brugeren gennemgik **den allerede låste, uændrede** `report.json` fra Pi'ens syntetiske laboratorium. Tabellen viser **TP pr. mærket mistænkelig forbindelse** (ikke uafhængige angreb eller antal Discord-alarmer):
+
+| Scenarie | Validering: ML / regel (ud af N) | Sluttest: ML / regel (ud af N) |
+| --- | --- | --- |
+| `invalid_user_spray` | 6 / 7 (N=10) | **8 / 6** (N=9) |
+| `invalid_user_burst` | 9 / 9 (N=13) | **9 / 8** (N=12) |
+| `preauth_disconnect_surge` | **0 / 6** (N=15) | **0 / 5** (N=14) |
+
+De fire mærkede normale scenarier (`short_legitimate`, `legitimate_typo`, `routine_maintenance` og `new_legitimate_source`) gav **ingen falske positive for nogen af metoderne**: validering 16 normale forbindelseskandidater, sluttest 14. Dette er meget lidt normaldata og siger intet om virkelig produktions-FPR.
+
+**Den afgørende fejlkategori:** Isolation Forest overså **samtlige 29** mærkede `preauth_disconnect_surge`-kandidater på tværs af validering og sluttest. Det udgør 15 af valideringens 23 ML-falsk-negative og 14 af sluttestens 18 ML-falsk-negative. Ser man *udelukkende* på de øvrige to typer i den syntetiske sluttest, opdagede ML **17/21 (81,0 %)** og reglerne **14/21 (66,7 %)**; dette er en efterfølgende *deskriptiv* delmængdeanalyse af den allerede anvendte sluttest, **ikke** en ny uafhængig benchmark eller grundlag for tærskeljustering. På valideringens tilsvarende delmængde er ML **15/23 (65,2 %)** og regler **16/23 (69,6 %)**.
+
+**Teknisk hypotese baseret på kildekoden:** Laboratoriets generator udsender en `Connection closed ... [preauth]`-meddelelse for **hver** syntetisk normal og mistænkelig forbindelseskandidat. Korrelationen registrerer derfor `disconnected=True` for alle genererede forbindelser. Følgelig er `disconnects_300s` og `connections_300s` altid identiske i disse forløb. Denne feature er altså redundant i netop laboratoriets data; `preauth_disconnect_surge` kan ikke skelnes fra legitim masseafvisning via disconnect-**typen** alene, kun via dens antal/hyppighed eller timing. Isolation Forest har ikke en iboende garanti for at markere værdier, der blot er større end træningsmaksimum. Dette **kan** forklare svagheden, men årsagen til de enkelte scores kræver en særskilt analyse af scorefordeling og træningsvariation.
+
+**Fortolkningsrisiko:** Et stort antal afbrudte preauth-forbindelser er ikke automatisk et angreb. Testscenariets `simulated_suspicious`-label er en antagelse i den konstruerede case, ikke et sikkerhedsfaktum. Begge metoder bør derfor evalueres på mere varierede, uafhængige normale forbindelsesmønstre (fx vedligeholdelse, afbrudt net og legitime automatiserede reconnects) før en reel alarm besluttes.
+
+**Næste metodisk forsvarlige udviklingsspor:** Bevar den aktuelle modelversion og de offentliggjorte testresultater. Udvikl en **regel+ML kombination i et adskilt, offline forsøg** med på forhånd valgte regler og logisk OR, og mål både *forbindelsesniveau* (confusion matrix) og *scenarieniveau* (om der nogensinde kom et fund, samt antal forbindelser til første fund). Undersøg redundant feature- og træningsdiversitet på et nyt syntetisk normaldesign uden at kigge efter den gamle sluttests bedste tærskel. Brug et **helt nyt uafhængigt sluttestsæt**, hvis model eller alarmgrænser justeres. Ikke installeret på Pi; eksisterende SSH-Isolation-Forest og Discord-alarmregler uændrede.
