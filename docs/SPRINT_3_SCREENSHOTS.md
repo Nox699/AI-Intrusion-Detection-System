@@ -106,8 +106,9 @@ Den nye `/network`-side er udviklet med to grafer: registrerede
 blokerede TCP SYN-pakker over tid og de ti mest berørte
 destinationsporte plus `Øvrige porte`.
 
-**Screenshot S3-J** skal først tages efter en særskilt
-live-installation og kontrol af graferne på Pi. Beskær til
+**Grafversionen er installeret på Pi den 2. november 2026**, med
+bestået login-/graf-API-test. **Screenshot S3-J mangler stadig**,
+indtil browserens Plotly-grafer er inspiceret og gemt. Beskær til
 graferne samt teksten om logdækning; undgå at vise IP-adresser
 i hændelsestabellen i et offentligt rapportbilag.
 
@@ -117,3 +118,12 @@ Forslag til billedtekst:
 De ti mest observerede destinationporte vises separat,
 mens resten aggregeres. Grafen er ikke et komplet
 billede af afsendte forbindelsesforsøg.*
+
+### S3-J – praktisk næste handling
+
+Åbn `http://localhost:8765/network` via SSH-tunnel
+`ssh -N -L 8765:127.0.0.1:8765 homelab` og gem screenshot,
+som viser både *Blokerede TCP SYN over tid* og *Mest berørte porte*.
+Der må højst vises ti individuelle porte; resten skal stå samlet
+som *Øvrige porte*. Skærmbilledet er endnu ikke modtaget og må
+derfor ikke omtales som et gennemført bilag.
