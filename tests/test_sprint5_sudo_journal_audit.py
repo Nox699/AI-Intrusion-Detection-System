@@ -23,13 +23,13 @@ def audit():
 @pytest.fixture
 def records():
     messages = [
-        " vidar : TTY=pts/1 ; PWD=/home/vidar ; USER=root ; COMMAND=/usr/bin/id",
-        "pam_unix(sudo:session): session opened for user root(uid=0) by vidar(uid=1000)",
+        " labadmin : TTY=pts/1 ; PWD=/home/labadmin ; USER=root ; COMMAND=/usr/bin/id",
+        "pam_unix(sudo:session): session opened for user root(uid=0) by labadmin(uid=1000)",
         "pam_unix(sudo:session): session closed for user root",
-        "pam_unix(sudo:auth): authentication failure; logname=vidar uid=1000",
-        " vidar : 2 incorrect password attempts ; TTY=pts/1",
-        " vidar is not in the sudoers file. This incident will be reported.",
-        "unclassified sudo diagnostic for vidar in /private/path",
+        "pam_unix(sudo:auth): authentication failure; logname=labadmin uid=1000",
+        " labadmin : 2 incorrect password attempts ; TTY=pts/1",
+        " labadmin is not in the sudoers file. This incident will be reported.",
+        "unclassified sudo diagnostic for labadmin in /private/path",
     ]
     return [
         {
@@ -60,7 +60,7 @@ def test_sudo_audit_recognizes_messages_without_disclosing_identity(audit, recor
     assert report["production_sudo_detection_active"] is False
     assert report["raw_command_lines_exposed"] is False
     dump = json.dumps(report)
-    assert "vidar" not in dump
+    assert "labadmin" not in dump
     assert "/usr/bin/id" not in dump
     assert "/private/path" not in dump
 
@@ -98,7 +98,7 @@ def test_sudo_audit_cli_prints_only_aggregated_report(audit, records, monkeypatc
     monkeypatch.setattr(audit, "read_journal", fake_read)
     assert audit.main([]) == 0
     output = capsys.readouterr().out
-    assert "vidar" not in output
+    assert "labadmin" not in output
     assert "/usr/bin/id" not in output
     assert json.loads(output)["categories"]["command_invoked"] == 1
 
