@@ -182,3 +182,13 @@ produktionsbenchmark. Oplys AI-delen som faktisk hybridtræning og
 live-scoring, og beskriv tydeligt datagrundlagets begrænsninger.
 Private modelartefakter, featurefiler, IP-adresser, rå logs,
 credentials og backups forbliver på Pi og uploades ikke til GitHub.
+
+## Faktisk shadow-installation på Yggdrasil – 2. november 2026
+
+Brugeren gennemførte den separate kontrollerede installation af den tidligere staged release fra SHA `450c01f60d11c87c909b20d6d3a0edd28a1d14e0` på Raspberry Pi. Alle sikkerhedsgates gav `PASS`: fri demoport, korrekt privat hybrid-kandidatmodel, uændret tidligere live modelstatus, schema v4, komplette verificerede offline-backups, ny wheel, atomisk `ml.alert_mode = "shadow"`, modeltilgængelighed for `yggdrasil-worker`, modelstatus `ready` med `alert_mode=shadow`, privat loopback-dashboard med login, bevarede notifier-checkpoints, eksisterende hændelser/alarmer og **ingen nye ML-fund** under installationen. Collector, web og notifier meldtes alle aktive efter opstart.
+
+**Verificeret model:** `ssh-if-7cc1f15288d0c73b` (324 træningsrækker: 312 syntetiske normale og 12 godkendte reelle SSH-success-rækker). Kandidatens fem øvrige virkelige success-rækker blev ikke markeret afvigende, men dette er ikke en virkelighedsbaseret falsk-positiv-rate eller dokumenteret angrebsdetektion.
+
+**Gendannelsesmulighed:** Frisk, privat offline-backup i Pi'ens `/var/backups/yggdrasil-ids/`-område med navnet `sprint4-shadow-offline-*`; staged tidligere venv-backup ligger fortsat i den privat beskyttede `sprint4-shadow-prepared-*`-mappe. Der blev ikke uploadet backupfiler, modelartefakter, legitime SSH-logs eller IP-adresser til GitHub.
+
+**Næste test af reel scoring afventer:** Installationsscriptets `ready` beviser modellen kan indlæses, ikke at et nyt SSH-login er scoret. Opret én ny legitim SSH-session, og kontroller read-only `observations.state = 'scored'`, tilhørende score/tærskel/modelversion samt at der fortsat ikke oprettes `ssh.isolation_forest`-fund. Ingen simulerede angreb kræves ved denne første accept.
