@@ -45,6 +45,6 @@ Træningskvalitet skal derfor diskuteres via repræsentativitet, feature-variati
 
 ## Sprint 4 – acceptstatus
 
-**GitHub-kode og tests:** Afventer endelig grøn CI på den færdige branch. **På Pi:** laboratoriereproduktion og live SSH-readiness-rapport skal stadig køres af ejeren. **Live model:** untrained, indtil tilstrækkeligt gennemgået normaldata findes og modellen er særskilt accepteret. Dette er to forskellige former for accept.
+**GitHub-kode og tests:** Implementeret og verificeret via CI på Python 3.11 og 3.13 (Ruff, pytest og wheel-build). **På Pi:** laboratoriereproduktion og live SSH-readiness-rapport skal stadig køres af ejeren. **Live model:** untrained, indtil tilstrækkeligt gennemgået normaldata findes og modellen er særskilt accepteret. Dette er to forskellige former for accept.
 
 Der indgår ingen upload af private screenshots, kilde-IP-adresser, passwords, token eller autentiske logs til GitHub.
