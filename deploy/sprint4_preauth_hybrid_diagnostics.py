@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -58,7 +57,7 @@ def analyse(directory: Path) -> dict[str, Any]:
         "model_version": model.version,
         "model_retrained": False,
         "original_threshold_unchanged": True,
-        "test_data_used_for_optimization": False,
+        "test_set_is_no_longer_unseen": True,
         "production_ids_changed": False,
         "evaluation_unit": "one_correlated_preauth_connection",
         "interpretation": (
