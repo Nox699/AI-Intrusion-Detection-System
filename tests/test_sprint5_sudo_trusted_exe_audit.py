@@ -105,9 +105,7 @@ def test_invalid_date_does_not_consult_journal(inventory, monkeypatch):
     assert exc.value.code == 2
 
 
-def test_journal_command_restricts_to_sudo_executable_without_uid_condition(
-    inventory, monkeypatch
-):
+def test_journal_command_restricts_to_sudo_executable_without_uid_condition(inventory, monkeypatch):
     import io
 
     seen_commands = []
