@@ -9,9 +9,7 @@ from pathlib import Path
 import pytest
 
 SCRIPT = (
-    Path(__file__).resolve().parents[1]
-    / "deploy"
-    / "sprint5_sudo_journal_metadata_diagnostic.py"
+    Path(__file__).resolve().parents[1] / "deploy" / "sprint5_sudo_journal_metadata_diagnostic.py"
 )
 
 
@@ -66,9 +64,7 @@ def test_query_profiles_are_bounded_and_do_not_filter_uid(diag):
         assert "--since=2026-10-22 00:00:00" in args
         assert not any(value.startswith("_UID=") for value in args)
     assert "_COMM=sudo" in diag.journal_command("2026-10-22 00:00:00", "comm_sudo")
-    assert "SYSLOG_IDENTIFIER=sudo" in diag.journal_command(
-        "2026-10-22 00:00:00", "tag_sudo"
-    )
+    assert "SYSLOG_IDENTIFIER=sudo" in diag.journal_command("2026-10-22 00:00:00", "tag_sudo")
     assert "--lines=1" in diag.journal_command("2026-10-22 00:00:00", "recent_system")
     with pytest.raises(ValueError):
         diag.journal_command("2026-10-22 00:00:00", "all_records")
@@ -112,7 +108,7 @@ def test_aggregate_report_uses_three_probes_and_hides_private_messages(diag, mon
     assert report["only_aggregated_metadata_exposed"] is True
     serialized = json.dumps(report)
     for private in ("sensitive", "private", "command", "username", "logger"):
-        assert private not in serialized or private == "command" and "command" not in serialized
+        assert private not in serialized
 
 
 def test_bounded_metadata_scan_refuses_excessive_rows(diag, monkeypatch):
