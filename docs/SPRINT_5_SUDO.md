@@ -307,3 +307,26 @@ politiknøgler og eventuelle logdestinationer med sanitiseret
 output. Ingen sudoers-ændringer, genstart, yderligere fejlede
 sudo-forsøg eller ændring af IDS-produktion før logdækningen
 er forklaret.
+
+### Sudo 1.9.16p2 og syslog-facility 4/10 – næste afgrænsning
+
+På Yggdrasil er `sudo` version **1.9.16p2**.
+`sudo -V` viser den **kompilerede** syslog-facility
+`authpriv`, samt succes-prioritet `notice` og
+afvisnings-prioritet `alert`, *hvis syslog anvendes*.
+Det alene dokumenterer ikke de aktuelt aktive
+sudoers-Defaults eller individuelle brugerregler.
+
+Aggregater fra journald med `_TRANSPORT=syslog`:
+
+| Dato | `SYSLOG_FACILITY=10` (authpriv) | `SYSLOG_FACILITY=4` (auth) | Øvrige |
+| --- | ---: | ---: | ---: |
+| 2026-11-01 | 91 | 43 | 247 |
+| 2026-11-02 | 73 | 18 | 244 |
+
+Der findes altså auth-/authpriv-logposter den 2. november,
+men ingen matchende sudo-poster i de tidligere undersøgelser.
+**Årsagen er stadig ukendt.** Næste skridt er en
+skrivebeskyttet, sanitiseret gennemgang af eventuelle
+sudoers-logningsoverrides, uden at offentliggøre
+rå sudoers-linjer eller ændre policy.
