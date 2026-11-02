@@ -215,3 +215,34 @@ De fire mærkede normale scenarier (`short_legitimate`, `legitimate_typo`, `rout
 **Fortolkningsrisiko:** Et stort antal afbrudte preauth-forbindelser er ikke automatisk et angreb. Testscenariets `simulated_suspicious`-label er en antagelse i den konstruerede case, ikke et sikkerhedsfaktum. Begge metoder bør derfor evalueres på mere varierede, uafhængige normale forbindelsesmønstre (fx vedligeholdelse, afbrudt net og legitime automatiserede reconnects) før en reel alarm besluttes.
 
 **Næste metodisk forsvarlige udviklingsspor:** Bevar den aktuelle modelversion og de offentliggjorte testresultater. Udvikl en **regel+ML kombination i et adskilt, offline forsøg** med på forhånd valgte regler og logisk OR, og mål både *forbindelsesniveau* (confusion matrix) og *scenarieniveau* (om der nogensinde kom et fund, samt antal forbindelser til første fund). Undersøg redundant feature- og træningsdiversitet på et nyt syntetisk normaldesign uden at kigge efter den gamle sluttests bedste tærskel. Brug et **helt nyt uafhængigt sluttestsæt**, hvis model eller alarmgrænser justeres. Ikke installeret på Pi; eksisterende SSH-Isolation-Forest og Discord-alarmregler uændrede.
+
+## Låst hybrid-analyse på eksisterende syntetiske resultater
+
+`deploy/sprint4_preauth_hybrid_diagnostics.py` er et **rent read-only analyseværktøj** til det **allerede genererede** syntetiske laboratoriemateriale. Det indlæser originalt `manifest.json` (SHA-256), `labels.json`, `report.json` og den hash-verificerede private `preauth-lab-model.json`, men træner **ikke igen** og ændrer **ikke** det eksisterende testdatasæt, modellens threshold, tjenesternes indstillinger eller nogen produktionsdatabase.
+
+Analysen genberegner de originale ML- og regelklassifikationer og **afviser kørsel**, hvis deres TP/FP/TN/FN eller antal korrelerede forbindelser afviger fra den tidligere gemte rapport. Dernæst vises en **retrospektiv** logisk OR-kombination af AI og regler med både confusion matrix og markering af **første fund i hvert scenarie** (1-baseret forbindelsesnummer). Den tæller også, hvor ofte `disconnects_300s == connections_300s` for at kontrollere redundant feature i dette specifikke syntetiske design.
+
+Den kombinerede tilgang er **valgt efter at den gamle sluttest var set**: Selv hvis dens tal er bedre, er det altså **ikke en ny uafhængig performance-evaluering**. Vi må beskrive resultatet som et retrospektivt diagnostisk eksperiment og afprøve en eventuel fremtidig model-/regelkombination på nye, låste uafhængige scenarier med flere typer legitim reconnect-trafik. Der er ingen produktionsaktivering eller Discord-effekt.
+
+Kør kun lokalt på Pi efter CI-kontrol af den valgte commit-SHA og med de allerede eksisterende private syntetiske labfiler:
+
+~~~bash
+(
+  set -euo pipefail
+  cd /home/vidar/AI-Intrusion-Detection-System
+  sha='INDSAET_GODKENDT_SHA_HER'
+  git fetch --no-tags origin sprint-4/preauth-ml-coverage
+  test "$(git rev-parse origin/sprint-4/preauth-ml-coverage)" = "$sha"
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
+  git archive "$sha" src deploy/sprint4_preauth_signal_audit.py \
+    deploy/sprint4_preauth_ml_lab.py \
+    deploy/sprint4_preauth_hybrid_diagnostics.py | tar -xf - -C "$tmp"
+  PYTHONPATH="$tmp/src:$tmp/deploy" \
+    /opt/yggdrasil-ids/venv/bin/python \
+    "$tmp/deploy/sprint4_preauth_hybrid_diagnostics.py" \
+    "$HOME/yggdrasil-preauth-ml-private/preauth-if-jhAFiK8r"
+)
+~~~
+
+Kun syntetiske scenarienavne og aggregerede resultatmål udskrives. Den sidste labmappe er brugerens allerede eksisterende private laboratorieforsøg; hele mappen eller modellen må ikke uploades til et offentligt repository.
