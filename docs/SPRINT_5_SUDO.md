@@ -57,3 +57,47 @@ Parseren bør aldrig acceptere `SYSLOG_IDENTIFIER` alene som producentbevis og m
 ## Afgrænsning i eksamensopgaven
 
 Sprint 4's Isolation Forest er kun trænet på syntetiske **SSH**-scenarier. En fremtidig sudo-detektor kan ikke kaldes ML-baseret, medmindre vi implementerer nye sudo-features og har repræsentativt, adskilt trænings- og testgrundlag. Sudo-alarmer skal derfor først være **regelbaserede**, med tydelig evidens.
+
+## Faktisk Pi-audit: nul fund fra det snævre filter, 2. november 2026
+
+Brugeren kørte `deploy/sprint5_sudo_journal_audit.py` fra fast Git-commit
+`c35f086326142d39aeb3b041f3b62632fc5dc522` på Yggdrasil, som
+`yggdrasil-worker`, fra `2026-10-22 00:00:00`. Output:
+`rows_seen=0`, `trusted_sudo_rows=0`, nul i alle syv kategorier,
+`production_sudo_detection_active=false`. Kommandoen afsluttede uden fejl.
+
+**Fortolkning:** Dette viser kun, at den snævre journald-forespørgsel
+med **begge** felter `_COMM=sudo` og `_UID=0` ikke fandt poster i den
+valgte periode, under denne læserkonto og journaladgang. Det beviser
+hverken fravær af sudo-brug, utilstrækkelige loggerettigheder eller
+hvilken metadata-kombination Debian faktisk benytter.
+
+### Næste datakildegate: aggregeret metadata-diagnostik
+
+`deploy/sprint5_sudo_journal_metadata_diagnostic.py` undersøger alene:
+
+1. Om mindst én systemjournalpost siden startdatoen er synlig
+   med `journalctl --system --lines=1`.
+2. Hvor mange poster der matcher kernelregistreret `_COMM=sudo`
+   **uden** at kræve `_UID=0`, samt grove UID-, `_EXE`- og
+   transportkategorier.
+3. Hvor mange poster der blot har `SYSLOG_IDENTIFIER=sudo`, og hvor
+   mange af disse faktisk har `_COMM=sudo` og root-UID.
+
+`SYSLOG_IDENTIFIER=sudo` bruges **kun til discovery**, ikke som
+autentisk bevis på en sudo-handling; tagget kan forfalskes af
+ikke-privilegerede afsendere. Et processnavn alene beviser heller
+ikke korrekt privilegeret oprindelse. Felter såsom `MESSAGE`,
+`COMMAND=`, `_CMDLINE`, brugernavne, IP'er, konkrete
+procesnavne, PID'er, UID'er fra enkeltposter og journalcursors
+udskrives aldrig. Der er et loft på 10.000 journalposter pr.
+afgrænset søgning; ved overskridelse stoppes analysen.
+
+Dette er *kun* diagnostik og ikke en sudo-detektor. Ingen
+serviceændringer, sudoers, SQLite, UFW eller Discord-ændringer.
+
+**Pi-kørsel:** Brug kun fuld SHA fra grøn GitHub CI på branchen
+`sprint-5/sudo-monitoring`; hent scriptet som kilde via
+`git show SHA:deploy/sprint5_sudo_journal_metadata_diagnostic.py`
+og udfør det som `yggdrasil-worker`. Analyser de aggregerede
+resultater, før nogen produktionsdetektor designes.
