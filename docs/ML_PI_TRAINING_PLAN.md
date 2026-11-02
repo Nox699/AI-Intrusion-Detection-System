@@ -57,3 +57,29 @@ Antal unikke features og tidsfordeling viser variation, men beviser ikke, at tra
 - ML-D: Når rigtig model er valideret: modelversion, træningsperiode, prøveantal og hold-out-evaluering. Ikke før faktisk træning.
 
 **Berørte kodefiler:** src/yggdrasil_ids/cli.py (train, prepare-training, export-features, lab), src/yggdrasil_ids/ml.py (minimum, variation, modelartefakt), src/yggdrasil_ids/features.py (seks SSH-features), src/yggdrasil_ids/lab.py (syntetisk hold-out-test).
+
+## Rapportdiskussion – privat server kontra større miljø
+
+Yggdrasil har aktuelt én primær administrator og et meget lavt volumen af
+SSH-autentificeringer: 12 events/observationer mod det tekniske minimum 80.
+Det er derfor svært at opbygge en *repræsentativ* normalprofil hurtigt.
+En virksomhed med eksempelvis 10–20 aktive SSH-brugere **kan** få flere
+observationer pr. døgn, men antallet af brugere er ikke i sig selv nok:
+mange brugere kan også give mere heterogen normaladfærd, forskellige
+arbejdstider og flere legitime sjældne hændelser. Faktisk SSH-brug og
+datakvalitet skal måles, ikke antages ud fra virksomhedens størrelse.
+
+De seks nuværende SSH-features afspejler bl.a. fejl/succes, antal
+brugernavne, fejlandel og tidspunkt i rullende 300-sekundersvinduer
+for en kilde. Tætliggende observationer kan overlappe og er ikke
+uafhængige. Derfor giver 80 næsten identiske loginforsøg ikke
+samme læringsværdi som varierede gennemgåede normale scenarier.
+
+**Til rapportens diskussion:** Datagrundlag, bias, generaliserbarhed,
+falske positiver ved legitim usædvanlig aktivitet og domæneskift
+mellem homelab og virksomhedsnet. Skeln metodisk mellem et
+implementeret og syntetisk evalueret ML-system og en ML-detektor,
+der er valideret og aktiveret i produktion. Den syntetiske
+laboratoriemodel må ikke fremstilles som trænet på Yggdrasils
+normale SSH-drift. Det er en observeret projektbegrænsning,
+ikke et fejlsymptom i den regelbaserede IDS.
