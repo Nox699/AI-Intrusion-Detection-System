@@ -376,3 +376,34 @@ standardindstillinger er deaktiveret. Der er derfor
 og sammenlign aggregerede sudo-relaterede syslog-poster på
 begge datoer uden at vise beskeder eller identiteter.
 Ingen ændring af sudoers eller aktive IDS-services.
+
+### Tværgående journalaudit 1.–3. november 2026: sudo-hændelser mangler
+
+En skrivebeskyttet gennemgang af **alle systemjournalposter**,
+uden indledende `_COMM`, `_EXE`, `SYSLOG_IDENTIFIER` eller
+transportfilter, gav følgende lokale kalenderdage
+(`Europe/Copenhagen`):
+
+| Lokal dato | Journalposter i alt | `_EXE=/usr/bin/sudo` | `_COMM=sudo` | `SYSLOG_IDENTIFIER=sudo` | `authpriv` | `_TRANSPORT=audit` | `MESSAGE` indeholder "sudo" |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2026-11-01 | 3.537 | 4 | 0 | 4 | 91 | 0 | 4 |
+| 2026-11-02 | 3.345 | 0 | 0 | 0 | 73 | 0 | 0 |
+| 2026-11-03 (delvis dag) | 170 | 0 | 0 | 0 | 2 | 0 | 0 |
+
+Det er et **reelt, uafklaret datadækningsproblem** i den
+tilgængelige systemjournal fra 2. november og frem. Et
+gennemført, trivielt `sudo /usr/bin/true` blev også fulgt
+af nul matchende journalposter på de tre sudo-metadatafelter.
+Sudo 1.9.16p2 rapporterer `log_allowed`, `log_denied`,
+`authpriv` og standard sudoers-policy-/audit-plugins som
+tilgængelige; tidligere konfigurationsaudit viste ingen
+eksplicitte overrides for de undersøgte logfelter.
+
+**Vi har ikke påvist årsagen.** Dette kan ikke tilskrives
+en fejl i vores parser: den ser slet ingen sudo-poster.
+Næste sikre diagnostiske forsøg er én harmløs
+`logger`-meddelelse til `/dev/log` på `authpriv.notice`
+med unik testtag, og efterfølgende aggregeret journald-
+verifikation. Det tester kun logtransporten, ikke sudo-
+autorisering eller detektorens følsomhed. Ingen sudoers-,
+systemd-, SSH- eller IDS-ændringer.
