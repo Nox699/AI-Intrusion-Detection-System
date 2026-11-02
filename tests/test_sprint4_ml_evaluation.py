@@ -102,8 +102,7 @@ def test_readonly_readiness_audit_redacts_identities_and_never_writes(tmp_path):
     model_path = tmp_path / "no-model.json"
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        f'[paths]\ndatabase = "{db_path}"\nmodel = "{model_path}"\n'
-        "[ml]\nmin_samples = 80\n"
+        f'[paths]\ndatabase = "{db_path}"\nmodel = "{model_path}"\n[ml]\nmin_samples = 80\n'
     )
     with sqlite3.connect(db_path) as db:
         db.executescript(
@@ -115,8 +114,12 @@ def test_readonly_readiness_audit_redacts_identities_and_never_writes(tmp_path):
         db.execute("INSERT INTO events VALUES(?,?,?)", (1793500000, "192.0.2.55", "success"))
         db.execute("INSERT INTO events VALUES(?,?,?)", (1793500001, "192.0.2.55", "failure"))
         features = {
-            "failed_count": 1, "success_count": 1, "unique_users": 1,
-            "failure_ratio": 0.5, "hour_sin": 0.0, "hour_cos": 1.0,
+            "failed_count": 1,
+            "success_count": 1,
+            "unique_users": 1,
+            "failure_ratio": 0.5,
+            "hour_sin": 0.0,
+            "hour_cos": 1.0,
         }
         db.execute(
             "INSERT INTO observations VALUES(?,?,?,?)",
