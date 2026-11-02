@@ -1,7 +1,8 @@
 # Sprint 3 – Afslutningskontrol
 
-**Status:** Kernefunktioner er demonstreret på Pi. Netværksgraferne er
-udviklet og CI-testet, men er endnu ikke installeret på Pi.
+**Status:** Kernefunktioner er demonstreret på Pi. Netværksgraferne er **nu installeret på Pi** efter bestået CI,
+frisk offline-backup og server-side smoke-tests. Browser-visning,
+screenshot og observation af normaldrift afventer.
 
 ## Verificeret i drift
 
@@ -54,3 +55,22 @@ de registrerede pakker er ikke alle afsendte netværksforsøg.
 
 Derefter prioriteres Isolation Forest og sammenligning med
 regelbaseret SSH-detektion til eksamensrapporten.
+
+## Praktisk installationsresultat – 2. november 2026
+
+**Staging og deployment gennemført med PASS på Pi.** Installeret
+Git-SHA: `0cdcf4c3b6c62718f1ef4d5c5d35ee96362bd581`.
+Wheel, fuld tidligere venv-backup og offline schema-v4-backup blev
+verificeret. CLI-import virkede som worker, web og notifier.
+Det nye graf-API er beskyttet af login (HTTP 401 uden session),
+login-side svarer 200. SQLite-historik og Discord-levering bevaret
+(`pending=0`, `delivered=2`). Alle tre services er aktive og UFW
+forbliver på `low`.
+
+**Backup:** `/var/backups/yggdrasil-ids/sprint3-charts-offline-PS5JlXUx`.
+**Rollback-venv:** `/var/backups/yggdrasil-ids/sprint3-charts-prepared-0cdcf4c3b6c62718f1ef4d5c5d35ee96362bd581/previous-venv.tar.gz`.
+
+**Nu mangler kun browseraccept af de to grafer og S3-J screenshot,
+plus en afgrænset observation uden testscanning.** Udrulningsscripts
+skal ikke køres igen. Dette er ikke endnu dokumentation for 24 timers
+stabilitet eller en estimeret falsk-positiv-rate.
