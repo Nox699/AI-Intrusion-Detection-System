@@ -330,3 +330,26 @@ men ingen matchende sudo-poster i de tidligere undersøgelser.
 skrivebeskyttet, sanitiseret gennemgang af eventuelle
 sudoers-logningsoverrides, uden at offentliggøre
 rå sudoers-linjer eller ændre policy.
+
+### Sudoers-konfigurationsaudit: ingen eksplicitte log-overrides
+
+På Yggdrasil blev `/etc/sudoers` og seks eksisterende
+ikke-skjulte filer i `/etc/sudoers.d` gennemgået uden at
+udskrive filindhold. En simpel parser af `Defaults`-linjer
+fandt **ingen eksplicitte** forekomster af `log_allowed`,
+`log_denied`, `syslog`, `syslog_goodpri`,
+`syslog_badpri`, `logfile` eller `log_servers`.
+
+**Fortolkning:** Der er ikke konstateret et synligt,
+tekstligt override blandt de syv undersøgte filer.
+Denne kontrol er ikke en fuld fortolkning af effektiv
+sudo-policy og dækker ikke nødvendigvis eventuelle
+yderligere sudoers-kilder, inkluderede filer,
+policy-plugins eller indstillinger filtreret af andre
+regler. Logdækningen på Yggdrasil er fortsat **ikke**
+accepteret, og den tidligere mislykkede `sudo -n`-test
+må ikke tælle som en valideret alarmtest.
+
+**Næste kontrol:** Aflæs kun metadata om `sudoers:`
+i NSS, registrerede sudo-plugins og journalds effektive
+logniveau/ratelimit; ingen konfigurationsændringer.
