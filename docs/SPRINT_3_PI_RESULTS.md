@@ -474,3 +474,21 @@ målingen dokumenterer derfor **ikke** nul falske positiver eller
 en bestemt falsk-positiv-rate. En eventuel anden scanner i perioden
 er ikke udelukket på grundlag af de aggregerede tal alene.
 Dashboardets faktiske browser-rendering og screenshot S3-J afventer.
+
+## Visuel accept af grafer på Pi – 2. november 2026
+
+Brugeren viste et screenshot fra det **rigtige private `/network`-dashboard** efter
+installation af graf-release `0cdcf4c3b6c62718f1ef4d5c5d35ee96362bd581`.
+Begge grafer er tydeligt rendret i browseren: **Blokerede TCP SYN over tid**
+og **Mest berørte porte**. Den sidste viser **højst ti individuelle
+destinationsporte og én samlet søjle for `Øvrige porte`**. Dashboardet
+viste i denne valgte periode 296 logposter, fire kildeadresser i aggregat,
+TCP 31 og UDP 187. Disse værdier er skærmbilledets øjebliksbillede og
+skal ikke forveksles med den tidligere afgrænsede testoptælling.
+
+**Visuel browseraccept bestået.** Screenshot S3-J blev delt i samtalen,
+men **ingen billedfil er uploadet til det offentlige GitHub-repository**.
+En lokal rapportkopi kan beskæres/redigeres før anvendelse. Der er ingen
+grund til at geninstallere wheel eller genstarte services for dette.
+Den korte normaldriftsobservation (139 firewallposter siden kl. 01:15,
+0 nye portscanalarmer) er rapporteret separat. Den beregner ikke FP-rate.
