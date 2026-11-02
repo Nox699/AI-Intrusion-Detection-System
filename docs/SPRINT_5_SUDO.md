@@ -131,3 +131,74 @@ Discord forbliver uændrede.
 derefter beslut hvilke konkrete sudo-formater det er meningsfuldt
 at lave regler for. Ret ikke produktionskonfigurationen på
 baggrund af metadataoptællingen alene.
+
+## Pi-accept af sudo-logformater, 2. november 2026
+
+Den skrivebeskyttede audit `deploy/sprint5_sudo_trusted_exe_audit.py`
+blev kørt af `yggdrasil-worker` på Yggdrasil fra commit
+`be86915ceef24ef8280f69850642b3b84a7556a9`.
+Den læste journalen siden `2026-10-22 00:00:00` og rapporterede:
+
+| Troværdige sudo-logmeddelelser | Antal |
+| --- | ---: |
+| `command_invoked` | 34 |
+| `pam_session_opened` | 38 |
+| `pam_session_closed` | 37 |
+| `pam_auth_failure` | 0 |
+| `incorrect_password` | 0 |
+| `not_in_sudoers` | 0 |
+| `other_sudo` | 0 |
+| **Samlet** | **109** |
+
+Der var 60 poster den 24/10, 41 den 28/10, 4 den 31/10 og 4 den
+01/11 (UTC). Det er **loglinjer**, ikke unikke kommandoer, sessioner,
+angreb eller autorisationsskift. Én åbnet PAM-session mere end lukket
+er ikke i sig selv dokumentation for et vedvarende login.
+Der er ingen registrerede fejl i de genkendte meddelelsesformater,
+men dette udelukker ikke, at andre logformater eller manglende
+logdata skjuler hændelser. En enkelt realdata-audit kan heller
+ikke validere den fremtidige detektors følsomhed.
+
+### Sprint 5 – isoleret regelmotor, ikke installeret
+
+For at evaluere et forsigtigt alarmdesign uden at ændre live-IDS'en
+implementeres en **separat offline-prototype** i
+`src/yggdrasil_ids/sudo_rules.py` og et rent read-only
+journal-preview i `deploy/sprint5_sudo_rule_preview.py`.
+
+- Accepter kun journalposter, hvor det betroede metadatafelt
+  `_EXE=/usr/bin/sudo` er til stede. Afvis beskadigede
+  tidsstempler, procesidentiteter, boot-ID'er og journalcursors.
+- Genkend almindelige sudo-kommandoer og PAM-sessioner som
+  **ikke-alarmgivende**. Genkend kun kendte, strengere
+  logmønstre for fejl/afvisning; fritekst i `COMMAND=` må ikke
+  kunne efterligne en sikkerhedsfejl.
+- Prototypens fejlregel: mindst **3 særskilte sudo-PID'er** med
+  et autentificeringsfejlsignal for samme journal-UID og boot
+  i et rullende vindue på **300 sekunder**. Det er en konservativ
+  proxy for gentagne sudo-processer, ikke en nøjagtig optælling
+  af forkerte adgangskoder.
+- Prototypens afvisningsregel: `not_in_sudoers` giver ét
+  `sudo.permission_denied`-kandidatfund. En afvisning er
+  ikke bevis på ondsindet aktivitet.
+- Begge regler har **300 sekunders cooldown** pr. kildegruppe
+  og regel. Dubletter med samme journalcursor tælles ikke igen;
+  en PAM-fejl og en fejloversigt fra samme PID tæller højst
+  som én proces i fejlreglen.
+- Prototypen må kun udskrive kategorier, grænser og
+  aggregeret antal kandidatfund. Ingen brugernavne,
+  kommandoargumenter, rå meddelelser, PID/UID eller
+  journalcursors offentliggøres.
+
+Alle nye regler og logmønstre unit-testes med konstruerede
+normale, mislykkede og afviste sudo-hændelser. Før vi har
+kontrollerede, autentiske fejl-eksempler på Pi, kan vi
+**ikke** sige, at den vil genkende alle Debian 13 sudo-fejl.
+Vi må heller ikke fortolke 0 kandidatfund på den eksisterende
+normale journal som en valideret falsk-positiv-rate.
+
+**Status:** Ingen sudo-regler er koblet til live-collector,
+SQLite-alerts, dashboard eller Discord. Ingen SSH-/ML-model er
+ændret; ingen privilegier, sudoers, UFW eller systemd-tjenester
+ændres. Enhver senere produktionsintegration kræver en særskilt
+backup, rollout og rollback og en dokumenteret live-test.
