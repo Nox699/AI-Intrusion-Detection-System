@@ -192,3 +192,23 @@ Brugeren gennemførte den separate kontrollerede installation af den tidligere s
 **Gendannelsesmulighed:** Frisk, privat offline-backup i Pi'ens `/var/backups/yggdrasil-ids/`-område med navnet `sprint4-shadow-offline-*`; staged tidligere venv-backup ligger fortsat i den privat beskyttede `sprint4-shadow-prepared-*`-mappe. Der blev ikke uploadet backupfiler, modelartefakter, legitime SSH-logs eller IP-adresser til GitHub.
 
 **Næste test af reel scoring afventer:** Installationsscriptets `ready` beviser modellen kan indlæses, ikke at et nyt SSH-login er scoret. Opret én ny legitim SSH-session, og kontroller read-only `observations.state = 'scored'`, tilhørende score/tærskel/modelversion samt at der fortsat ikke oprettes `ssh.isolation_forest`-fund. Ingen simulerede angreb kræves ved denne første accept.
+
+## Reel SSH-scoring: browser-/databaseaccept bestået – 2. november 2026
+
+**Pi-accept:** En ny legitim SSH-session blev oprettet **efter** shadow-installationen og verificeret i den skrivebeskyttede SQLite-visning. Brugerens private output dokumenterede:
+
+| Kriterium | Resultat |
+| --- | --- |
+| Modelstatus | `ready` |
+| ML-tilstand | `shadow` |
+| Scorede nye SSH-observationer | **1** |
+| Tidspunkt (Europe/Copenhagen) | **2026-11-02 17:47:48** |
+| Modelversion | `ssh-if-7cc1f15288d0c73b` |
+| Isolation Forest-score | **0,4775** |
+| Alarmgrænse | **0,6164** |
+| Modellen vurderede | `Inden for grænsen` |
+| ML-fund i drift | **0** |
+
+**Konklusion:** End-to-end-integrationen *rigtig SSH-login → journal → collector → 300-sekunders SSH-featurevektor → indlæst Isolation Forest → score/tærskel i SQLite* er nu faktisk verificeret på Yggdrasil. Nul ML-alarmer er forventet i shadow-mode; det er ikke en måling af falsk-positiv-raten. Ingen kilde-IP-adresse, private loginoplysninger, modelartefakter eller logs er uploadet.
+
+**Resterende:** Test adskillige legitime sessions og derefter *adskilte, kontrollerede* mistænkelige SSH-scenarier. Før forsøg med fejl-login: kontrollér OpenSSH-authentication og Fail2ban/ban-tærskler, hold Tailscale-adgang til administration åben, brug kun egen Pi og dokumentér at forsøgene er tests, ikke normale træningsdata. Testens score er ikke i sig selv bevis på angreb.

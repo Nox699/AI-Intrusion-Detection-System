@@ -73,7 +73,7 @@ langtidsstabilitet og performance mangler stadig.
 
 ## Sprint 4 · AI, Isolation Forest og dokumenteret evaluering
 
-**Status: Syntetisk AI-træning, hold-out-evaluering, privat dashboard-demo og read-only Pi-dataaudit er gennemført. Produktionsmodel forbliver bevidst `untrained` (19 faktiske SSH-auth, kun 2 adfærdskombinationer uden tid).**
+**Status: Syntetisk lab-evaluering og privat Pi-audit er gennemført. Den 2. november 2026 blev en eksperimentel hybrid-Isolation-Forest (312 syntetiske + 12 legitime Pi-træningsrækker) installeret i `shadow` og verificeret med en ægte scoret SSH-session kl. 17:47:48, score 0,4775 under tærsklen 0,6164. ML-alarmer forbliver deaktiveret.**
 
 Dette sprint er prioriteret før sudo og filintegritet for at sikre, at AI-
 eksamensopgavens centrale ML-versus-regler-evaluering kan fremvises.
@@ -83,13 +83,13 @@ og 41 sluttesthændelser. Vi har nu tilføjet en særskilt audit af
 produktionsdata og en verifier, der kontrollerer SHA-256, datasplit
 og confusion-matricer, før metrikker bruges i rapporten.
 Kun aggregerede tal forlader laboratoriet; ingen private logs eller
-modelartefakter uploades automatisk til GitHub. På Pi er modellen
-stadig `untrained` (12 SSH-observationer mod minimum 80).
+modelartefakter uploades automatisk til GitHub. Den indledende Pi-audit fandt for få varierede SSH-hændelser til rent lokal træning. Den efterfølgende *eksperimentelle* hybridmodel er installeret i shadow-mode og har scoret en virkelig SSH-session. Reelle detektions- og falsk-positiv-rater er stadig ukendte.
 
 [Faktiske Pi-resultater](SPRINT_4_PI_RESULTS.md) ·
 [Sprint 4 – metode og accept](SPRINT_4_AI_EVALUATION.md) ·
 [Runbook til Pi](SPRINT_4_PI_RUNBOOK.md) ·
-[Træningsplan og databegrænsninger](ML_PI_TRAINING_PLAN.md).
+[Træningsplan og databegrænsninger](ML_PI_TRAINING_PLAN.md) ·
+[Live hybridmodel i shadow-mode](SPRINT_4_REAL_ML_SHADOW.md).
 
 ## Sprint 5 · Sudo/privilegier (planlagt)
 
