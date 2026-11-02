@@ -81,3 +81,47 @@ Brugeren loggede ind på den separate syntetiske demo på `127.0.0.1:8766/model`
 **Demo-modelversion:** `ssh-if-bc574f0291c96358`. Det er en **ny og særskilt syntetisk demo-træning** og skal ikke forveksles med den verificerede, isolerede evalueringsmodels version `ssh-if-16ae0fc3a05948df` fra Pi's hold-out-forsøg. Der er derfor **to forskellige syntetiske modelartefakter**, hvilket er forventet.
 
 **Bilag ML-C1:** screenshot af modelgrundlaget er modtaget i samtalen, **ikke uploadet til GitHub** og ikke automatisk indsat i eksamensrapporten. Ejer gemmer eventuelt originalen lokalt. **Bilag ML-C2:** screenshot af scorede modelvurderinger (41 testhændelser i demo) afventer stadig, helst med score og udfald. Slør private detaljer før offentlig rapportdeling. Produktionsmodellen på port 8765 er fortsat `untrained`.
+
+## 7. Faktisk historisk SSH-journal på Pi – 2. november 2026
+
+Ejeren kørte en **read-only** journal-audit via commit
+`a3b80aed041bed54228e010a2a0cc919eea12f53`.
+Den læser kun journalposter fra den allerede autoriserede OpenSSH-kilde,
+bygger features midlertidigt i hukommelsen og viser kun aggregeret statistik.
+**Ingen SSH-log, private IP-adresser eller personoplysninger er uploadet.**
+
+| Opgørelse | Observation |
+| --- | ---: |
+| Journalposter undersøgt | 89 |
+| Godkendte SSH-autentificeringer | **19** |
+| Vellykkede / fejlede | **19 / 0** |
+| Kilder (kun antal) | 1 |
+| Dage med aktivitet | 5 |
+| Unikke fulde feature-vektorer | 19 |
+| Poster uden autentificeringsfund | 70 |
+
+Journalhistorikken dækkede faktiske SSH-autentificeringer i perioden
+24. oktober til 2. november. De **70 øvrige journalposter** er
+ignorerede *eller* fejlfortolkede poster (den oprindelige audit
+skelnede ikke); de er ikke 70 dokumenterede fejl eller angreb.
+
+Den tidligere produktions-SQLite-kontrol viste **15 hændelser**.
+Disse 15 og journalds 19 stammer fra overlappende SSH-kilder og
+må **ikke** lægges sammen til 34 uafhængige observationer.
+Journalens event-historik antyder lidt ekstra data, men der er
+stadig lang vej til mindst 80 gennemgåede normale SSH-rækker
+(mindst 61, selv hvis samtlige 19 kan bruges).
+
+**Metodisk begrænsning:** `hour_sin` og `hour_cos` ændres med
+klokkeslættet; derfor kan 19 forskellige fulde featurevektorer
+eksistere uden tilsvarende 19 forskellige *adfærdsmønstre*.
+En opdateret audit tæller nu også adfærdsmæssigt unikke features
+**uden** tidskomponenterne. Denne forbedrede kontrol er
+softwaretestet, men dens faktiske Pi-resultat afventer.
+
+**Faglig konklusion:** Der er ikke tilstrækkeligt verificeret
+normalmateriale til at træne og aktivere en pålidelig
+produktionsmodel inden den aktuelle projektfrist.
+Det eksisterende syntetiske hold-out-forsøg er stadig en
+fuldt gennemført software- og ML-evaluering, men er ikke
+et estimat af produktionsmodellens detektionskvalitet.
