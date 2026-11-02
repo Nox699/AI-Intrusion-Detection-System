@@ -635,8 +635,7 @@ def test_network_charts_js_limits_visible_ports():
     from pathlib import Path
 
     script = (
-        Path(__file__).resolve().parents[1] / "src" / "yggdrasil_ids" / "static"
-        / "network.js"
+        Path(__file__).resolve().parents[1] / "src" / "yggdrasil_ids" / "static" / "network.js"
     ).read_text(encoding="utf-8")
     assert ".slice(0, 10)" in script
     assert 'labels.push("Øvrige porte")' in script
