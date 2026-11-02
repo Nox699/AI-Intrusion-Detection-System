@@ -142,6 +142,36 @@ def verify(directory: Path) -> dict:
         rows = result["observations"]
         if len(rows) != splits[split]["event_count"]:
             raise ValueError("Held-out observation count does not match split")
+        reference = {item["cursor"]: item for item in label_sets[split]}
+        seen: set[str] = set()
+        for row in rows:
+            cursor = row.get("cursor")
+            if cursor not in reference or cursor in seen:
+                raise ValueError("Held-out report cursors disagree with label sidecar")
+            seen.add(cursor)
+            label = reference[cursor]
+            expected = label["expected"] == "simulated_suspicious"
+            if (
+                type(row.get("expected_positive")) is not bool
+                or row["expected_positive"] is not expected
+                or row.get("expected") != label["expected"]
+                or row.get("scenario") != label["scenario"]
+            ):
+                raise ValueError("Held-out report label differs from independent sidecar")
+            rule_ids = row.get("rule_ids")
+            if not isinstance(rule_ids, list) or row.get("rule_alarm") is not bool(rule_ids):
+                raise ValueError("Rule alarm conflicts with recorded rule findings")
+            score, threshold = row.get("score"), row.get("threshold")
+            if (
+                type(score) not in (int, float)
+                or type(threshold) not in (int, float)
+                or not math.isfinite(score)
+                or not math.isfinite(threshold)
+                or row.get("ml_alarm") is not (score > threshold)
+            ):
+                raise ValueError("ML alarm conflicts with reported anomaly score")
+        if seen != set(reference):
+            raise ValueError("Held-out report omitted labeled observations")
         for method, field in (("rules", "rule_alarm"), ("ml", "ml_alarm")):
             output["comparisons"].setdefault(split, {})[method] = check_metrics(
                 result[method], rows, field
