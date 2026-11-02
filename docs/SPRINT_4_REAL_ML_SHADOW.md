@@ -108,3 +108,77 @@ Simulerede mislykkede SSH-loginforsøg og username spraying hører til *test*, *
 **Forbehold:** `0/5` anomalier blandt rigtige succeser er ikke dokumentation for nul falske positiver: observationerne er få, deler kilde og kan være tidsmæssigt afhængige. Den syntetiske sluttest er stadig kun syntetisk. En ML-model med 312 syntetiske og 12 rigtige rækker er en *eksperimentel hybridmodel*, ikke en verificeret model for Pi'ens normalfordeling.
 
 **Næste gate:** Revideret wheel med `ml.alert_mode='shadow'`, frisk backup af schema-v4-SQLite, notifier-state, systemd-unit, konfiguration og tidligere venv; verifikation af kandidatmodellens sklearn-version/fingerprint og rettigheder. Skift til shadow-mode **før** collector indlæser modellen. Bekræft, at rigtige SSH-hændelser lagrer modelscore, og at der ikke opstår `ssh.isolation_forest`-fund eller Discord-beskeder. Ingen upload af private modelartefakter eller logs til GitHub.
+
+
+## Staged release: backup, installation og rollback
+
+Den eksperimentelle hybridmodel er trænet privat på Pi og identificeret
+som ssh-if-7cc1f15288d0c73b. Den anvender 312 syntetiske normale
+rækker plus 12 godkendte reelle Pi-success-rækker. Fem andre succeser
+er reserveret til en lille kontrol (0 afvigelser). Den syntetiske
+sluttest gav 94,7 % recall og 13,6 % falsk-positiv-rate. Ingen af
+disse tal validerer modellens pålidelighed mod rigtige angreb.
+
+### Trin 3A – staging, ingen produktionsændringer
+
+Kør som vidar og brug **fuld SHA fra seneste grønne GitHub-CI**:
+
+~~~bash
+(
+  set -euo pipefail
+  umask 077
+  cd /home/vidar/AI-Intrusion-Detection-System
+  sha='INDSAET_GRON_SHA_HER'
+  git fetch --no-tags origin sprint-4/live-ml-shadow
+  test "$(git rev-parse origin/sprint-4/live-ml-shadow)" = "$sha"
+  helper="$(mktemp)"
+  trap 'rm -f "$helper"' EXIT
+  git show "$sha:deploy/sprint4_shadow_prepare.sh" > "$helper"
+  bash -n "$helper"
+  bash "$helper" "$sha"
+)
+~~~
+
+Dette script skal bestå kontroller af schema v4, UFW low, netværksgrænse
+5, aktive tjenester, ændret kildekode siden graf-release, modelmetadata,
+venv-afhængigheder, rolleopdelt doctor og adgang til journalen.
+Den bygger en pinnet wheel, gemmer en root-only kopi af hybridmodellen
+og laver en venv-backup under /var/backups/yggdrasil-ids.
+**Den stopper ingen tjenester og installerer ikke modellen.**
+Indsend kun de ikke-sensitive PASS/STOP-linjer ved fejl.
+
+### Trin 3B – separat, kontrolleret shadow-deployment
+
+**Udfør ikke uden gennemgået staging-output og separat godkendelse.**
+Et særskilt deploy-script verificerer hash og stop/start-gates,
+stopper kun IDS-collector/web/notifier og tager friske offline-backups
+af schema-v4-databasen, IDS-data, notifier-state, konfiguration
+og systemd-units. Ingen ændring af SSH, Tailscale, UFW eller sudoers.
+
+Efter verificeret backup installeres en ny wheel. Den eksisterende
+[ml]-sektion får atomisk tilføjet feltet alert_mode = "shadow", og
+først derefter kopieres den private model til worker-kontoens modelsti
+med mode 0600. Collector, web og notifier startes og verificeres
+sekventielt. Websiden skal vise *Eksperimentel skyggemodel*;
+nye SSH-hændelser scores, men Isolation Forest må ikke generere
+alarmer eller Discord-beskeder. Almindelige SSH-/netværksregler
+skal fortsat virke.
+
+### Trin 3C – eksplicit rollback, hvis deployment fejler
+
+Rollback-scriptet er en separat, manuelt kørt operation.
+Det kræver den fulde versions-SHA og den **præcise**
+OFFLINE_BACKUP-sti udskrevet ved deployment. Det validerer
+hashes, gendanner tidligere venv og konfiguration og fjerner
+kun den eksperimentelle model, hvis den stadig matcher den
+godkendte kandidat. Det **gendanner ikke gammel produktions-SQLite
+eller Discord-checkpoint**, så nye hændelser og leveringshistorik
+ikke utilsigtet går tabt eller genafspilles.
+
+### Rapport og privatliv
+
+Denne model er en **eksperimentel shadow-model**, ikke en pålidelig
+produktionsbenchmark. Oplys AI-delen som faktisk hybridtræning og
+live-scoring, og beskriv tydeligt datagrundlagets begrænsninger.
+Private modelartefakter, featurefiler, IP-adresser, rå logs,
+credentials og backups forbliver på Pi og uploades ikke til GitHub.
