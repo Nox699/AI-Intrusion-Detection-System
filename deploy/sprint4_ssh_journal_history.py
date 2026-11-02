@@ -14,7 +14,6 @@ import subprocess
 import sys
 from collections import Counter, defaultdict, deque
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Iterable
 
 from yggdrasil_ids.features import SSHFeatureBuilder
