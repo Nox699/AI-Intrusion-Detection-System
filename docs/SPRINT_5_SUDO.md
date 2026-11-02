@@ -282,3 +282,28 @@ blev ændret.
 `/dev/log`, journalds Unix-sockets og aktiv sudo-logpolicy.
 Ingen flere afviste sudo-forsøg, og ingen ændring af sudoers,
 journald, SSH eller IDS før en forklaring er påvist.
+
+### Journald-syslog-sockets og daglig trafik – 2. november 2026
+
+På Yggdrasil blev `/dev/log`, `/run/systemd/journal/dev-log` og
+`/run/systemd/journal/socket` alle verificeret som eksisterende
+Unix-sockets. Både `systemd-journald.socket` og
+`systemd-journald-dev-log.socket` var aktive.
+
+Den skrivebeskyttede journaloptælling med
+`_TRANSPORT=syslog` viste **381 poster den 1. november**
+og **320 poster den 2. november**.
+
+**Fortolkning:** Journald modtager syslog-trafik på begge datoer;
+en generel fejl i journalds syslog-socket er derfor ikke en
+tilstrækkelig forklaring. Sudo-kildens faktiske logpolicy og
+meddelelsesrute er stadig ikke verificeret. Antallet af
+syslog-poster er ikke antal sudo-handlinger. Da stderr fra
+den tidligere `sudo -n`-test blev undertrykt, er afvisningens
+årsag heller ikke fastslået.
+
+**Næste gate:** Inspicér kun sudo-version, logningsrelaterede
+politiknøgler og eventuelle logdestinationer med sanitiseret
+output. Ingen sudoers-ændringer, genstart, yderligere fejlede
+sudo-forsøg eller ændring af IDS-produktion før logdækningen
+er forklaret.
