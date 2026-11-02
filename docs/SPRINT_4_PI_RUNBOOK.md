@@ -140,3 +140,28 @@ og slør identiteten ved eventuel deling i eksamensopgaven.
 **02.11.2026:** Ejerens screenshot fra den separate syntetiske `8766/model`-visning viste `Model indlæst`, 312 træningsobservationer, alarmgrænse 0,615 og modelversion `ssh-if-bc574f0291c96358`. Dette er **en anden labtræning** end den særskilt verificerede hold-out-evaluering `ssh-if-16ae0fc3a05948df`.
 
 Gem `ML-C1` privat; publicér ikke billedet automatisk på GitHub. Tag gerne `ML-C2` af *Seneste modelvurderinger*, så eksempler på afvigelsesscore og normal vurdering er dokumenteret. Den aktive produktionsmodel på 8765 er fortsat `untrained`; der er ingen plan om at erstatte den med syntetiske træningsdata.
+
+## Næste undersøgelse – historiske ægte SSH-events på Pi
+
+Vi har **15** registrerede SSH-autentificeringer i produktions-SQLite, alle succeser fra én kilde. Det betyder ikke nødvendigvis, at journald mangler ældre hændelser. Collectoren indlæste kun et begrænset historikvindue ved første start. Før beslutning om en eventuel rigtig Pi-model kan vi gennemgå den ældre systemjournal **read-only**.
+
+Den nye `deploy/sprint4_ssh_journal_history.py` bruger de samme betroede OpenSSH-producentkriterier som den installerede collector, bygger rullende SSH-features lokalt i hukommelsen og udskriver **kun anonymiserede aggregater**: antal success/failure pr. døgn, variation, kilder som et antal, samt dækket tidsperiode. Ingen rå IP-adresser, brugernavne, meddelelser, databasedata eller tokens udskrives eller gemmes. Ingen træning, live-modelændring eller servicegenstart foretages. Af sikkerhed er antallet af gennemgåede journalposter begrænset.
+
+Når CI er bestået for en given commit, kan scriptet køres som den eksisterende journallæser `yggdrasil-worker`:
+
+```bash
+(
+  set -euo pipefail
+  cd /home/vidar/AI-Intrusion-Detection-System
+  git fetch origin sprint-4/ml-evaluation
+  sha='INDSAET_FULD_CI_BESTAAET_SHA'
+  test "$(git rev-parse origin/sprint-4/ml-evaluation)" = "$sha"
+  git show "$sha:deploy/sprint4_ssh_journal_history.py" |
+    sudo -u yggdrasil-worker /opt/yggdrasil-ids/venv/bin/python - \
+      --since '2026-10-22 00:00:00'
+)
+```
+
+**Fortolkning:** Et højt tal betyder kun, at der *findes* historiske autentificeringshændelser. De kan overlappe de 15 SQLite-hændelser og kan omfatte tidligere tests eller fejl. Før en **produktionsmodel** kan trænes, skal normalperioder gennemgås, testperioder udelukkes, og uafhængige hold-out-perioder reserveres. Vi sænker ikke minimum fra 80, bruger ikke labmodellen som live-model og kopierer aldrig rå SSH-logs til det offentlige repository.
+
+Hvis systemjournalen indeholder for få egnede ægte SSH-hændelser, er den korrekte eksamensstatus fortsat **syntetisk trænet model plus endnu ikke valideret produktionsmodel**. Dette er en dokumenteret begrænsning og ikke en fejl ved Isolation Forest-koden.
