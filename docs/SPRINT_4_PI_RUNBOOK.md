@@ -97,3 +97,11 @@ Genstart ikke collector eller modificér modelstien. Send kun de aggregerede ter
 ## Ekstra mulighed – senere ægte live-model
 
 En produktionsmodel skal først trænes efter særskilt gennemgang af normaltrafik, tilstrækkelig variation, bevidst opdeling af datasæt og accept af modelartefakt. Start ikke træning eller restart ud fra tallet 80 alene. Anvend programmets eksisterende `export-features` og `train` med en godkendt afgrænset periode, hvis disse krav opfyldes. Ellers dokumentér ærligt en trænet laboratoriemodel og en endnu ikke trænet produktionsmodel.
+
+## Verificeret Pi-kørsel – 2. november 2026
+
+**Trin A og B bestået** med den godkendte kildecommit `c3c9def02eba51e05c8ecd9902462c1a9a22d887`. Produktionsaudit: 15 SSH-events/observationer, 15 succesfulde logins, ingen fejl, én kilde, tre dage, 15 featurevektorer; minimum 80 og ingen live-modelfil. Syntetisk model: `ssh-if-16ae0fc3a05948df`, 312/44/41 split; evaluering og hashkontrol bestod. Collector, web og notifier var aktive før og efter. Alle artifacts er private på Pi.
+
+**Kun trin B2 mangler**, hvis et dashboard-screenshot af `ready`-modellen ønskes: start den eksisterende, CI-godkendte demo på **127.0.0.1:8766**, ikke på port 8765. Gem screenshot privat og mærk det syntetisk. Ingen geninstallation af applikationen er nødvendig.
+
+Se [Pi-resultatdokument](SPRINT_4_PI_RESULTS.md) for den faktiske matrix samt usikkerheder.

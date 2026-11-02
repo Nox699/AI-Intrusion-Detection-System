@@ -46,6 +46,14 @@ Træningskvalitet skal derfor diskuteres via repræsentativitet, feature-variati
 
 ## Sprint 4 – acceptstatus
 
-**GitHub-kode og tests:** Implementeret og verificeret via CI på Python 3.11 og 3.13 (Ruff, pytest og wheel-build). **På Pi:** laboratoriereproduktion og live SSH-readiness-rapport skal stadig køres af ejeren. **Live model:** untrained, indtil tilstrækkeligt gennemgået normaldata findes og modellen er særskilt accepteret. Dette er to forskellige former for accept.
+**GitHub-kode og tests:** Implementeret og verificeret via CI på Python 3.11 og 3.13 (Ruff, pytest og wheel-build). **På Pi:** både laboratorietræning og read-only SSH-readiness-audit er gennemført og verificeret (2. november 2026). **Live model:** untrained, indtil tilstrækkeligt gennemgået normaldata findes og modellen er særskilt accepteret. Dette er to forskellige former for accept.
 
 Der indgår ingen upload af private screenshots, kilde-IP-adresser, passwords, token eller autentiske logs til GitHub.
+
+## Liveaccept af ML-evalueringen – 2. november 2026
+
+Udvalgt Git-SHA `c3c9def02eba51e05c8ecd9902462c1a9a22d887` blev kørt af ejeren direkte på Raspberry Pi. Read-only status: **15 SSH-hændelser, 15 succeser og nul fejl** fra én kilde fordelt over 3 dage; 15 unikke featurevektorer; 65 rækker mangler til teknisk minimum 80. Der er ingen produktionsmodel (`untrained`).
+
+Den separate syntetiske lab blev **trænet og evalueret på Pi**: 312 train, 44 validation og 41 testhændelser; model `ssh-if-16ae0fc3a05948df`. Hold-out-verifikatoren kontrollerede hashes, labels, scoring og alle forvekslingsmatricer. Sluttest: regler TP/FP/TN/FN **12/1/21/7** og ML **18/3/19/1**; ML recall **94,7 %** mod reglernes **63,2 %**, men ML FP-rate **13,6 %** mod **4,5 %**. Alle tre IDS-services forblev `active` både før og efter.
+
+Se [fulde verificerede Pi-resultater](SPRINT_4_PI_RESULTS.md). Modellen er *kun* trænet på syntetisk SSH-data og **ikke** aktiveret i produktion. En særskilt ML-demo på loopback port 8766 kan nu køres til screenshot, hvis ønsket.

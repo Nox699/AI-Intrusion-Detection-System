@@ -73,7 +73,7 @@ langtidsstabilitet og performance mangler stadig.
 
 ## Sprint 4 · AI, Isolation Forest og dokumenteret evaluering
 
-**Status: Forberedelse og tests på udviklingsbranch; Pi-labafprøvning afventer.**
+**Status: ML-laboratorietræning og read-only Pi-audit er gennemført og verificeret; valgfri særskilt dashboard-demo afventer. Produktionsmodel er fortsat `untrained`.**
 
 Dette sprint er prioriteret før sudo og filintegritet for at sikre, at AI-
 eksamensopgavens centrale ML-versus-regler-evaluering kan fremvises.
@@ -86,6 +86,7 @@ Kun aggregerede tal forlader laboratoriet; ingen private logs eller
 modelartefakter uploades automatisk til GitHub. På Pi er modellen
 stadig `untrained` (12 SSH-observationer mod minimum 80).
 
+[Faktiske Pi-resultater](SPRINT_4_PI_RESULTS.md) ·
 [Sprint 4 – metode og accept](SPRINT_4_AI_EVALUATION.md) ·
 [Runbook til Pi](SPRINT_4_PI_RUNBOOK.md) ·
 [Træningsplan og databegrænsninger](ML_PI_TRAINING_PLAN.md).
