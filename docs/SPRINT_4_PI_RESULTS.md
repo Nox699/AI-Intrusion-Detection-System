@@ -115,9 +115,7 @@ stadig lang vej til mindst 80 gennemgåede normale SSH-rækker
 **Metodisk begrænsning:** `hour_sin` og `hour_cos` ændres med
 klokkeslættet; derfor kan 19 forskellige fulde featurevektorer
 eksistere uden tilsvarende 19 forskellige *adfærdsmønstre*.
-En opdateret audit tæller nu også adfærdsmæssigt unikke features
-**uden** tidskomponenterne. Denne forbedrede kontrol er
-softwaretestet, men dens faktiske Pi-resultat afventer.
+Den opdaterede audit blev nu også kørt på Pi og fandt **præcis 2 forskellige adfærdsmæssige featurekombinationer uden tidskomponenterne**, mod 19 forskellige fulde vektorer. Dette er konkret evidens for lav adfærdsvariation, ikke blot lav datamængde.
 
 **Faglig konklusion:** Der er ikke tilstrækkeligt verificeret
 normalmateriale til at træne og aktivere en pålidelig
@@ -125,3 +123,24 @@ produktionsmodel inden den aktuelle projektfrist.
 Det eksisterende syntetiske hold-out-forsøg er stadig en
 fuldt gennemført software- og ML-evaluering, men er ikke
 et estimat af produktionsmodellens detektionskvalitet.
+
+## 8. Endelig ML-readiness-audit: 19 SSH-hændelser, men kun 2 adfærdsmønstre
+
+**Kørsel på Pi:** `deploy/sprint4_ssh_journal_history.py` fra kildecommit `371cc355a1c395b1f2a8ffa85fede3fb50c262f4`. Scriptet læste kun OpenSSH-journalen, skrev intet til SQLite, udskrev ingen IP-adresser og ændrede ingen services.
+
+| Måling | Verificeret på Pi |
+| --- | ---: |
+| Journalposter læst | 89 |
+| SSH-autentificeringer | 19 |
+| SSH-success / failure | 19 / 0 |
+| Kilder (kun antal) | 1 |
+| Dage med autentificeringer | 5 |
+| Fuld-feature-vektorer, inklusive klokkeslæt | 19 |
+| **Adfærdskombinationer uden tidsfeatures** | **2** |
+| Ignorerede journalposter | 70 |
+| Malformed journalposter | 0 |
+| Krævede træningsobservationer (`min_samples`) | 80 |
+
+**Faglig vurdering:** `hour_sin` og `hour_cos` skaber forskel mellem observationer på forskellige tidspunkter. Når disse to features fjernes fra variationsmålingen, er der kun to forskellige kombinationer af fejl/succes, antal brugernavne og fejlandel. Det er **ikke** to uafhængige brugere eller fuldstændigt identificerede brugsmønstre, men to distinkte fire-dimensionelle kombinationer. Denne meget begrænsede diversitet gør produktionstræning uegnet nu; vi vil ikke reducere teknisk minimum eller supplere med konstruerede loginforsøg alene for at få `ready`-status.
+
+**Eksamensafgrænsning:** Den isolerede **syntetiske** Isolation Forest-træning og hold-out-evaluering er gennemført og verificeret; produktion forbliver bevidst `untrained` indtil et dokumenteret, varieret og manuelt gennemgået datasæt findes. Ny dokumentation om SSH-data må ikke forveksles med ændringer af det aktive produktions-IDS.

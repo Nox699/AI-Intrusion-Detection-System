@@ -58,3 +58,7 @@ Udvalgt Git-SHA `c3c9def02eba51e05c8ecd9902462c1a9a22d887` blev kørt af ejeren 
 Den separate syntetiske lab blev **trænet og evalueret på Pi**: 312 train, 44 validation og 41 testhændelser; model `ssh-if-16ae0fc3a05948df`. Hold-out-verifikatoren kontrollerede hashes, labels, scoring og alle forvekslingsmatricer. Sluttest: regler TP/FP/TN/FN **12/1/21/7** og ML **18/3/19/1**; ML recall **94,7 %** mod reglernes **63,2 %**, men ML FP-rate **13,6 %** mod **4,5 %**. Alle tre IDS-services forblev `active` både før og efter.
 
 Se [fulde verificerede Pi-resultater](SPRINT_4_PI_RESULTS.md). Modellen er *kun* trænet på syntetisk SSH-data og **ikke** aktiveret i produktion. En særskilt ML-demo på loopback port 8766 kan nu køres til screenshot, hvis ønsket.
+
+## Beslutning om reel ML-model på Pi
+
+Den sidste historiske journalaudit på Pi fandt **19 autentificeringer, 0 fejl, 1 kilde og blot 2 adfærdskombinationer når tidsfeatures udelades**. Produktionen forbliver derfor `untrained`, da træningsgrundlaget ikke opfylder krav til hverken mængde eller repræsentativ variation. Dette er en *dokumenteret metodebegrænsning*, ikke en fejlet modelinstallation. Den **syntetiske labmodel** er trænet og valideret, og dens resultater er markeret som laboratoriemålinger. Se [Pi-resultaterne](SPRINT_4_PI_RESULTS.md).

@@ -197,3 +197,9 @@ og evaluér særskilt, før en model aktiveres i produktion.
 ønskes målt:** hent den nyeste CI-beståede, pinned SHA til
 `deploy/sprint4_ssh_journal_history.py` og anvend den ovenstående
 kommando. Dette er ingen trænings-/installationshandling.
+
+## Afsluttende journalmåling af adfærdsvariation på Pi
+
+Read-only kontrollen fra commit `371cc355a1c395b1f2a8ffa85fede3fb50c262f4` blev kørt og bestod. Resultat: **19 succesfulde SSH-hændelser fra én kilde på fem dage, nul autentificeringsfejl, 19 unikke fulde feature-vektorer, men kun 2 forskellige adfærdskombinationer når klokkeslætsfeatures udelades**. Der var 70 ignorerede og **0** malformed journalposter.
+
+**Beslutning:** Ingen træning af produktionsmodellen på dette grundlag. En produktionsmodel har brug for mere varieret, gennemgået normalaktivitet og særskilt validering. Det syntetiske hold-out-forsøg dokumenterer, at Isolation Forest-metoden og sammenligningen med regler fungerer i laboratoriet. Se `SPRINT_4_PI_RESULTS.md`.

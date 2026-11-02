@@ -73,7 +73,7 @@ langtidsstabilitet og performance mangler stadig.
 
 ## Sprint 4 · AI, Isolation Forest og dokumenteret evaluering
 
-**Status: ML-laboratorietræning og read-only Pi-audit er gennemført og verificeret; valgfri særskilt dashboard-demo afventer. Produktionsmodel er fortsat `untrained`.**
+**Status: Syntetisk AI-træning, hold-out-evaluering, privat dashboard-demo og read-only Pi-dataaudit er gennemført. Produktionsmodel forbliver bevidst `untrained` (19 faktiske SSH-auth, kun 2 adfærdskombinationer uden tid).**
 
 Dette sprint er prioriteret før sudo og filintegritet for at sikre, at AI-
 eksamensopgavens centrale ML-versus-regler-evaluering kan fremvises.
