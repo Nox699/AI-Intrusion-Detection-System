@@ -259,3 +259,19 @@ genanalyseret retroaktivt. En ny afgrænset scan og efterfølgende
 normaldrifts-observation er påkrævet før vurdering af følsomhed og
 falske positiver. Fuld `-p-`-scanning er udskudt på grund af
 mulig alarm- og journalbelastning.
+
+## Afsluttet end-to-end-test
+
+Den 2. november 2026 lykkedes en reel kontrolleret
+Nmap-portscanning på Pi efter kalibrering til tærskel 5.
+Et 60-minutters udtræk viste 5 unikke testporte i
+60 sekunder, 1 TCP-scanningsalarm, 10 evidensposter,
+1 Discord-outboxpost og ingen netværksanalysefejl.
+Discord-status var `pending=0, delivered=2`, op fra
+`delivered=1`, og et desktopnotifikationsbillede viste
+portscanningsalarmen.
+
+Dette beviser én end-to-end-funktionstest og cooldown-
+gruppering, **ikke** fravær af falske positiver eller
+garanteret detektion af alle scanninger. Den første
+kendte scan ved tærskel 6 gav ingen alarm.

@@ -1,10 +1,8 @@
 # Sprint 3 – Controlled TCP scan acceptance
 
-**Status:** Planned, not run on Pi. On 1 November 2026 the first UFW journal opt-in
-succeeded, with one stored firewall event and no scan alarms. UFW remains low.
+**Aktuel status (2. november 2026):** Én end-to-end TCP-portscanningsalarm er bekræftet leveret i Discord. Den første test ved tærskel 6 missede; den anden efter kalibrering til 5 bestod. UFW forbliver på `low`.
 
-The detector requires at least six **distinct incoming blocked TCP SYN destination
-ports** in 60 seconds, grouped by source/destination/interface/sensor boot.
+Detektoren var oprindeligt sat til **6**, men Pi-konfigurationen er nu kalibreret til **5 forskellige blokerede TCP SYN-destinationsporte på 60 sekunder**. Gruppering sker per kilde/destination/interface/sensor.
 A logged packet is not proof of an attack.
 
 ## Preparation on Pi (read-only)
@@ -170,3 +168,19 @@ efterprøver særskilt alarm- og outbox-identitet for SSH og
 TCP-scanning med samme kilde og samtidige tidspunkter.
 Det er ikke nødvendigt at installere ny programkode på Pi for
 at få denne eksisterende adfærd.
+
+## Accepttest 2 – resultat
+
+Anden Nmap-kørsel kl. 00:53 CET registrerede 10 `filtered`
+porte på 22,21 sek. SQLite viste 5 unikke loggede porte i
+60-sekunders vinduet, 1 scan-alarm, 10 evidensposter og 1
+Discord-outboxpost. Notifierstatus viste `pending=0` og
+`delivered=2` mod tidligere `delivered=1`; et
+desktopnotifikationsbillede viste alarmtypen
+`Mulig TCP-portscanning (UFW)`.
+
+Testen dokumenterer **funktionel E2E-detektion**, ikke en
+ukendt angrebshændelse eller en statistisk detektionsrate.
+60-minuttersmængder kan indeholde begge Nmap-kørsler.
+Normaldriftsobservation, mulige falske positiver og
+ressourceforbrug afventer før evt. større eller fuld scan.

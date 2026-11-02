@@ -13,9 +13,9 @@ målinger eller diskussion af begrænsninger.
 | S3-B | Anonymiseret SQL-porttabel: 8 SYN / 5 unikke porte | Første scan, tærskel 6 | Kan tages af eksisterende terminaloutput |
 | S3-C | Read-only aggregator med 5 unikke, 0 alarmer og sund collector | Første scan, tærskel 6 | Gem output/screenshot fra terminal, hvis tilgængeligt |
 | S3-D | Udsnit af **kun** `[network]`-sektionen: `enabled=true`, `window_seconds=60`, `distinct_ports_threshold=5` | Efter kontrolleret tuning | Klar til screenshot: tuning bestået |
-| S3-E | Yggdrasils private `/network`-side med registreret aktivitet | Efter anden scan kl. 00:53 | Afventer SQLite-/dashboardkontrol |
-| S3-F | Alarmoversigt og evt. detaljer for `network.tcp_port_scan` | Hvis ny scan udløser alarm | Afventer |
-| S3-G | Faktisk Discord-besked med `Mulig TCP-portscanning (UFW)` og referencen | Hvis den bliver leveret | Afventer |
+| S3-E | Yggdrasils private `/network`-side med registreret aktivitet | Efter anden scan kl. 00:53 | SQLite bekræftet; screenshot af dashboard afventer |
+| S3-F | Alarmoversigt og evt. detaljer for `network.tcp_port_scan` | Anden scan kl. 00:53 | Alarm bekræftet; screenshot af dashboard afventer |
+| S3-G | Faktisk Discord-besked med `Mulig TCP-portscanning (UFW)` og referencen | Anden scan kl. 00:53 | Discord-toast modtaget i samtalen – gem originalen privat |
 | S3-H | Kort anonymiseret terminaludsnit af `systemctl is-active` og collector/netværksstatus | Efter ny test | Valgfrit |
 
 **Anbefaling til en kort rapport:** Brug S3-B og sammenligningen
@@ -74,3 +74,28 @@ Nmap-screenshot `S3-A-nmap-baseline.png`.
 **S3-F og S3-G skal kun markeres som gennemført, hvis vi faktisk
 bekræfter en alarm og en leveret Discord-meddelelse**. Beskær
 eventuelle IP-adresser, private detaljer og logins før offentlig deling.
+
+## Test 2 bestået – billeder til færdig rapport
+
+Den anden Nmap-test udløste én portscanningsalarm (10
+detektionsfund grupperet i 1 alarm) og én Discord-outboxpost.
+Notifierens leverede antal steg **1 → 2** med `pending=0`.
+Brugeren sendte et faktisk Discord-desktopnotifikationsbillede,
+som viser `Mulig TCP-portscanning (UFW)`.
+
+**Gem screenshotet lokalt som S3-G** (ikke offentlig GitHub-upload).
+Tag nu **S3-F** med detaljerne for
+`network.tcp_port_scan` på det private dashboard og **S3-E**
+med registrerede firewallposter i `/network`, hvis de
+fortsat er tilgængelige. Maskér IP-adresser og credentials
+før rapportdeling. Det oprindelige 6-ports-miss forbliver
+separat evidens som S3-A/S3-B/S3-C.
+
+Foreslåede billedtekster:
+
+- *Baseline: Scanning af ti TCP-porte gav ingen alarm ved
+  seks-ports-grænsen, da kun fem unikke porte blev logget.*
+- *Efter eksperimentel justering til fem porte oprettede
+  IDS én alarm med ti tilknyttede detektionsfund.*
+- *Discord modtog én automatisk portscanningsnotifikation;
+  køen havde ingen ventende meddelelser.*

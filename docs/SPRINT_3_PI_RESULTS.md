@@ -3,9 +3,7 @@
 **Dato:** 1. november 2026 (Europe/Copenhagen)  
 **Mål:** Yggdrasil (Raspberry Pi), eksisterende Sprint 2-drift  
 **Testkilde:** `9b17bdac2af0db6f6af93eca574efee0b44a3b1e` på `sprint-3/network-monitoring`  
-**Status:** **Bestået for migration på databasekopi og én kort logvolumenmåling.**
-Ingen Sprint 3-installation, ændring af produktionsdatabase eller aktivering af
-netværksindsamling er gennemført.
+**Aktuel status pr. 2. november 2026:** Sprint 3 installeret, schema v4, UFW-opt-in aktivt og **første TCP-portscanningsalarm leveret i Discord**. Tidligere statusafsnit nedenfor er kronologiske testnotater.
 
 Dette er en referat af ejerens terminaloutput fra de afgrænsede kontroller.
 Kun aggregerede antal offentliggøres, ingen adresser, journalindhold,
@@ -380,3 +378,55 @@ Derfor er det endnu uvist, om threshold 5 blev nået, om
 besked. En `filtered`-port alene dokumenterer ikke en IDS-alarm.
 Næste handling er samme read-only aggregerede kontrol med et
 60-minutters vindue og notifierens leveringsstatus.
+
+## Accepttest 2: detektion og Discord-levering bekræftet
+
+**Nmap fra ejers Ubuntu-laptop:** 2. november 2026 kl. 00:53 CET.
+Testen omfattede ti høje TCP-porte (45010–45019) mod egen private
+Yggdrasil-server, alle meldt `filtered`, varighed **22,21 sek.**
+IDS var allerede konfigureret med `distinct_ports_threshold=5`
+inden for 60 sekunder; UFW-logniveau var fortsat `low`.
+
+Read-only database- og notifierkontrol efter testen:
+
+| Mål | Observeret |
+| --- | ---: |
+| Firewallposter i 60-minuttersvinduet | 129 |
+| Blokerede TCP SYN i 60-minuttersvinduet | 31 |
+| TCP-pakker på testportene i 60-minuttersvinduet | 14 |
+| Kilde-/sensorgrupper på testportene | 1 |
+| Maks. unikke testporte i et 60-sekundersvindue | **5** |
+| `network.tcp_port_scan`-alarmer | **1** |
+| Netværksevidensposter | **10** |
+| Discord-outboxposter fra portscan-detektoren | **1** |
+| Samlede akkumulerede firewallhændelser | 151 |
+| Netværksanalysefejl | 0 |
+| Netværksfejl-/datakvalitetsflag | begge `false` |
+| Collector | `running`, heartbeat 2 s |
+| Discord-notifier | `pending=0`, `delivered=2`, `last_seq=2` |
+
+Tidligere notifierstatus var `delivered=1`, `last_seq=1`;
+der blev således leveret **én ny** besked. Brugeren sendte et
+Discord-desktopnotifikationsbillede med
+**»Yggdrasil IDS — ny alarm«** og
+**»Mulig TCP-portscanning (UFW)«**.
+
+**Konklusion:** Kæden Nmap → UFW → journal/SQLite →
+`network.tcp_port_scan` → 1 alarm / 10 evidensfund →
+1 Discord-outboxpost → faktisk Discord-levering er
+**bestået for denne afgrænsede test**. De ti fund blev
+grupperet i ét alarmforløb og gav ikke ti Discord-beskeder.
+
+**Databegrænsning:** En 60-minutters databaseopgørelse kan omfatte
+både den første scanning kl. 00:10 og den anden kl. 00:53.
+Derfor tilskrives de 129 firewallposter, 31 SYN og 14
+testportpakker **ikke udelukkende** den anden scanning.
+Den første scanning ved tærskel 6 gav **ingen alarm**.
+Tærsklen 5 blev valgt efter denne baseline og er derfor
+eksperimentel kalibrering, ikke uafhængig statistisk validering.
+En falsk-positiv-rate, dækning ved langsomme scanninger og
+langtidsbelastning er endnu ikke målt.
+
+**Rapportbilag:** Discord-screenshot er modtaget i samtalen,
+men er ikke overført til repo eller rapport.
+Se `docs/SPRINT_3_SCREENSHOTS.md`.
