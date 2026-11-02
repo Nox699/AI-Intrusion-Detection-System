@@ -49,17 +49,15 @@ def test_deployment_is_shadow_before_model_load_and_keeps_backups(scripts):
     assert "source-sha.txt" in deploy
     assert deploy.index('phase="offline-backup"') < deploy.index('phase="installing-wheel"')
     assert deploy.index('phase="configuring-shadow"') < deploy.index(
-        'sudo systemctl start yggdrasil-collector.service'
+        "sudo systemctl start yggdrasil-collector.service"
     )
-    assert deploy.index('alert_mode = "shadow"') < deploy.index(
-        'sudo install -o yggdrasil-worker'
+    assert deploy.index('alert_mode = "shadow"') < deploy.index("sudo install -o yggdrasil-worker")
+    assert deploy.index("sudo install -o yggdrasil-worker") < deploy.index(
+        "sudo systemctl start yggdrasil-collector.service"
     )
-    assert deploy.index('sudo install -o yggdrasil-worker') < deploy.index(
-        'sudo systemctl start yggdrasil-collector.service'
-    )
-    assert 'sudo install -o yggdrasil-worker -g yggdrasil-data -m 0600' in deploy
+    assert "sudo install -o yggdrasil-worker -g yggdrasil-data -m 0600" in deploy
     assert 'grep -F "Logging: on (low)"' in deploy
-    assert 'git status --porcelain' in deploy
+    assert "git status --porcelain" in deploy
     assert 'Path("/var/lib/yggdrasil-ids/model.json")' in deploy
     assert '"$offline"/*.gz' not in deploy
 
@@ -74,7 +72,7 @@ def test_rollback_keeps_new_events_and_does_not_reset_notifier(scripts):
     assert "sudo systemctl start yggdrasil-collector.service" in rollback
     assert "sudo systemctl start yggdrasil-web.service" in rollback
     assert "sudo systemctl start yggdrasil-notifier.service" in rollback
-    assert 'sqlite3' in rollback
+    assert "sqlite3" in rollback
     assert "restoring data" not in rollback.lower()
     assert "sudo tar -C /var/lib -x" not in rollback
     assert "sudo ufw allow" not in rollback
