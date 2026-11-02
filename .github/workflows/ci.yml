@@ -53,13 +53,13 @@ jobs:
           python -m py_compile deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py
 
       - name: Validate Sprint 5 sudo format inventory
-        run: python -m py_compile deploy/sprint5_sudo_journal_audit.py deploy/sprint5_sudo_journal_metadata_diagnostic.py deploy/sprint5_sudo_trusted_exe_audit.py
+        run: python -m py_compile deploy/sprint5_sudo_journal_audit.py deploy/sprint5_sudo_journal_metadata_diagnostic.py deploy/sprint5_sudo_trusted_exe_audit.py deploy/sprint5_sudo_rule_preview.py
 
       - name: Lint
-        run: python -m ruff check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py deploy/sprint5_sudo_journal_audit.py deploy/sprint5_sudo_journal_metadata_diagnostic.py deploy/sprint5_sudo_trusted_exe_audit.py
+        run: python -m ruff check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py deploy/sprint5_sudo_journal_audit.py deploy/sprint5_sudo_journal_metadata_diagnostic.py deploy/sprint5_sudo_trusted_exe_audit.py deploy/sprint5_sudo_rule_preview.py
 
       - name: Check formatting
-        run: python -m ruff format --check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py deploy/sprint5_sudo_journal_audit.py deploy/sprint5_sudo_journal_metadata_diagnostic.py deploy/sprint5_sudo_trusted_exe_audit.py
+        run: python -m ruff format --check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py deploy/sprint5_sudo_journal_audit.py deploy/sprint5_sudo_journal_metadata_diagnostic.py deploy/sprint5_sudo_trusted_exe_audit.py deploy/sprint5_sudo_rule_preview.py
 
       - name: Run tests
         run: python -m pytest --junitxml=test-results/pytest.xml
