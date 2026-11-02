@@ -74,3 +74,16 @@ forbliver på `low`.
 plus en afgrænset observation uden testscanning.** Udrulningsscripts
 skal ikke køres igen. Dette er ikke endnu dokumentation for 24 timers
 stabilitet eller en estimeret falsk-positiv-rate.
+
+## Første efterfølgende netværksobservation
+
+Read-only optælling fra **02.11.2026 kl. 01:15 CET** gav **139
+firewallposter og 0 nye portscan-alarmforløb** (baseret på
+`first_seen`). Dette er en afgrænset kontrol af alarmmængde,
+ikke et estimat af falsk-positiv-rate: trafikken er ikke
+manuelt klassificeret i alle tilfælde. Spørgsmålet om eventuel
+testtrafik i tidsintervallet er ikke afklaret.
+
+**Stadig åbent:** visuel kontrol af begge `/network`-grafer
+i brugerens browser og screenshot S3-J. Ingen grund til at
+genkøre wheel-installation eller gentage portscanningen.
