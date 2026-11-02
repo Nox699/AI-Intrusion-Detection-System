@@ -90,3 +90,91 @@ Den versionspinnede read-only audit fra commit `f0c7047a7d15e8a4015b90a7c8fcbdb8
 | Malformed eller untrusted poster | 0 |
 
 **Konklusion:** SSH har registreret de to journalposter for invalid-user-testen, men de ser ud til at tilhøre **samme forbindelse**. Den eksisterende `Accepted/Failed`-model modtager ingen observation for testen. Eksisterende preauth-parser genkender kun én af de tre kandidatposter. Der er således et faktisk **observabilitets-/featuredækningshul**, ikke dokumenteret fravær af angreb eller påvist svigt i den trænede SSH-Isolation-Forest. Realdata (2 forbindelser) er ikke et selvstændigt tilstrækkeligt normaltræningsgrundlag for en ny preauth-model. Ingen private kilder/identiteter eller loglinjer er uploadet.
+
+
+## Fase B – isoleret preauth-Isolation-Forest-prototype (softwareudviklet)
+
+Vi har nu tilføjet en **separat** `preauth-isolation-forest-v1`-model og et
+reproducerbart **syntetisk** preauth-laboratorium på udviklingsbranchen. Det er
+**ikke** en live installation, og den tidligere hybride SSH-model i shadow-mode
+bevares uændret.
+
+Det nye featureskema består af **syv** tal pr. korreleret
+preauth-forbindelseskandidat:
+
+| Preauth-feature | Hvad måles? |
+| --- | --- |
+| `connections_300s` | Antal forbindelseskandidater fra samme kilde i fem minutter |
+| `invalid_users_300s` | Antal kandidater med ugyldig bruger |
+| `unique_usernames_300s` | Antal forskellige brugernavne, **ikke** navnene selv |
+| `disconnects_300s` | Antal kandidater med observeret afbrydelse |
+| `invalid_ratio_300s` | Andel kandidater med ugyldig bruger |
+| `hour_sin`, `hour_cos` | Tid på døgnet kodet som to cykliske tal |
+
+Journalposter fra samme `_BOOT_ID`, kilde-IP og kildeport korreleres før
+featureberegning, med et afgrænset 120-sekunders sammenfletningsvindue.
+Det betyder, at to linjer for ét `Invalid user`-forsøg ikke udløser to
+ML-observationer i laboratoriet. Det er en *approksimeret*
+forbindelseskandidat, ikke dokumenteret fuldstændig netværksforbindelse.
+IP og brugernavn bruges **kun til korrelation** og indgår ikke numerisk
+i modelvektoren.
+
+### Kontrolleret træning og hold-out-evaluering
+
+`deploy/sprint4_preauth_ml_lab.py` genererer normal- og testsessioner med
+dokumentations-IP'er. Syntetiske **normale** forløb omfatter få forventede
+preauth-disconnects, sporadiske stavefejl i brugernavne og godkendt
+vedligeholdelsesaktivitet. Angrebslignende testforløb omfatter gentagen
+ugyldig bruger, mange forskellige ugyldige brugernavne og usædvanligt
+mange afbrud.
+
+**Kun train-splittet** (321 normale forbindelseskandidater med fast seed=42)
+bruges til modeltræning. Validation og test har separate
+tidsperioder med **mere end 600 sekunders afstand**, separate
+scenarielabels i `labels.json`, og inputfiler verificeres med SHA-256.
+Scenario-hensigt indgår ikke i features. Resultater opgøres i
+konfusionsmatricer og precision, recall og falsk positiv-rate
+**på hændelsesniveau i syntetiske scenarier**, med sammenligning mod
+på forhånd valgte regler.
+
+Den nye `PreauthIsolationForest` har **sit eget faste syv-feature-format**,
+`preauth-if-...`-modelversions-id og JSON-fingeraftryk. Den kan ikke
+udgives som en model med den tidligere `ssh-if-...`-featurestruktur.
+Ingen pickle eller eksekverbar deserialisering. Alle modelfiler
+oprettes privat og importeres ikke af den kørende collector.
+
+### Lokal kørsel på Pi – først efter bestået CI
+
+Den nye `deploy/sprint4_run_preauth_ml_lab.sh` henter source **pinnet på
+godkendt SHA**, pakker den i en midlertidig mappe og benytter Pi'ens
+allerede installerede scikit-learn via en ekstra `PYTHONPATH` –
+**uden at opgradere pakken, stoppe services, læse SQLite eller ændre model**.
+
+~~~bash
+(
+  set -euo pipefail
+  cd /home/vidar/AI-Intrusion-Detection-System
+  sha='INDSAET_GRON_SHA_HER'
+  git fetch --no-tags origin sprint-4/preauth-ml-coverage
+  test "$(git rev-parse origin/sprint-4/preauth-ml-coverage)" = "$sha"
+  script="$(mktemp)"
+  trap 'rm -f "$script"' EXIT
+  git show "$sha:deploy/sprint4_run_preauth_ml_lab.sh" > "$script"
+  bash -n "$script"
+  bash "$script" "$sha"
+)
+~~~
+
+Kørslen opretter et **nyt** privat laboratorium under
+`~/yggdrasil-preauth-ml-private/preauth-if-*` og viser kun en
+aggregeret evaluering i terminalen. Alle tre aktive IDS-tjenester
+verificeres før og efter; ingen SSH-forbindelser genereres.
+Gem outputtet lokalt og del kun anonymiserede aggregater.
+
+**Vigtig begrænsning:** Modellen er stadig syntetisk trænet, fordi den
+faktiske Pi-audit kun fandt to preauth-forbindelseskandidater.
+Denne prototype er et design- og evalueringsforsøg, ikke
+dokumenteret sikkerhedsdetektion på rigtige angreb. Live-scoring af
+preauth kræver separat parser-/storage-/dashboard-udvidelse,
+modelevaluering og backup/rollback. Den eksisterende
+`ssh-if-7cc1f15288d0c73b` fortsætter i shadow-mode indtil da.
