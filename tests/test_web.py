@@ -608,6 +608,42 @@ def test_activity_chart_connects_positive_markers_without_inventing_samples():
     assert ".legend-dot.preauth{background:#e8ad70}" in style
 
 
+def test_network_charts_are_authenticated_local_and_bounded(configured, client):
+    assert client.get("/api/network-charts").status_code == 401
+    login(client)
+    html = client.get("/network").get_data(as_text=True)
+    assert "Blokerede TCP SYN over tid" in html
+    assert "Højst 10 porte" in html
+    assert "/assets/plotly.min.js" in html
+    assert "/static/network.js" in html
+    assert "cdn.plot.ly" not in html
+
+    response = client.get("/api/network-charts?hours=1")
+    assert response.status_code == 200
+    report = response.get_json()["data"]
+    assert report["total_packets"] == 0
+    assert report["top_ports"] == []
+    assert report["other_ports_packets"] == 0
+    assert report["series"] == []
+    assert "source_ip" not in json.dumps(report)
+    assert client.get("/api/network-charts?hours=0").status_code == 400
+    assert client.get("/api/network-charts?hours=721").status_code == 400
+    assert client.get("/api/network-charts?hours=1&hours=2").status_code == 400
+
+
+def test_network_charts_js_limits_visible_ports():
+    from pathlib import Path
+
+    script = (
+        Path(__file__).resolve().parents[1] / "src" / "yggdrasil_ids" / "static"
+        / "network.js"
+    ).read_text(encoding="utf-8")
+    assert ".slice(0, 10)" in script
+    assert 'labels.push("Øvrige porte")' in script
+    assert "/api/network-charts?hours=" in script
+    assert "newPlot(ports" in script
+
+
 def test_authenticated_network_page_displays_firewall_history_and_scan_alert(configured, client):
     from yggdrasil_ids.firewall import UFWParser
     from yggdrasil_ids.network_rules import TCPPortScanDetector
