@@ -4,10 +4,10 @@ These checks complement 'bash -n' in CI; they are not a substitute for the
 operator's live preflight or a hardware acceptance test.
 """
 
-from pathlib import Path
 import subprocess
 import sys
 import tomllib
+from pathlib import Path
 
 import pytest
 
