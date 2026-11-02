@@ -71,6 +71,44 @@ langtidsstabilitet og performance mangler stadig.
 [Pi-resultater](SPRINT_3_PI_RESULTS.md) ·
 [Pi-opgraderingsplan](SPRINT_3_PI_DEPLOY.md).
 
+## Sprint 4 · AI, Isolation Forest og dokumenteret evaluering
+
+**Status: Forberedelse og tests på udviklingsbranch; Pi-labafprøvning afventer.**
+
+Dette sprint er prioriteret før sudo og filintegritet for at sikre, at AI-
+eksamensopgavens centrale ML-versus-regler-evaluering kan fremvises.
+Et eksisterende syntetisk SSH-laboratorium træner Isolation Forest på
+312 normale observationer og evaluerer på selvstændige 44 validerings-
+og 41 sluttesthændelser. Vi har nu tilføjet en særskilt audit af
+produktionsdata og en verifier, der kontrollerer SHA-256, datasplit
+og confusion-matricer, før metrikker bruges i rapporten.
+Kun aggregerede tal forlader laboratoriet; ingen private logs eller
+modelartefakter uploades automatisk til GitHub. På Pi er modellen
+stadig `untrained` (12 SSH-observationer mod minimum 80).
+
+[Sprint 4 – metode og accept](SPRINT_4_AI_EVALUATION.md) ·
+[Runbook til Pi](SPRINT_4_PI_RUNBOOK.md) ·
+[Træningsplan og databegrænsninger](ML_PI_TRAINING_PLAN.md).
+
+## Sprint 5 · Sudo/privilegier (planlagt)
+
+**Status: Afventer Sprint 4/eksamensprioritering.**
+
+Betroede sudo-/PAM-hændelser, forklarlige privilegie-regler,
+alarmgruppering, tests og eventuel Discord-varsling.
+En særskilt ML-model til sudo kræver et nyt, varieret normalt
+datagrundlag og må ikke arve SSH-modellens score ukritisk.
+
+## Sprint 6 · Filintegritet og samlet driftsoversigt (planlagt)
+
+**Status: Afventer; plan om afgrænset file integrity monitoring.**
+
+Overvåg udvalgte konfigurationsfiler med kendt baseline,
+hashes/metadata og tydelig håndtering af forventede opdateringer.
+Efterfølgende opsummering og slutaccept omfatter daglig/ugentlig
+sikkerhedsrapport, tests, begrænsninger og eventuel Discord-levering.
+Arbejdet skal ikke forsinke AI-eksamensrapportens centrale resultater.
+
 ## Backlog · prioriteres efter de første sprints
 
 | Område | Mulig funktion | Afklaring før implementering |
@@ -81,7 +119,7 @@ langtidsstabilitet og performance mangler stadig.
 | Flere ML-modeller | Isolation Forest på andre meningsfulde aktivitetsfeatures. | Tilstrækkelige data, særskilte features og evaluering mod relevante regler. |
 | Daglige og ugentlige oversigter | Samlet historik over alarmer, aktivitet og datakvalitet. | Rapportindhold, dataperiode og eventuel levering til Discord. |
 
-Disse områder har endnu ikke sprintnumre eller lovede leveringsdatoer. Hver
-udvidelse skal have et konkret mål, en kendt datakilde og kontrollerbare
-acceptkriterier. Et domæne eller en offentlig webapp er ikke en forudsætning
+Sprint 4–6 er nu nummereret; andre mulige udvidelser forbliver
+backlog uden lovet leveringsdato. Hver udvidelse skal have et konkret mål,
+en kendt datakilde og kontrollerbare acceptkriterier. Et domæne eller en offentlig webapp er ikke en forudsætning
 for projektet, og testscenarier kræver ikke åbning af serveren mod internettet.
