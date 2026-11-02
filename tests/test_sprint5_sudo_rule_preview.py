@@ -93,9 +93,7 @@ def test_replay_aborts_when_too_many_records(preview, monkeypatch):
         preview.evaluate(records())
 
 
-def test_cli_uses_fake_records_and_does_not_print_private_information(
-    preview, monkeypatch, capsys
-):
+def test_cli_uses_fake_records_and_does_not_print_private_information(preview, monkeypatch, capsys):
     def fake_journal(since):
         assert since == "2026-10-22 00:00:00"
         yield from records()
