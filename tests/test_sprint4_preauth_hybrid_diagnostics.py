@@ -63,8 +63,7 @@ def test_hybrid_reproduces_original_scores_without_touching_files(lab_directory,
     }
     data = diagnostics.analyse(lab_directory)
     after = {
-        name: hashlib.sha256((lab_directory / name).read_bytes()).hexdigest()
-        for name in filenames
+        name: hashlib.sha256((lab_directory / name).read_bytes()).hexdigest() for name in filenames
     }
     assert before == after
     assert data["model_retrained"] is False
