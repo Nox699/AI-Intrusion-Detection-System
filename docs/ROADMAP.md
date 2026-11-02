@@ -93,12 +93,14 @@ stadig `untrained` (12 SSH-observationer mod minimum 80).
 
 ## Sprint 5 · Sudo/privilegier (planlagt)
 
-**Status: Afventer Sprint 4/eksamensprioritering.**
+**Status: Read-only sudo-journalinventar og tests under udvikling på Sprint 5-branchen; endnu ingen sudo-alarmer installeret på Pi.**
 
 Betroede sudo-/PAM-hændelser, forklarlige privilegie-regler,
 alarmgruppering, tests og eventuel Discord-varsling.
 En særskilt ML-model til sudo kræver et nyt, varieret normalt
 datagrundlag og må ikke arve SSH-modellens score ukritisk.
+
+[Sudo-datakildens plan og acceptkriterier](SPRINT_5_SUDO.md).
 
 ## Sprint 6 · Filintegritet og samlet driftsoversigt (planlagt)
 
