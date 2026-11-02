@@ -12,7 +12,6 @@ import json
 import sqlite3
 import sys
 import tomllib
-from collections import Counter
 from pathlib import Path
 
 FEATURE_NAMES = (
