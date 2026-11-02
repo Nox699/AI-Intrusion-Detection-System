@@ -72,7 +72,7 @@ def test_journal_audit_is_bounded(tool, synthetic_journal, monkeypatch):
 def test_history_command_exposes_no_raw_message_fields(tool, monkeypatch, capsys):
     def fake_journal(since):
         assert since == "2026-10-22 00:00:00"
-        return iter([])
+        yield from ()
 
     monkeypatch.setattr(tool, "journal_stream", fake_journal)
     assert tool.main([]) == 0
