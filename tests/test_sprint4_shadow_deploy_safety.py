@@ -5,6 +5,9 @@ operator's live preflight or a hardware acceptance test.
 """
 
 from pathlib import Path
+import subprocess
+import sys
+import tomllib
 
 import pytest
 
@@ -93,3 +96,32 @@ def test_deployment_scripts_do_not_modify_network_or_administration_settings(scr
             "useradd ",
         ):
             assert command not in source
+
+
+def test_actual_atomic_config_edit_only_adds_shadow_flag(tmp_path, scripts):
+    original = (DEPLOY / "config.pi.toml").read_text(encoding="utf-8")
+    expected = tomllib.loads(original)
+    private = tmp_path / "config.toml"
+    private.write_text(original, encoding="utf-8")
+    code = scripts["deploy"].split('sudo python3 - "$config" <<', 1)[1]
+    python_block = code.split("\n", 1)[1].split("\nPY\n", 1)[0]
+    assert "tomllib" in python_block and "os.replace" in python_block
+    result = subprocess.run(
+        [sys.executable, "-c", python_block, str(private)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "Atomic config change sets shadow" in result.stdout
+    actual = tomllib.loads(private.read_text(encoding="utf-8"))
+    expected["ml"]["alert_mode"] = "shadow"
+    assert actual == expected
+    unchanged = private.read_bytes()
+    duplicate = subprocess.run(
+        [sys.executable, "-c", python_block, str(private)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert duplicate.returncode != 0
+    assert private.read_bytes() == unchanged
