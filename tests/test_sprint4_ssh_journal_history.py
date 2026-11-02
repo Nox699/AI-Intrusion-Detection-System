@@ -37,6 +37,12 @@ def test_history_audit_aggregates_trusted_authentication_only(tool, synthetic_jo
     assert result["ssh_auth_events"] == 312
     assert result["ssh_auth_events"] == result["ssh_success"] + result["ssh_failure"]
     assert result["unique_feature_vectors"] > 4
+    assert 1 <= result["unique_behavioral_feature_vectors_without_time"] <= result[
+        "unique_feature_vectors"
+    ]
+    assert result["ignored_records"] + result["malformed_records"] == result[
+        "ignored_or_malformed_records"
+    ]
     assert result["distinct_sources_count_only"] >= 1
     assert len(result["daily_ssh_auth_counts_utc"]) >= 1
     assert not result["sufficiently_vetted_training_data"]
@@ -45,6 +51,18 @@ def test_history_audit_aggregates_trusted_authentication_only(tool, synthetic_jo
     assert "198.51.100." not in body
     assert "labuser" not in body
     assert "backup" not in body
+
+
+def test_clock_features_cannot_fake_behavioral_diversity(tool, synthetic_journal):
+    accepted = next(item for item in synthetic_journal if item["MESSAGE"].startswith("Accepted "))
+    later = dict(accepted)
+    later["__CURSOR"] = accepted["__CURSOR"] + "-later"
+    later["__REALTIME_TIMESTAMP"] = str(int(accepted["__REALTIME_TIMESTAMP"]) + 3600 * 1_000_000)
+    summary = tool.summarize([accepted, later])
+    assert summary["ssh_auth_events"] == 2
+    assert summary["unique_feature_vectors"] == 2
+    assert summary["unique_behavioral_feature_vectors_without_time"] == 1
+    assert summary["ssh_failure"] == 0
 
 
 def test_journal_audit_deduplicates_ssh_authentication(tool, synthetic_journal):
