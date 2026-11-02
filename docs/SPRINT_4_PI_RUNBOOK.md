@@ -105,3 +105,32 @@ En produktionsmodel skal først trænes efter særskilt gennemgang af normaltraf
 **Kun trin B2 mangler**, hvis et dashboard-screenshot af `ready`-modellen ønskes: start den eksisterende, CI-godkendte demo på **127.0.0.1:8766**, ikke på port 8765. Gem screenshot privat og mærk det syntetisk. Ingen geninstallation af applikationen er nødvendig.
 
 Se [Pi-resultatdokument](SPRINT_4_PI_RESULTS.md) for den faktiske matrix samt usikkerheder.
+
+## Demovisning: Portforveksling konstateret og afklaret
+
+**2. november 2026:** `sprint4_ml_demo_dashboard.sh` bekræftede, at
+en syntetisk model stod som `ready` i den separate demodatabase,
+41 SSH-hændelser havde status `scored`, og Gunicorn lyttede på
+`127.0.0.1:8766`. Brugeren viste efterfølgende en browserside
+med `Model ikke trænet` og autentiske SSH-observationer.
+Det er derfor **den almindelige produktionsside på port 8765** –
+ikke den nye demo på 8766. Produktionsstatus er korrekt.
+
+**Åbn i stedet en særskilt tunnel på laptoppen:**
+
+```bash
+ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:8766:127.0.0.1:8766 homelab
+```
+
+**Besøg kun `http://127.0.0.1:8766/model` for LAB-demoen.**
+Benyt demoens offentlige laboratorielogin. På 8765 vises stadig
+den ikke-trænede produktionsmodel. Det er tilsigtet.
+
+Det oprindelige demo-subkommando-output indeholdt standard-URL'en
+`127.0.0.1:8765`, selvom wrapperen bagefter ændrede config til
+port 8766. Det var misvisende. Wrapperen er nu ændret til
+kun at vise den **faktiske 8766-URL**. **Genstart ikke det
+allerede fungerende demo-script alene for at få den tekstændring.**
+
+Screenshotet viser en privat Tailnet-adresse. Behold originalen privat,
+og slør identiteten ved eventuel deling i eksamensopgaven.
