@@ -27,8 +27,7 @@ def tool():
 def synthetic_journal(tmp_path):
     paths = generate_lab(tmp_path / "lab", anchor=1_793_480_000, seed=42)
     return [
-        json.loads(line)
-        for line in paths["train_path"].read_text(encoding="utf-8").splitlines()
+        json.loads(line) for line in paths["train_path"].read_text(encoding="utf-8").splitlines()
     ]
 
 
