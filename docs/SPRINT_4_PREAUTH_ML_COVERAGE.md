@@ -246,3 +246,122 @@ Kør kun lokalt på Pi efter CI-kontrol af den valgte commit-SHA og med de aller
 ~~~
 
 Kun syntetiske scenarienavne og aggregerede resultatmål udskrives. Den sidste labmappe er brugerens allerede eksisterende private laboratorieforsøg; hele mappen eller modellen må ikke uploades til et offentligt repository.
+
+## Retrospektiv hybridanalyse og stresstest – Yggdrasil, 2. november 2026
+
+**Verificeret laboratoriekørsel, ikke produktionsdetektion.** Brugeren kørte
+den versionspinnede, skrivebeskyttede kode fra commit
+`34d2478cfa878c05631340f3fa55fd09a200deb5` på Pi'en. Den eksisterende
+separate preauth-model `preauth-if-c117b4177053846a` blev genbrugt;
+hverken træningsrækker, modelgrænse, produktionsdatabase, systemd-tjenester,
+UFW, Discord eller live SSH-skyggemodellen blev ændret. GitHub CI for den
+pinnede commit er godkendt på Python 3.11 og 3.13.
+
+### 1. Hybrid på oprindelige scenarier
+
+`deploy/sprint4_preauth_hybrid_diagnostics.py` kombinerede eksisterende
+klassifikationer med retrospektiv **logisk OR**: et fund, hvis enten regler
+eller ML markerer forbindelseskandidaten. Den tidligere sluttest er allerede
+inspiceret og kan ikke behandles som uset.
+
+| Datasplit | Metode | TP | FP | TN | FN | Recall |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Validering (54 kandidater) | ML | 15 | 0 | 16 | 23 | 39,5 % |
+| Validering (54 kandidater) | Regler | 22 | 0 | 16 | 16 | 57,9 % |
+| Validering (54 kandidater) | OR-hybrid | 22 | 0 | 16 | 16 | 57,9 % |
+| Tidligere sluttest (49 kandidater) | ML | 17 | 0 | 14 | 18 | 48,6 % |
+| Tidligere sluttest (49 kandidater) | Regler | 19 | 0 | 14 | 16 | 54,3 % |
+| Tidligere sluttest (49 kandidater) | OR-hybrid | 22 | 0 | 14 | 13 | 62,9 % |
+
+ML markerede spray og burst allerede ved første forbindelse i den gamle
+sluttest, men først ved femte i valideringen; den missede helt
+`preauth_disconnect_surge`. De oprindelige scenarier indeholdt for hver
+korreleret kandidat en afbrydelseslinje, hvorfor
+`disconnects_300s == connections_300s` for alle 49/54 kandidatvektorer.
+
+### 2. Ændring af kun tidspunkt
+
+`deploy/sprint4_preauth_clock_sensitivity.py` roterede
+`hour_sin`/`hour_cos` med 0, 6, 12 og 18 timer uden at ændre de øvrige
+fem features, modellen eller grænsen. Valideringens ML-TP ændrede sig fra
+15/38 ved 0 timer til 20/38 ved +6 timer, med **2 falske positiver**
+mod nul i originalen. Det demonstrerer modelafhængighed af
+tidspunktet, ikke tidsstempler fra et faktisk angreb. Samme sæt og
+tidligere sete labels blev anvendt; der er ingen ny uafhængig sluttest.
+
+### 3. Supplerende syntetisk robusthedsaudit
+
+`deploy/sprint4_preauth_robustness_audit.py` genererede **11 foruddefinerede
+scenarier**, gentaget ved **00, 06, 12 og 18 UTC**. Det gav 448
+korrelerede forbindelseskandidater i alt: 172 kunstigt mærket normale
+og 276 kunstigt mærket mistænkelige. Dette er **44 scenarieafviklinger
+med indbyrdes afhængige observationer**, ikke 448 uafhængige personer,
+angreb eller forbindelsesepisoder i rigtig drift. De samlede resultater
+er vægtet efter antal kandidater i hvert konstrueret scenarie:
+
+| Metode | TP | FP | TN | FN | Precision | Recall | FP-rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Isoleret preauth-Isolation Forest | 148 | 15 | 157 | 128 | 90,8 % | 53,6 % | 8,7 % |
+| Offline-sammenligningsregler | 120 | 24 | 148 | 156 | 83,3 % | 43,5 % | 14,0 % |
+| Retrospektiv OR-hybrid | **179** | **35** | 137 | 97 | 83,6 % | **64,9 %** | **20,3 %** |
+
+**Præcision og recall er betinget af denne kunstige klassefordeling og
+scenariets antagne hensigt.** Disse tal beskriver kun
+de syntetiske labels og er ikke målinger af den kørende IDS'
+real-world performance. Reglerne her er en selvstændig offline-komparator;
+de er ikke i sig selv en ny produktionsinstallation.
+
+**Konkrete fejlkategorier på tværs af fire tidsafviklinger:**
+
+- Normal `benign_typo_recovery`: **9 ML-FP**, ingen regel-FP.
+- Normal `benign_connection_retry_storm`: **20 regel-FP**, ingen ML-FP.
+- Normal `benign_repeated_username_typo`: **6 ML-FP**, **4 regel-FP**;
+  OR-kombinationen giver 6 FP.
+- Mistænkelig `simulated_low_rate_invalid`: **20/32 ML-TP** og
+  **0/32 regel-TP**. Dette er kun konstrueret adfærd, ikke bevis på
+  reel 'low-and-slow'-detektion.
+- Mistænkelig `simulated_preauth_disconnect_surge`: **0/56 ML-TP**
+  og **20/56 regel-TP**.
+- Mistænkelig `simulated_missing_disconnect_lines`: en isoleret
+  `Invalid user`-linje er en kandidatobservation, ikke en
+  dokumenteret gennemført SSH-forbindelse eller bevist angreb.
+
+**Lige features, modsat antaget hensigt:** I alle fire tidsafviklinger
+har `benign_connection_retry_storm` og
+`simulated_preauth_disconnect_surge` **præcis identiske syv-featurevektorer**
+pr. tilsvarende forbindelseskandidat. Førstnævnte er mærket normal,
+sidstnævnte simuleret mistænkelig. Ingen deterministisk klassifikator
+med kun disse input kan skelne de to hensigter. Reglen markerer i begge
+forløb fra forbindelse 10, og OR-hybriden arver både detektionsfordelen
+og den uundgåelige fejlklassifikation i den konstruerede normale case.
+Et højt antal preauth-disconnects er derfor ikke i sig selv angrebsbevis.
+
+**Tidspåvirkning i robusthedsauditen:** ML-TP ud af 69 mærket mistænkelige
+kandidater varierede fra **20 kl. 12 UTC** til **52 kl. 18 UTC**, mens de
+samme scenarietyper, tidsmellemrum og antal indgik. Samtidigt varierede
+ML-FP fra 2 til 6 ud af 43 mærket normale kandidater. Det styrker
+behovet for at teste repræsentative tider og vurdere, om tidsfeatures
+bidrager meningsfuldt frem for at reproducere syntetiske artefakter.
+
+### 4. Beslutning og næste gate
+
+1. **Bevar** `preauth-if-c117b4177053846a` som dokumenteret
+   *offline-eksperiment*. Aktiver ikke preauth-Isolation Forest eller
+   OR-hybrid i produktion på baggrund af disse undersøgelser.
+2. Bevar den **separat installerede SSH-hybridmodel**
+   `ssh-if-7cc1f15288d0c73b` i shadow-mode. Denne model har
+   et andet featureskema og må ikke forveksles med preauth-prototypen.
+3. Tilføj ikke nye normaltræningsdata eller ændr tærskler efter at have
+   set disse tests og kald derefter den gamle test 'uset'.
+   Eventuelle nye feature-/modelversioner skal designes på et tydeligt
+   udviklingsgrundlag og først bedømmes på nye, låste scenarier.
+4. For produktionsaccept mangler repræsentativt normalmateriale fra
+   rigtige SSH-journalhændelser, sikkerhedsmæssigt forsvarlige labels
+   og en separat, kontrolleret shadow-/rollback-procedure.
+   Den tidligere Pi-audit fandt kun **to** preauth-forbindelseskandidater.
+
+**Konklusion til eksamen:** Hybrid OR øgede recall i den udvidede
+syntetiske stressprøve, men øgede samtidig andelen af falske positiver;
+tidsfeatures og tvetydige disconnect-signaler er observerede
+begrænsninger. Resultatet er en eksperimentel sammenligning, ikke
+påvist forbedret intrusionsdetektion i virkelig drift.
