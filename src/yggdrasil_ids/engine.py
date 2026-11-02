@@ -88,7 +88,13 @@ class AnalysisEngine:
                 state = {
                     "state": "ready",
                     "metadata": candidate.metadata,
-                    "message": "Model indlæst; score viser afvigelse, ikke angrebssandsynlighed.",
+                    "message": (
+                        "Eksperimentel shadow-tilstand: model scorer SSH-hændelser, "
+                        "men sender ingen ML-alarmer."
+                        if self.config.ml.alert_mode == "shadow"
+                        else "Model indlæst; score viser afvigelse, ikke angrebssandsynlighed."
+                    ),
+                    "alert_mode": self.config.ml.alert_mode,
                 }
             except (OSError, ValueError, TypeError, KeyError) as exc:
                 self.model = None
@@ -271,7 +277,11 @@ class AnalysisEngine:
                                     observation_state,
                                 ),
                             )
-                            if scored and scored["is_anomaly"]:
+                            if (
+                                scored
+                                and scored["is_anomaly"]
+                                and self.config.ml.alert_mode == "alert"
+                            ):
                                 findings.append(
                                     Finding(
                                         detector_id="ssh.isolation_forest",

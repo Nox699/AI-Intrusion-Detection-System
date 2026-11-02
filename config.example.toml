@@ -26,6 +26,9 @@ min_samples = 80
 contamination = 0.03 # Decision threshold parameter, NOT a measured attack rate.
 n_estimators = 128
 random_state = 42
+# Use 'shadow' for experimental models: record scores but never send ML alerts.
+# The default 'alert' preserves existing behavior for vetted production models.
+alert_mode = "alert"
 
 [collector]
 initial_history_hours = 24
