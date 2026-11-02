@@ -58,8 +58,11 @@ def generate(directory: Path, seed: int = SEED, anchor: int = ANCHOR) -> dict[st
     if type(anchor) is not int or not 200000 <= anchor <= 253402000000:
         raise ValueError("Invalid synthetic lab timestamp")
     if directory.exists():
-        raise FileExistsError("Synthetic preauth lab directory already exists")
-    directory.mkdir(mode=0o700, parents=False)
+        if not directory.is_dir() or any(directory.iterdir()):
+            raise FileExistsError("Synthetic preauth lab directory is not empty")
+        os.chmod(directory, 0o700)
+    else:
+        directory.mkdir(mode=0o700, parents=False)
     rng = random.Random(seed)
     records: dict[str, list[dict[str, str]]] = {split: [] for split in SPLITS}
     labels: dict[str, Any] = {
@@ -349,8 +352,8 @@ def main(argv: list[str] | None = None) -> int:
     if os.geteuid() == 0:
         parser.error("Run synthetic preauth training as unprivileged vidar, not root")
     directory = args.directory.expanduser().resolve()
-    if directory.exists() or not directory.parent.is_dir():
-        parser.error("Select a fresh private output folder under an existing directory")
+    if not directory.parent.is_dir():
+        parser.error("Select a private output folder under an existing directory")
     try:
         generate(directory, seed=args.seed)
         summary = evaluate(directory)
