@@ -8,7 +8,6 @@ one completed candidate, not each message. No IP or username is an ML feature.
 from __future__ import annotations
 
 import hashlib
-import ipaddress
 import json
 import math
 import os
