@@ -63,6 +63,8 @@ assert raw["network"]["enabled"] is True
 assert raw["network"]["distinct_ports_threshold"] == 5
 assert raw["web"]["bind"] in ("127.0.0.1", "::1")
 assert "alert_mode" not in raw["ml"], "Shadow already configured; stop."
+assert Path(raw["paths"]["model"]) == Path("/var/lib/yggdrasil-ids/model.json")
+assert Path(raw["paths"]["database"]) == Path("/var/lib/yggdrasil-ids/events.sqlite3")
 assert not Path(raw["paths"]["model"]).exists()
 with sqlite3.connect(Path(raw["paths"]["database"]).as_uri()+"?mode=ro",uri=True) as db:
     db.execute("PRAGMA query_only=ON")
@@ -110,7 +112,9 @@ PY
 for name in ids-data notifier-data config systemd; do
   sudo tar -tzf "$offline/$name.tar.gz" >/dev/null || stop "Backup tar invalid: $name."
 done
-sudo sha256sum "$offline"/*.gz "$offline/pre-shadow-v4.sqlite3" |
+sudo sha256sum "$offline/ids-data.tar.gz" "$offline/notifier-data.tar.gz" \
+  "$offline/config.tar.gz" "$offline/systemd.tar.gz" \
+  "$offline/pre-shadow-v4.sqlite3" |
   sudo tee "$offline/sha256sums.txt" >/dev/null
 sudo chmod 0600 "$offline/sha256sums.txt"
 sudo sha256sum --check --status "$offline/sha256sums.txt" || stop "Offline backup hash error."
