@@ -353,3 +353,26 @@ må ikke tælle som en valideret alarmtest.
 **Næste kontrol:** Aflæs kun metadata om `sudoers:`
 i NSS, registrerede sudo-plugins og journalds effektive
 logniveau/ratelimit; ingen konfigurationsændringer.
+
+### Standard sudoers-plugin og journald uden eksplicitte overrides
+
+Den skrivebeskyttede kontrol viste:
+
+- `/etc/nsswitch.conf`: ingen særskilt `sudoers:`-kilde angivet.
+- `/etc/sudo.conf`: **0 eksplicitte pluginlinjer**.
+- `systemd-analyze cat-config systemd/journald.conf`: ingen
+  aktive, eksplicitte værdier for `MaxLevelStore`,
+  `RateLimitIntervalSec` eller `RateLimitBurst`.
+
+**Vigtigt:** `0` eksplicitte sudo-plugins betyder ikke,
+at der ikke findes et aktivt policy-/audit-plugin. Sudo
+bruger som standard `sudoers` til policy, audit og
+I/O-logning, når der ikke er særskilte pluginlinjer.
+Ingen journal-overrides betyder heller ikke, at journalens
+standardindstillinger er deaktiveret. Der er derfor
+*ikke* påvist en fejl i hverken plugin- eller journald-config.
+
+**Næste kontrol:** Læs de kompilerede sudo-logindstillinger
+og sammenlign aggregerede sudo-relaterede syslog-poster på
+begge datoer uden at vise beskeder eller identiteter.
+Ingen ændring af sudoers eller aktive IDS-services.
