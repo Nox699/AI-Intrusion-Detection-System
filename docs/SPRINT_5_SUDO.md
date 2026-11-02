@@ -261,3 +261,24 @@ eventuelt anvendes, og om en traditionel
 Udskriv kun antal og filmetadata – ikke faktiske loglinjer,
 kommandoargumenter eller brugernavne. Foretag ingen nye
 fejlede sudo-forsøg, før logdækningen er afklaret.
+
+### Kontrol af journaladgang og alternative logfiler, 2. november 2026
+
+En yderligere skrivebeskyttet kontrol viste **0 sudo-poster hos både
+root og `yggdrasil-worker`** siden `2026-11-02 00:00:00`, både med
+`_EXE=/usr/bin/sudo` og `SYSLOG_IDENTIFIER=sudo`.
+`systemd-journald` var aktiv, `rsyslog` inaktiv, og
+`/var/log/auth.log`, `/var/log/sudo.log` samt
+`/var/log/syslog` fandtes ikke.
+
+Dette udelukker en ren forskel i journal-læserettigheder for de
+undersøgte metadatafiltre; det viser **ikke**, at sudo slet ikke
+logger i en anden kanal. Årsagen til exit-kode 1 fra den
+tidligere ikke-interaktive sudo-test er stadig ukendt, fordi
+stderr var undertrykt. Ingen autorisation eller logningsopsætning
+blev ændret.
+
+**Næste afgrænsede kontrol:** Undersøg kun metadata for
+`/dev/log`, journalds Unix-sockets og aktiv sudo-logpolicy.
+Ingen flere afviste sudo-forsøg, og ingen ændring af sudoers,
+journald, SSH eller IDS før en forklaring er påvist.
