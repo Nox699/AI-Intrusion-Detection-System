@@ -1,8 +1,10 @@
 # Sprint 3 – Afslutningskontrol
 
-**Status:** Kernefunktioner er demonstreret på Pi. Netværksgraferne er **nu installeret på Pi** efter bestået CI,
-frisk offline-backup og server-side smoke-tests. Browser-visning,
-screenshot og observation af normaldrift afventer.
+**Status (2. november 2026): Funktionelt afsluttet på Pi.**
+UFW-overvågning, kontrolleret TCP-scanalarm, Discord, installation af grafer
+og deres browser-rendering er demonstreret. En afgrænset efterfølgende
+observation gav 139 firewallposter og 0 nye portscanalarmer. Dette er ikke
+fuld 24-timers accept eller en estimeret falsk-positiv-rate.
 
 ## Verificeret i drift
 
@@ -84,6 +86,7 @@ ikke et estimat af falsk-positiv-rate: trafikken er ikke
 manuelt klassificeret i alle tilfælde. Spørgsmålet om eventuel
 testtrafik i tidsintervallet er ikke afklaret.
 
-**Stadig åbent:** visuel kontrol af begge `/network`-grafer
-i brugerens browser og screenshot S3-J. Ingen grund til at
-genkøre wheel-installation eller gentage portscanningen.
+**Nu gennemført:** Begge `/network`-grafer er bekræftet visuelt af ejeren,
+og screenshot S3-J er vist i samtalen. Billedet er ikke uploadet til GitHub.
+Ingen grund til at genkøre wheel-installation eller gentage portscanningen.
+**Restbegrænsning:** Fortsat langtidsobservation og evaluering af falske positiver.
