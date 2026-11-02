@@ -13,7 +13,7 @@ import hashlib
 import json
 import os
 import random
-from collections import defaultdict, deque
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
