@@ -1,0 +1,204 @@
+# Sprint 5 – Sudo/administratoraktivitet: sikker datakilde og detektionsplan
+
+**Status:** Read-only journalinventar og unit tests udviklet på GitHub. **Ikke installeret på Pi. Ingen sudo-detektor eller Discord-varsler aktive endnu.** Det er ikke en afsluttet Sprint 5-accept.
+
+## Mål
+
+Udvide Yggdrasil IDS med forklarlig overvågning af lokale administratorhandlinger: sudo-kommandoer, autentificeringsfejl og afviste sudo-forsøg. Vi registrerer **sikkerhedshændelser**, ikke automatisk ond hensigt. En sudo-kommando er ikke i sig selv en intrusion.
+
+## Trin 1: bekæmp datagætteri med sikker, afgrænset live-audit
+
+`deploy/sprint5_sudo_journal_audit.py` læser alene eksisterende journald via `journalctl --output=json`, som `yggdrasil-worker` allerede har autoriseret journaladgang til. Scriptet læser kun metadata fra `_COMM=sudo` og `_UID=0`; en forfalsket `SYSLOG_IDENTIFIER=sudo` er ikke nok. Det samler **kun antal**, fordelt på dag (UTC) og følgende grove kategorier:
+
+| Kategori | Betydning |
+| --- | --- |
+| `command_invoked` | Sudo-invokation med registreret `COMMAND=...` |
+| `pam_auth_failure` | PAM autentificeringsfejl for sudo |
+| `incorrect_password` | Logmeddelelse om forkert sudo-adgangskode |
+| `not_in_sudoers` | Afvist handling på grund af manglende sudo-rettigheder |
+| `pam_session_opened` / `pam_session_closed` | PAM-session start/slut |
+| `other_sudo` | Ukendt, men troværdigt sudo-format |
+
+Der skrives **intet** til SQLite, sendes **ingen** Discord-besked og vises **ingen** brugeridentiteter, kommandoer, absolutte filstier eller journal-meddeleser. Audit sætter altid `production_sudo_detection_active=false`. Der er en øvre grænse på 50.000 journalposter. Den ændrer ikke UFW, SSH, Tailscale, systemd, sudoers eller sudo-konfiguration.
+
+En nulmåling kan skyldes logformat, journalretention eller anden producentmetadata. Den beviser ikke, at sudo aldrig anvendes. Det skal vi vide, før vi påstår, at sensoren kan detektere bestemte hændelser.
+
+## Trin 2: Regelbaseret analyse (afventer faktisk Pi-output)
+
+Afgrænsede, konfigurerbare detektorer til **gentagne sudo-autentificeringsfejl** og **afvist sudo-brug** er de mest forklarlige startpunkter. Sudo-kommandoer med gyldige rettigheder registreres som normal administration og må ikke automatisk udløse medium/high-alarm. Cooldown og outbox skal følge den eksisterende grouping uden at sende en notifikation pr. PAM-session. Eventuel SQLite-migration skal bevare schema v4 og notifier-state, med frisk offline-backup og rollbackgate.
+
+Parseren bør aldrig acceptere `SYSLOG_IDENTIFIER` alene som producentbevis og må ikke lagre hemmeligheder fra sudo `COMMAND=` argumenter. Før implementering fastslås, om `sudo` eller en anden journalproducent faktisk leverer disse felter på Debian 13.
+
+## Trin 3: Acceptkriterier
+
+1. CI med Ruff, pytest og wheel-build på Python 3.11/3.13.
+2. Read-only Pi-inventar med hvilke journalmeddelelser der findes. **Ingen** rå logs uploades til GitHub.
+3. Validerede tests af betroet producent, inputstørrelse, dubletter og korrekt behandling af hver dokumenteret meddelelsestype.
+4. En afgrænset *autoriseret* sudo-test med klart forventet resultat og dokumenteret falsk-positiv-begrænsning; ingen `sudoers`-ændring nødvendig.
+5. Hvis en live-service tilføjes: konsistent SQLite-backup, verificeret systemd-opstart, bevaring af SSH/UFW-detektorer og Discord-outbox, separat cooldown og privat dashboard-visning.
+
+## Første Pi-kommando (kør først efter grøn CI og pinning af SHA)
+
+```bash
+(
+  set -euo pipefail
+  cd /home/vidar/AI-Intrusion-Detection-System
+  git fetch --no-tags origin sprint-5/sudo-monitoring
+  sha='INDSAET_CI_BESTAAET_FULD_SHA'
+  test "$(git rev-parse origin/sprint-5/sudo-monitoring)" = "$sha"
+  git show "$sha:deploy/sprint5_sudo_journal_audit.py" |
+    sudo -u yggdrasil-worker /opt/yggdrasil-ids/venv/bin/python - \
+      --since '2026-10-22 00:00:00'
+)
+```
+
+**Sikkerhedsnote:** Kør kun som den eksisterende `yggdrasil-worker`, ikke som root. Outputtet må deles, fordi det kun indeholder aggregerede antal. Originale journald-data og sudo-kommandolinjer må forblive på Pi'en.
+
+## Afgrænsning i eksamensopgaven
+
+Sprint 4's Isolation Forest er kun trænet på syntetiske **SSH**-scenarier. En fremtidig sudo-detektor kan ikke kaldes ML-baseret, medmindre vi implementerer nye sudo-features og har repræsentativt, adskilt trænings- og testgrundlag. Sudo-alarmer skal derfor først være **regelbaserede**, med tydelig evidens.
+
+## Faktisk Pi-audit: nul fund fra det snævre filter, 2. november 2026
+
+Brugeren kørte `deploy/sprint5_sudo_journal_audit.py` fra fast Git-commit
+`c35f086326142d39aeb3b041f3b62632fc5dc522` på Yggdrasil, som
+`yggdrasil-worker`, fra `2026-10-22 00:00:00`. Output:
+`rows_seen=0`, `trusted_sudo_rows=0`, nul i alle syv kategorier,
+`production_sudo_detection_active=false`. Kommandoen afsluttede uden fejl.
+
+**Fortolkning:** Dette viser kun, at den snævre journald-forespørgsel
+med **begge** felter `_COMM=sudo` og `_UID=0` ikke fandt poster i den
+valgte periode, under denne læserkonto og journaladgang. Det beviser
+hverken fravær af sudo-brug, utilstrækkelige loggerettigheder eller
+hvilken metadata-kombination Debian faktisk benytter.
+
+### Næste datakildegate: aggregeret metadata-diagnostik
+
+`deploy/sprint5_sudo_journal_metadata_diagnostic.py` undersøger alene:
+
+1. Om mindst én systemjournalpost siden startdatoen er synlig
+   med `journalctl --system --lines=1`.
+2. Hvor mange poster der matcher kernelregistreret `_COMM=sudo`
+   **uden** at kræve `_UID=0`, samt grove UID-, `_EXE`- og
+   transportkategorier.
+3. Hvor mange poster der blot har `SYSLOG_IDENTIFIER=sudo`, og hvor
+   mange af disse faktisk har `_COMM=sudo` og root-UID.
+
+`SYSLOG_IDENTIFIER=sudo` bruges **kun til discovery**, ikke som
+autentisk bevis på en sudo-handling; tagget kan forfalskes af
+ikke-privilegerede afsendere. Et processnavn alene beviser heller
+ikke korrekt privilegeret oprindelse. Felter såsom `MESSAGE`,
+`COMMAND=`, `_CMDLINE`, brugernavne, IP'er, konkrete
+procesnavne, PID'er, UID'er fra enkeltposter og journalcursors
+udskrives aldrig. Der er et loft på 10.000 journalposter pr.
+afgrænset søgning; ved overskridelse stoppes analysen.
+
+Dette er *kun* diagnostik og ikke en sudo-detektor. Ingen
+serviceændringer, sudoers, SQLite, UFW eller Discord-ændringer.
+
+**Pi-kørsel:** Brug kun fuld SHA fra grøn GitHub CI på branchen
+`sprint-5/sudo-monitoring`; hent scriptet som kilde via
+`git show SHA:deploy/sprint5_sudo_journal_metadata_diagnostic.py`
+og udfør det som `yggdrasil-worker`. Analyser de aggregerede
+resultater, før nogen produktionsdetektor designes.
+
+## Pi-fund: sudo-kilden findes, men root-UID-filteret var forkert (2. november 2026)
+
+Den første audit på Yggdrasil fandt 0 rækker med det fælles filter
+`_COMM=sudo AND _UID=0`. Den efterfølgende read-only metadataaudit
+(commit `c8f62f55bf38c2c155b605318a86ef758a435474`) viste
+**101 rækker** med `_COMM=sudo` og ikke-root UID og
+**109 rækker** med `SYSLOG_IDENTIFIER=sudo`. Alle 109 tag-matchede
+rækker havde `_EXE=/usr/bin/sudo`, otte med root-UID og et andet
+`_COMM`. Systemjournalen var tilgængelig.
+
+**Kildekonklusion:** Sudo logges; den første nulmåling skyldtes
+et for restriktivt filter. 109 rækker betyder ikke 109 sudo-kommandoer,
+endsige angreb. Kildeidentifikation via et sudo-tag alene er ikke sikker.
+
+En ny, selvstændig **read-only** audit,
+`deploy/sprint5_sudo_trusted_exe_audit.py`, anvender i stedet
+journalds betroede `_EXE=/usr/bin/sudo` uden at kræve root-UID eller
+`_COMM=sudo`. Den tæller kategorierne for command, auth failure,
+incorrect password, not-in-sudoers, PAM-session og ukendte formater,
+men udskriver aldrig rå journalposter, brugere, kommandoer eller stier.
+Den må kun udføres efter grøn CI med en pinnet commit af
+`yggdrasil-worker`. Ingen produktionsdetektor installeres,
+ingen ML-model trænes, og SQLite, systemd, SSH, sudoers, UFW og
+Discord forbliver uændrede.
+
+**Næste gate:** Se de faktiske aggregerede kategorier på Pi,
+derefter beslut hvilke konkrete sudo-formater det er meningsfuldt
+at lave regler for. Ret ikke produktionskonfigurationen på
+baggrund af metadataoptællingen alene.
+
+## Pi-accept af sudo-logformater, 2. november 2026
+
+Den skrivebeskyttede audit `deploy/sprint5_sudo_trusted_exe_audit.py`
+blev kørt af `yggdrasil-worker` på Yggdrasil fra commit
+`be86915ceef24ef8280f69850642b3b84a7556a9`.
+Den læste journalen siden `2026-10-22 00:00:00` og rapporterede:
+
+| Troværdige sudo-logmeddelelser | Antal |
+| --- | ---: |
+| `command_invoked` | 34 |
+| `pam_session_opened` | 38 |
+| `pam_session_closed` | 37 |
+| `pam_auth_failure` | 0 |
+| `incorrect_password` | 0 |
+| `not_in_sudoers` | 0 |
+| `other_sudo` | 0 |
+| **Samlet** | **109** |
+
+Der var 60 poster den 24/10, 41 den 28/10, 4 den 31/10 og 4 den
+01/11 (UTC). Det er **loglinjer**, ikke unikke kommandoer, sessioner,
+angreb eller autorisationsskift. Én åbnet PAM-session mere end lukket
+er ikke i sig selv dokumentation for et vedvarende login.
+Der er ingen registrerede fejl i de genkendte meddelelsesformater,
+men dette udelukker ikke, at andre logformater eller manglende
+logdata skjuler hændelser. En enkelt realdata-audit kan heller
+ikke validere den fremtidige detektors følsomhed.
+
+### Sprint 5 – isoleret regelmotor, ikke installeret
+
+For at evaluere et forsigtigt alarmdesign uden at ændre live-IDS'en
+implementeres en **separat offline-prototype** i
+`src/yggdrasil_ids/sudo_rules.py` og et rent read-only
+journal-preview i `deploy/sprint5_sudo_rule_preview.py`.
+
+- Accepter kun journalposter, hvor det betroede metadatafelt
+  `_EXE=/usr/bin/sudo` er til stede. Afvis beskadigede
+  tidsstempler, procesidentiteter, boot-ID'er og journalcursors.
+- Genkend almindelige sudo-kommandoer og PAM-sessioner som
+  **ikke-alarmgivende**. Genkend kun kendte, strengere
+  logmønstre for fejl/afvisning; fritekst i `COMMAND=` må ikke
+  kunne efterligne en sikkerhedsfejl.
+- Prototypens fejlregel: mindst **3 særskilte sudo-PID'er** med
+  et autentificeringsfejlsignal for samme journal-UID og boot
+  i et rullende vindue på **300 sekunder**. Det er en konservativ
+  proxy for gentagne sudo-processer, ikke en nøjagtig optælling
+  af forkerte adgangskoder.
+- Prototypens afvisningsregel: `not_in_sudoers` giver ét
+  `sudo.permission_denied`-kandidatfund. En afvisning er
+  ikke bevis på ondsindet aktivitet.
+- Begge regler har **300 sekunders cooldown** pr. kildegruppe
+  og regel. Dubletter med samme journalcursor tælles ikke igen;
+  en PAM-fejl og en fejloversigt fra samme PID tæller højst
+  som én proces i fejlreglen.
+- Prototypen må kun udskrive kategorier, grænser og
+  aggregeret antal kandidatfund. Ingen brugernavne,
+  kommandoargumenter, rå meddelelser, PID/UID eller
+  journalcursors offentliggøres.
+
+Alle nye regler og logmønstre unit-testes med konstruerede
+normale, mislykkede og afviste sudo-hændelser. Før vi har
+kontrollerede, autentiske fejl-eksempler på Pi, kan vi
+**ikke** sige, at den vil genkende alle Debian 13 sudo-fejl.
+Vi må heller ikke fortolke 0 kandidatfund på den eksisterende
+normale journal som en valideret falsk-positiv-rate.
+
+**Status:** Ingen sudo-regler er koblet til live-collector,
+SQLite-alerts, dashboard eller Discord. Ingen SSH-/ML-model er
+ændret; ingen privilegier, sudoers, UFW eller systemd-tjenester
+ændres. Enhver senere produktionsintegration kræver en særskilt
+backup, rollout og rollback og en dokumenteret live-test.

@@ -93,14 +93,14 @@ modelartefakter uploades automatisk til GitHub. Den indledende Pi-audit fandt fo
 
 ## Sprint 5 · Sudo/privilegier (planlagt)
 
-**Status: Udvikles separat på `sprint-5/sudo-monitoring`; endnu ingen sudo-alarmer installeret på Pi. Sprint 5 er ikke med i denne merge.**
+**Status: Offline sudo-loganalyse og en foreløbig regelmotor udviklet og testet i særskilt Sprint 5-branche. På Pi er 109 sudo-journalposter identificeret, men endnu ingen sudo-detektor, sudo-alarm eller Discord-varsling installeret.**
 
 Betroede sudo-/PAM-hændelser, forklarlige privilegie-regler,
 alarmgruppering, tests og eventuel Discord-varsling.
 En særskilt ML-model til sudo kræver et nyt, varieret normalt
 datagrundlag og må ikke arve SSH-modellens score ukritisk.
 
-Sudo-detektionen udvikles videre i separat draft-PR, indtil den er færdigtestet.
+[Sudo-kildeaudit, prototypesregler og acceptbegrænsninger](SPRINT_5_SUDO.md).
 
 ## Sprint 6 · Filintegritet og samlet driftsoversigt (planlagt)
 
