@@ -202,3 +202,39 @@ SQLite-alerts, dashboard eller Discord. Ingen SSH-/ML-model er
 ændret; ingen privilegier, sudoers, UFW eller systemd-tjenester
 ændres. Enhver senere produktionsintegration kræver en særskilt
 backup, rollout og rollback og en dokumenteret live-test.
+
+## Afgrænset sudo-afvisningsforsøg – 2. november 2026 (ikke godkendt detektionsaccept)
+
+Brugeren kørte på Yggdrasil en enkelt, kontrolleret,
+ikke-interaktiv sudo-kommando som den begrænsede systemkonto
+`yggdrasil-web`: `/usr/bin/sudo -n /usr/bin/true`.
+Den ydre test af brugeridentiteten var bestået. Det indre
+sudo-kald returnerede **exit-kode 1**. Standardfejl og
+standardoutput blev sendt til `/dev/null`, så **den præcise
+afvisningsårsag er ukendt**. Der blev hverken givet password,
+ændret sudoers eller udført en privilegeret handling.
+
+Efterfølgende blev `deploy/sprint5_sudo_rule_preview.py`
+fra commit `b2a176a6c5f34e482f32f9a73d51398f42bac3cf`
+kørt skrivebeskyttet som `yggdrasil-worker` med starttidspunkt
+sat til to minutter før testen. Resultatet var
+`journal_rows_seen=0`, `parsed_sudo_rows=0`,
+`sudo.permission_denied=0` og
+`sudo.repeated_auth_failure=0`.
+
+**Dette er ikke dokumentation for, at sudo-afvisningsreglen
+klassificerede forkert.** Der fandtes slet ingen rækker i
+denne forespørgsel at klassificere. Uklarheden ligger
+først i logdækning, journalfilter, tidspunkt eller
+den ukendte exit-årsag; intet må konkluderes om
+produktionsdetektionskvalitet, før hændelsen er lokaliseret.
+
+**Næste gate:** Sammenlign aggregerede antal fra
+`_COMM=sudo` og `SYSLOG_IDENTIFIER=sudo` med
+`_EXE=/usr/bin/sudo` over en længere, præcist
+angivet periode på Yggdrasil. Del ikke sudo-stderr,
+rå loglinjer eller identiteter offentligt.
+Undgå gentagne afvisningsforsøg indtil logdækningen
+er afklaret. Scriptet til meta-diagnostik er allerede
+tilgængeligt som `deploy/sprint5_sudo_journal_metadata_diagnostic.py`.
+Ingen sudo-funktion er koblet på live IDS eller Discord.
