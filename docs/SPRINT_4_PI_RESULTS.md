@@ -48,7 +48,7 @@ Laboratorie-verifikatoren kontrollerede separate splits, SHA-256 på datasæt og
 | Sluttest | Regler | 12 | 1 | 21 | 7 | 92,3 % | 63,2 % | 4,5 % |
 | Sluttest | Isolation Forest | 18 | 3 | 19 | 1 | 85,7 % | 94,7 % | 13,6 % |
 
-**På sluttesten:** 19 syntetisk mistænkelige og 22 normale hændelser. Isolation Forest fandt 18/19 frem for reglernes 12/19, men havde 3/22 falske positive frem for reglernes 1/22. Tallene angiver hændelser **før** gruppering til alarmforløb. Forskellen i valideringens FP fra den tidligere versionerede eksempelrapport (3→4) skyldes, at nye syntetiske tidsstempler kan give andre tidsfeatures; det er ikke dokumentation for en ændring i selve detektionskoden.
+**På sluttesten:** 19 syntetisk mistænkelige og 22 normale hændelser. Isolation Forest fandt 18/19 frem for reglernes 12/19, men havde 3/22 falske positive frem for reglernes 1/22. Tallene angiver hændelser **før** gruppering til alarmforløb. Forskellen i valideringens FP fra den tidligere versionerede eksempelrapport (3→4) er forenelig med, at nye syntetiske tidsstempler ændrer tidsfeatures; forskellen er ikke i sig selv dokumentation for en kodeændring.
 
 ## 4. Driftskontrol og integritet
 
@@ -67,7 +67,7 @@ Laboratorie-verifikatoren kontrollerede separate splits, SHA-256 på datasæt og
 
 ## 6. Resterende demonstration og bilag
 
-**ML-A:** Produktivitetsaudit 15/80 og `untrained` (kun aggregerede tal).
+**ML-A:** Produktionsaudit 15/80 og `untrained` (kun aggregerede tal).
 **ML-B:** Ny labrapport og verifikatorens sammenligningstabel, tydeligt mærket *syntetisk laboratorietest*.
 **ML-C:** Valgfri ML-demo på 127.0.0.1:8766 gennem SSH-tunnel, med *trained/ready* i et særskilt LAB-dashboard og screenshot privat.
 **ML-D:** CI/pytest/ruff-dokumentation samt Git-commit for koden.
