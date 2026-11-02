@@ -33,6 +33,7 @@ def summarize(records: Iterable[dict[str, Any]]) -> dict[str, Any]:
     sources: set[str] = set()
     seen: set[str] = set()
     unique_features: set[tuple[float, ...]] = set()
+    unique_behavioral_features: set[tuple[float, ...]] = set()
     recent: dict[str, deque] = defaultdict(deque)
     first: float | None = None
     latest: float | None = None
@@ -44,6 +45,7 @@ def summarize(records: Iterable[dict[str, Any]]) -> dict[str, Any]:
         result = parser.parse(record, namespace="historical-audit")
         if result.event is None:
             counters["ignored_or_malformed_records"] += 1
+            counters["malformed" if result.status == "malformed" else "ignored"] += 1
             continue
         event = result.event
         if event.event_id in seen:
@@ -58,6 +60,9 @@ def summarize(records: Iterable[dict[str, Any]]) -> dict[str, Any]:
         vector = builder.build(list(source_window), event)
         source_window.append(event)
         unique_features.add(tuple(vector))
+        # Hour sine/cosine make even separate identical logins look unique.
+        # Compare only failed/success/user-count/failure-ratio for behavior.
+        unique_behavioral_features.add(tuple(vector[:4]))
         sources.add(event.source_ip)
         days[datetime.fromtimestamp(event.timestamp, timezone.utc).date().isoformat()] += 1
         counters[event.outcome] += 1
@@ -73,9 +78,12 @@ def summarize(records: Iterable[dict[str, Any]]) -> dict[str, Any]:
         "ssh_success": counters["success"],
         "ssh_failure": counters["failure"],
         "ignored_or_malformed_records": counters["ignored_or_malformed_records"],
+        "ignored_records": counters["ignored"],
+        "malformed_records": counters["malformed"],
         "duplicate_auth_records": counters["duplicate_auth_records"],
         "distinct_sources_count_only": len(sources),
         "unique_feature_vectors": len(unique_features),
+        "unique_behavioral_feature_vectors_without_time": len(unique_behavioral_features),
         "daily_ssh_auth_counts_utc": dict(sorted(days.items())),
         "first_event_utc": (
             datetime.fromtimestamp(first, timezone.utc).isoformat() if first is not None else None
@@ -86,6 +94,7 @@ def summarize(records: Iterable[dict[str, Any]]) -> dict[str, Any]:
         "sufficiently_vetted_training_data": False,
         "explanation": (
             "Historical event counts may overlap existing SQLite observations. "
+            "Different hour_sin/hour_cos can make similar login patterns appear unique. "
             "Manual normality review and separated hold-out validation remain mandatory."
         ),
     }
