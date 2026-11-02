@@ -15,8 +15,12 @@ import tomllib
 from pathlib import Path
 
 FEATURE_NAMES = (
-    "failed_count", "success_count", "unique_users",
-    "failure_ratio", "hour_sin", "hour_cos",
+    "failed_count",
+    "success_count",
+    "unique_users",
+    "failure_ratio",
+    "hour_sin",
+    "hour_cos",
 )
 
 
@@ -40,15 +44,13 @@ def inspect(config_path: Path) -> dict:
         if db.execute("PRAGMA quick_check").fetchone()[0] != "ok":
             raise ValueError("Database integrity check failed")
         event_total = db.execute("SELECT COUNT(*) FROM events").fetchone()[0]
-        outcomes = dict(db.execute(
-            "SELECT outcome, COUNT(*) FROM events GROUP BY outcome"
-        ).fetchall())
-        observation_total = db.execute(
-            "SELECT COUNT(*) FROM observations"
-        ).fetchone()[0]
-        states = dict(db.execute(
-            "SELECT state, COUNT(*) FROM observations GROUP BY state"
-        ).fetchall())
+        outcomes = dict(
+            db.execute("SELECT outcome, COUNT(*) FROM events GROUP BY outcome").fetchall()
+        )
+        observation_total = db.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+        states = dict(
+            db.execute("SELECT state, COUNT(*) FROM observations GROUP BY state").fetchall()
+        )
         # Only active stored observations; late/out-of-order data are not
         # automatically a clean normal baseline.
         observations = db.execute(
@@ -70,15 +72,11 @@ def inspect(config_path: Path) -> dict:
             "SELECT COUNT(DISTINCT DATE(timestamp,'unixepoch')), "
             "COUNT(DISTINCT source_ip) FROM events"
         ).fetchone()
-        row = db.execute(
-            "SELECT value FROM state WHERE key='model'"
-        ).fetchone()
+        row = db.execute("SELECT value FROM state WHERE key='model'").fetchone()
     model_state = "unknown"
     if row:
         parsed = json.loads(row[0])
-        if isinstance(parsed, dict) and parsed.get("state") in {
-            "untrained", "ready", "error"
-        }:
+        if isinstance(parsed, dict) and parsed.get("state") in {"untrained", "ready", "error"}:
             model_state = parsed["state"]
     candidate_total = len(observations)
     return {
@@ -106,9 +104,7 @@ def inspect(config_path: Path) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--config", type=Path, default=Path("/etc/yggdrasil-ids/config.toml")
-    )
+    parser.add_argument("--config", type=Path, default=Path("/etc/yggdrasil-ids/config.toml"))
     args = parser.parse_args(argv)
     try:
         result = inspect(args.config)
