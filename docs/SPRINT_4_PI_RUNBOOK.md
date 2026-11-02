@@ -165,3 +165,35 @@ Når CI er bestået for en given commit, kan scriptet køres som den eksisterend
 **Fortolkning:** Et højt tal betyder kun, at der *findes* historiske autentificeringshændelser. De kan overlappe de 15 SQLite-hændelser og kan omfatte tidligere tests eller fejl. Før en **produktionsmodel** kan trænes, skal normalperioder gennemgås, testperioder udelukkes, og uafhængige hold-out-perioder reserveres. Vi sænker ikke minimum fra 80, bruger ikke labmodellen som live-model og kopierer aldrig rå SSH-logs til det offentlige repository.
 
 Hvis systemjournalen indeholder for få egnede ægte SSH-hændelser, er den korrekte eksamensstatus fortsat **syntetisk trænet model plus endnu ikke valideret produktionsmodel**. Dette er en dokumenteret begrænsning og ikke en fejl ved Isolation Forest-koden.
+
+## Historisk journald-audit gennemført – reel SSH-dækning
+
+**Faktisk Pi-resultat, 2. november 2026:** Den oprindelige,
+read-only historikoptælling siden 22. oktober fandt **19**
+troværdige SSH-autentificeringer fordelt over fem dage,
+19 succeser, nul fejl og én kilde. 89 journalposter blev
+undersøgt; 70 af dem gav ikke autentificeringsfund.
+
+Det tidligere SQLite-resultat var **15 hændelser** fra
+overlappende historik. Tallene må ikke lægges sammen til
+34 unikke træningsobservationer. Selv hvis alle 19 journalposter
+er egnet normaldata, mangler mindst **61** til det tekniske
+minimum på 80. Der er ikke dokumenteret en valid
+produktionsmodel eller en uafhængig real-world evalueringsrate.
+
+**Datakvalitet:** Hver af de 19 observationer havde en unik
+fuld feature-vektor. Dette betyder ikke 19 uafhængige
+adfærdsmønstre, da UTC-tidspunktets sinus/cosinus
+varierer på tværs af ellers ens loginforløb. Den nye
+udgave af journal-analysen rapporterer også
+`unique_behavioral_feature_vectors_without_time` samt
+separat antal ignorerede og fejltolkede journalposter.
+
+Tilføj ikke tilfældige SSH-loginforsøg for at fylde datasættet
+op. Registrér hellere reel legitim aktivitet over længere tid
+og evaluér særskilt, før en model aktiveres i produktion.
+
+**Gentag kun read-only-analysen hvis den nye featurevariation
+ønskes målt:** hent den nyeste CI-beståede, pinned SHA til
+`deploy/sprint4_ssh_journal_history.py` og anvend den ovenstående
+kommando. Dette er ingen trænings-/installationshandling.
