@@ -275,3 +275,29 @@ Dette beviser én end-to-end-funktionstest og cooldown-
 gruppering, **ikke** fravær af falske positiver eller
 garanteret detektion af alle scanninger. Den første
 kendte scan ved tærskel 6 gav ingen alarm.
+
+## Grafik til netværksdashboard (udviklingsbranch)
+
+Der er nu en lille, privat grafsektion på `/network`, bygget med
+**det eksisterende lokale Plotly**. API'et
+`/api/network-charts` læser kun SQLite og returnerer aggregerede
+observationer uden kilde-IP'er eller rå journalposter.
+
+- **Blokerede TCP SYN-pakker over tid:** interval på 5 minutter ved
+  1/6-timersvisning, 30 minutter ved 24 timer, 2 timer ved 7 dage og
+  6 timer ved 30 dage. Kun intervaller med registrerede hændelser
+  bliver plottet; en manglende søjle beviser ikke, at der var nul trafik.
+- **Mest berørte porte:** højst **10** individuelt navngivne porte.
+  Alle andre destinationporte summeres i **én** søjle med navnet
+  `Øvrige porte`. Det er derfor aldrig en graf med 65.535 søjler.
+- Der skelnes mellem pakker til en port og antal forskellige
+  scannede porte. Graferne er kontekst og dokumentation;
+  selve 60-sekundersdetektoren og dens alarmer beregnes uændret.
+- Netværksgrafen er uafhængig af tabellens kilde-/protokolfiltre.
+  Underliggende API kræver login og begrænser tidsinterval til
+  højst 720 timer.
+
+**Status:** Implementeret på `sprint-3/network-monitoring`,
+men **ikke installeret på Yggdrasil Pi endnu**.
+Den fungerende indsamling og Discord-alarm er uændret, indtil
+der gennemføres en separat testet webopdatering.
