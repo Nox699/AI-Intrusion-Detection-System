@@ -72,4 +72,4 @@ Laboratorie-verifikatoren kontrollerede separate splits, SHA-256 på datasæt og
 **ML-C:** Valgfri ML-demo på 127.0.0.1:8766 gennem SSH-tunnel, med *trained/ready* i et særskilt LAB-dashboard og screenshot privat.
 **ML-D:** CI/pytest/ruff-dokumentation samt Git-commit for koden.
 
-**Næste handling:** Ejer kan køre `deploy/sprint4_ml_demo_dashboard.sh` efter grøn CI. Der er ingen behov for at installere Sprint 4-koden i produktions-venv; scriptet anvender eksisterende CLI. Demoen skal stå på **en anden loopback-port** end produktionsdashboardet.
+**Demostart bekræftet på Pi:** Det isolerede script fra commit `470052c465b65ace1188d78f64b0b474438c104d` gennemførte syntetisk model-/databaseoprettelse med `model.state=ready` og **41 scorede SSH-hændelser**. Gunicorn startede og loggede **`Listening at: http://127.0.0.1:8766`**. Pi's live-IDS på port 8765 var ikke ændret. **Visuel browseraccept af demo på port 8766 afventer**. Brugeren sendte to screenshots fra produktionsdashboardet, der korrekt fortsat viste `Model ikke trænet`; de må ikke beskrives som screenshots af den trænede labmodel. Billederne er ikke uploadet til GitHub.
