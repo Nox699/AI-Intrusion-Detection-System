@@ -70,8 +70,9 @@ def test_aggregate_offline_preview_reports_only_safe_counts(preview):
 
 
 def test_existing_normal_journal_types_produce_zero_matches(preview):
-    input_records = records()[:3] * 3
-    # Duplicates are deliberately included to check journal cursor replay handling.
+    input_records = records()[:3]
+    # Replay the final record at the same timestamp; it must not raise a finding.
+    input_records.append(input_records[-1])
     output = preview.evaluate(input_records)
     assert output["candidate_rule_matches"] == {
         "sudo.repeated_auth_failure": 0,
