@@ -83,3 +83,13 @@ der er valideret og aktiveret i produktion. Den syntetiske
 laboratoriemodel må ikke fremstilles som trænet på Yggdrasils
 normale SSH-drift. Det er en observeret projektbegrænsning,
 ikke et fejlsymptom i den regelbaserede IDS.
+
+## Opdatering fra Pi, 2. november 2026
+
+Den nye aggregerede, read-only audit fandt **15** SSH-hændelser og **15** observationer fordelt på **3 dage**, alle succeser fra én kildeadresse; **15** unikke feature-vektorer og fortsat **ingen live-model**. Det tekniske hul til 80 er nu **65** rækker. De tidligere 12/80 i dette dokument er en *historisk baseline*, ikke den seneste måling.
+
+Et **isoleret** laboratorium blev gennemført på Pi med 312 syntetiske normale træningshændelser, 44 valideringshændelser og 41 sluttesthændelser. Model `ssh-if-16ae0fc3a05948df`; alle checks for datasplit, hash, prædiktions- og confusion-matrix bestod. **Ikke en model af live Yggdrasil-brug**. Se [resultaterne](SPRINT_4_PI_RESULTS.md).
+
+## Endelig observation om adfærdsvariation – 2. november 2026
+
+En forbedret read-only journalaudit fandt 19 faktiske SSH-autentificeringer fra én kilde, **alle succeser**, fordelt over fem dage. Af 19 numerisk unikke feature-vektorer var der **kun 2 forskellige fire-dimensionelle adfærdskombinationer uden tidsfeatures**. Dette understøtter diskussionen om *variation kontra volumen* på en homelab-server. Ingen live Isolation Forest-model er trænet eller aktiveret.
