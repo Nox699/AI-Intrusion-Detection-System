@@ -47,11 +47,16 @@ jobs:
       - name: Validate threshold tuning script syntax
         run: bash -n deploy/sprint3_tune_threshold5.sh
 
+      - name: Validate Sprint 4 isolated ML tooling
+        run: |
+          bash -n deploy/sprint4_run_synthetic_lab.sh
+          python -m py_compile deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py
+
       - name: Lint
-        run: python -m ruff check src tests
+        run: python -m ruff check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py
 
       - name: Check formatting
-        run: python -m ruff format --check src tests
+        run: python -m ruff format --check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py
 
       - name: Run tests
         run: python -m pytest --junitxml=test-results/pytest.xml
