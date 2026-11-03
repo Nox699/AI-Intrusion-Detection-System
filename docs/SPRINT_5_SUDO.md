@@ -639,3 +639,40 @@ loginbruger, hvis man ønsker en kontrolleret
 succes-hændelse. Der er ikke brug for flere
 bevidst fejlede sudo-logins.
 Ingen rå logposter eller modelartefakter uploades.
+
+### Pi-liveaccept: 15 sekunders manuel sudo-shadow-test (3. november 2026)
+
+Brugeren kørte `deploy/sprint5_sudo_shadow_observe.py` fra
+den CI-godkendte commit `94917044b657fecc9245a8e6585f74cd608c41bc`
+på Yggdrasil som `yggdrasil-worker`, med en legitim
+`sudo /usr/bin/true` udført under observationen.
+Observationen blev afsluttet efter **15 sekunder**.
+
+| Mål | Faktisk resultat |
+| --- | ---: |
+| `journal_rows_seen` / `parsed_sudo_rows` | **5 / 5** |
+| `command_invoked` | 2 |
+| `pam_session_opened` | 2 |
+| `pam_session_closed` | 1 |
+| Parse-/kvalitetsfejl | 0 |
+| `sudo.permission_denied` kandidatfund | 0 |
+| `sudo.repeated_auth_failure` kandidatfund | 0 |
+| SQLite-skrivninger / Discord-notifikationer | **0 / 0** |
+
+**Konklusion:** Den kortvarige live-observatør kan indsamle og
+fortolke autentiske normale sudo-loglinjer på den faktiske Pi
+uden alarmkandidater eller produktionsændringer.
+To `command_invoked`-poster er ikke bevis for to
+uafhængige administratorhandlinger: opstarten af testen
+anvendte også sudo. Den ekstra `pam_session_opened` uden
+tilsvarende `pam_session_closed` i tidsvinduet viser ikke
+i sig selv et vedvarende login; en observation kan afskære
+en logsekvens.
+
+**Afgrænsning:** Vi har **ikke** verificeret en ægte
+positiv sudo-afvisning eller PAM-auth-fejl i Pi-journalen,
+og 5 normale poster giver **ikke** en meningsfuld
+falsk-positiv-rate. Sprint 5's næste udviklingstrin er
+en privat, adskilt, testbar hændelseslagring med
+deduplikering og retention, inden en eventuel
+produktionstjeneste og notifierintegration overvejes.
