@@ -1506,3 +1506,44 @@ the worker-owned SQLite checkpoint advances and old sudo journal rows are
 not duplicated. No need to induce sudo authentication failures on the
 production Pi; controlled positive detection is already validated in the
 Ubuntu lab. Record screen evidence only after checking the returned output.
+
+### Pi: periodisk sudo-shadow-timer og privat SQLite verificeret (3. november 2026)
+
+En selvstændig read-only kontrol efter aktivering viste:
+
+| Kontrol | Faktisk observation |
+| --- | --- |
+| `systemctl is-active yggdrasil-sudo-shadow.timer` | **`active`** |
+| `systemctl is-enabled yggdrasil-sudo-shadow.timer` | **`enabled`** |
+| Næste/seneste timerløb (CET) | **10:52:35 / 10:51:35** |
+| `Result` / `ExecMainStatus` for oneshot | **`success` / `0`** |
+| Private `sudo_signals`-rækker | **69** |
+| Private `sudo_candidates`-rækker | **0** |
+| Worker-checkpoint | **2026-11-03T10:51:33.296639+01:00** |
+| `command_invoked` / `pam_session_opened` / `pam_session_closed` | **23 / 23 / 23** |
+| Fejl (`pam_auth_failure`, `incorrect_password`, `not_in_sudoers`) | **0 / 0 / 0** |
+
+**Resultat:** Timeren havde en planlagt efterfølgende kørsel, sensoren
+afsluttede med systemd `success`, og den særskilte private database
+indeholder 69 normaliserede sudo-hændelser fra normal drift. Ingen
+sudo-kandidater blev fundet i dette udsnit. Journalposter er **ikke**
+uafhængige sudo-handlinger: 69 poster omfatter bl.a. 23
+kommandohændelser med tilhørende session open/close.
+Dette er dokumentation for kortvarig periodisk drift
+og normal registrering, **ikke** målt false-positive-rate,
+langtidsstabilitet eller live sudo→Discord-kæde.
+
+**Screenshot S5-12:** Ejeren blev bedt om at gemme
+`active`, `enabled`, `Result=success`,
+`Gemte sudo-hændelser: 69`,
+`Alarmkandidater: 0` og sidste checkpoint.
+Faktisk screenshotfil er endnu ikke gennemgået eller uploadet.
+
+**Resterende lukningsgate:** Lav en læsebaseret SQLite-`integrity_check`,
+verificér worker-ejerskab og private mode på sudo-state,
+og kontrollér at de tre hidtidige IDS-tjenester fortsat er
+aktive. Derefter kan Sprint 5 afsluttes som **regelbaseret sudo-sensor
+i shadow-mode**, og ny featureudvikling udsættes til efter eksamen.
+En senere live sudo-alarm kræver særskilt integreret
+alarm-/outbox-deployment og positiv driftsaccept; de to
+eksisterende realtidsdetektioner er fra isoleret Ubuntu-VM.
