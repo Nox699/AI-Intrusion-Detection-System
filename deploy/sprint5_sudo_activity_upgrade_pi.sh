@@ -51,11 +51,14 @@ recover() {
   if ((result != 0)); then
     echo "STOP: Upgrading exporter failed, restoring v1 exporter and timer" >&2
     if ((changed == 1)); then
+      sudo systemctl stop yggdrasil-sudo-ui-export.timer || :
+      sudo systemctl stop yggdrasil-sudo-ui-export.service || :
       sudo install -o root -g root -m 0644 "$backup/sudo_ui_export.py" "$code" || :
+      sudo install -o root -g root -m 0644 "$backup/previous-commit" "$manifest" || :
       sudo rm -f -- "$activity" || :
       sudo systemctl start yggdrasil-sudo-ui-export.service || :
     fi
-    if ((paused == 1)); then
+    if ((paused == 1 || changed == 1)); then
       sudo systemctl start yggdrasil-sudo-ui-export.timer || :
     fi
   fi
@@ -75,6 +78,8 @@ paused=1
 sudo systemctl stop yggdrasil-sudo-ui-export.service
 changed=1
 sudo install -o root -g root -m 0644 "$tmp/sudo_ui_export.py" "$code"
+printf '%s\n' "$sha" > "$tmp/COMMIT"
+sudo install -o root -g root -m 0644 "$tmp/COMMIT" "$manifest"
 
 echo "=== Verify first process-level export; no raw identities ==="
 sudo systemctl start yggdrasil-sudo-ui-export.service
