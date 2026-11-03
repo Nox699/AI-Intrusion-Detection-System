@@ -201,7 +201,7 @@ def login(client):
 
 
 @pytest.mark.parametrize(
-    "path", ["/", "/events", "/network", "/alerts", "/alerts/1", "/model", "/status"]
+    "path", ["/", "/events", "/network", "/sudo", "/alerts", "/alerts/1", "/model", "/status"]
 )
 def test_sensitive_pages_require_login(client, path):
     response = client.get(path)
@@ -720,6 +720,7 @@ def test_network_page_displays_data_quality_error_without_exposing_raw_journal(c
         ("/events", "SSH-hændelser"),
         ("/preauth", "Før login"),
         ("/network", "Netværk"),
+        ("/sudo", "Sudo · Shadow"),
         ("/alerts", "Alarmer"),
         ("/alerts/1", "Alarmdetaljer"),
         ("/model", "SSH · Machine learning"),
@@ -733,3 +734,69 @@ def test_dashboard_breadcrumb_matches_the_actual_section(client, path, section):
     html = response.get_data(as_text=True)
     assert f"<strong>{section}</strong></div>" in html
     assert "IDS · Privat server" in html
+
+
+def test_sudo_page_is_authenticated_and_missing_export_does_not_claim_zero(client):
+    assert client.get("/sudo").status_code == 302
+    login(client)
+    response = client.get("/sudo")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Sudo-status kan ikke indlæses" in html
+    assert "Manglende data betyder ikke nul hændelser" in html
+    assert "Eksperiment · Ikke live" in html
+    assert "sudo-if-4f95328112e7423b" in html
+    assert "24" in html  # bundled, verified synthetic benchmark, not live data
+    assert "/sudo" in RenderedPage(html).links
+    assert "password_hash" not in html
+    assert "/var/lib/yggdrasil-sudo-shadow/" not in html
+
+
+def test_sudo_page_displays_only_anonymized_worker_export(app, client, tmp_path):
+    from yggdrasil_ids.sudo_dashboard import CATEGORIES, DETECTORS
+
+    now = time.time()
+    shared = tmp_path / "sudo-status.json"
+    shared.write_text(
+        json.dumps(
+            {
+                "format": "sudo-shadow-summary-v1",
+                "mode": "shadow",
+                "generated_at": now,
+                "checkpoint_at": now - 2,
+                "period_seconds": 86400,
+                "total_signals": 105,
+                "total_candidates": 2,
+                "recent_signals": 15,
+                "categories": {
+                    name: {
+                        "command_invoked": 5,
+                        "pam_session_opened": 5,
+                        "pam_session_closed": 5,
+                    }.get(name, 0)
+                    for name in CATEGORIES
+                },
+                "candidate_detectors": {
+                    name: 0 for name in DETECTORS
+                },
+                "source": "worker_owned_private_sudo_staging",
+                "sends_alerts": False,
+                "shares_production_database": False,
+            }
+        )
+    )
+    shared.chmod(0o640)
+    app.config["SUDO_PUBLIC_STATUS_PATH"] = shared
+    login(client)
+    text = client.get("/sudo").get_data(as_text=True)
+    assert "Sudo-overvågning" in text
+    assert "Aktuel eksport" in text
+    assert "105" in text
+    assert "15" in text
+    assert "Shadow-mode" in text
+    assert "Ingen automatiske sudo-alarmer" in text
+    assert "Reglerne fandt 24 af 32" in text
+    assert "sudo-if-4f95328112e7423b" in text
+    assert "command_invoked" not in text
+    assert "/var/lib/yggdrasil-sudo-shadow/" not in text
+    assert "sudo-status.json" not in text
