@@ -10,7 +10,7 @@ if [[ ! "$sha" =~ ^[0-9a-f]{40}$ || "$(hostname)" != yggdrasil || "$(id -un)" !=
   exit 2
 fi
 cd /home/vidar/AI-Intrusion-Detection-System
-git fetch --no-tags origin "$branch"
+git fetch --no-tags origin "refs/heads/$branch:refs/remotes/origin/$branch"
 if [[ "$(git rev-parse "origin/$branch")" != "$sha" ]]; then
   echo "STOP: Research branch changed; inspect the new commit first" >&2
   exit 2
