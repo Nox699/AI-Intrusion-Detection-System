@@ -27,7 +27,7 @@ yggdrasil-ids = "yggdrasil_ids.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-yggdrasil_ids = ["templates/*.html", "static/*.css", "static/*.js", "static/*.svg"]
+yggdrasil_ids = ["sudo_benchmark.json", "templates/*.html", "static/*.css", "static/*.js", "static/*.svg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
