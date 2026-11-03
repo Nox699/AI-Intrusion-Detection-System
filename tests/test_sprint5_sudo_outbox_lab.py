@@ -80,7 +80,7 @@ def test_two_separate_realistic_fail_bursts_generate_two_fake_discord_deliveries
 
 def test_duplicate_replay_does_not_create_duplicate_alarm(lab):
     originals = [sudo_row(1, 10), sudo_row(2, 20), sudo_row(3, 30)]
-    result = lab.run_lab([*originals, *originals])
+    result = lab.run_lab([row for item in originals for row in (item, item)])
     assert result["candidate_rule_matches"]["sudo.repeated_auth_failure"] == 1
     assert result["temporary_outbox_rows"] == 1
     assert result["fake_notifier_deliveries"] == 1
