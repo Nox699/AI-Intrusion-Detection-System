@@ -55,7 +55,7 @@ PAGE_SECTIONS = {
     "events": "SSH-hændelser",
     "preauth": "Før login",
     "network": "Netværk",
-    "sudo": "Sudo · Shadow",
+    "sudo_dashboard": "Sudo · Shadow",
     "alerts": "Alarmer",
     "alert_detail": "Alarmdetaljer",
     "model": "SSH · Machine learning",
