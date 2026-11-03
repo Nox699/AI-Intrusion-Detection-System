@@ -137,3 +137,111 @@ Ingen genstart af produktions-web/SSH/UFW/Discord blev udført.
 **Næste gated trin:** Stage den nye webkode til separat
 loopback-forhåndsvisning 8766. Den installerede
 webtjeneste på 8765 er stadig uændret.
+
+## Feedbackrunde 2: Hændelser før ML og advarselstrekanter i navigationen
+
+Brugerens UI-preview på 8766 viste, at syntetisk
+Isolation Forest-vs-regler-benchmark fyldte meget i forhold
+til den operative sudo-overvågning. Prioriteten blev derfor
+ændret **før release**:
+
+1. Kortene viser fortsat den anonyme, løbende sudo-status.
+2. **Seneste mistænkelige sudo-aktivitet** vises først,
+   med op til **otte særskilte regelkandidater** fra
+   de seneste 24 timer – også når de ikke er blandt
+   de sidste 15 normale processer.
+3. **Seneste 15 sudo-forløb**: én række pr.
+   `(boot_id, uid, pid)`-gruppe, **kun**
+   tidspunkt, begrænset kategorikode og en af
+   `rule_candidate`, `review`, `normal`.
+   Flere PAM-/sessionloglinjer fra samme proces
+   tæller ikke som separate brugerhandlinger.
+   Sammenkoblingen kan være tvetydig ved PID-genbrug;
+   det er ikke egentlig forensisk rekonstruktion.
+4. Sensorstatus og to forklarlige sudo-regler.
+5. **Syntetisk Isolation Forest vs. regler nederst**,
+   konsekvent mærket `Eksperiment · Ikke live`.
+
+**Privatliv:** Udvidelsen offentliggør en **ny** fil
+`/var/lib/yggdrasil-sudo-public/sudo-activity.json`
+med *kun* disse begrænsede, anonymiserede felter.
+Den gamle `sudo-status.json` beholder sin præcise
+`sudo-shadow-summary-v1`-kontrakt, så den
+tidligere installerede forhåndsvisning fortsat
+fungerer under eksportøropgraderingen. Den nye
+fil har separat `sudo-shadow-activity-v1`-kontrakt,
+egne loftsgrænser, validering, maximumalder og
+fail-closed fejlvisning. Ingen UID, PID, raw commands,
+journaltekst, journalcursor eller secrets bliver
+vist til browseren.
+
+**Advarsel i venstre menu:** Et lille orange
+`⚠` vises ved **Netværk**, når den eksisterende
+produktionsdatabase har en `network.tcp_port_scan`-
+**alarmforekomst** med `last_seen` inden for 24 timer.
+SSH-hændelser og Før login har tilsvarende indikatorer
+for deres eksisterende alarmtyper; **Alarmer** viser
+markering ved ethvert relevant alarmforløb. Alle
+tællinger hentes via en **autentificeret**,
+skrivebeskyttet `/api/nav-alerts` ca. hvert
+15. sekund. De er **ikke ulæste notifikationer**
+eller nye Discord-beskeder og kræver ikke
+kvitteringsdatabase. Sudo-shadow-regelkandidater
+regnes **ikke** for aktive produktionsalarmer.
+Et mislykket API-kald må aldrig forvandles
+til konklusionen »0 alarmer«.
+
+### Sikker opgradering fra den allerede installerede preview
+
+Eksisterende tilstand: første `sudo-ui-export.timer`
+er aktiv, og en 8766-preview med kodestage
+`56c4d4a54c6a1c4a2467a526691a50b7706b1df4`
+er åbnet manuelt. Produktionsweb på 8765 er
+ikke opdateret.
+
+- **Gate A – anonym eksportør:**
+  `deploy/sprint5_sudo_activity_upgrade_pi.sh "$sha"`
+  kontrollerer forrige pinned installeret exporter
+  (`02de116b4a2a90435b4135e220be8371687c2576`),
+  gemmer en root-beskyttet backup, stopper
+  **kun eksporttimeren kortvarigt**, installerer
+  den nye publisher, kræver et bestået oneshot,
+  dokumenterer at `yggdrasil-web` kun ser de
+  anonyme filer, og genstarter eksporttimeren.
+  Ved fejl gendannes original exporter og timer.
+  Manuel rollback:
+  `deploy/sprint5_sudo_activity_rollback_pi.sh "$sha"`.
+  **Sudo-shadow-sensoren, collector, notifier og
+  almindelig webserver genstartes ikke.**
+- **Gate B – stoppet forhåndsvisning:**
+  Stop brugerens tidligere 8766-preview med
+  Ctrl+C. `deploy/sprint5_sudo_ui_preview_upgrade_pi.sh "$sha"`
+  kontrollerer at porten er fri og koden matcher
+  oprindeligt staged `56c4d4...`, tager en
+  root-beskyttet kildebackup, erstatter **kun
+  den stagerede preview-kode**, verificerer
+  `/sudo` og `/api/nav-alerts` kræver login
+  og at begge anonyme JSON-opsummeringer kan læses.
+  Ingen aktiv webserver ændres.
+- **Gate C – visuel accept:**
+  Åbn den nye 8766-preview via det eksisterende
+  SSH-tunnelprincip. Se især at seneste aktivitet
+  står **før** benchmark, og at begge fejlklasser
+  har korrekte badges. Simuler IKKE et
+  sikkerhedsangreb i produktion for at få et
+  orange trekantikon; unit/web-tests bruger
+  isolerede fiktive alarmer.
+- **Gate D – web-only release:**
+  Først efter screenshot- og GUI-accept må den
+  allerede udviklede `sprint5_sudo_ui_web_activate_pi.sh`
+  køre. Den genstarter kun webtjenesten og
+  kan vendes tilbage med
+  `sprint5_sudo_ui_web_rollback_pi.sh`.
+
+**Evidens:** Nyt screenshotforslag **S5-17** for
+kandidat- og procesliste før eksperimenttabellen,
+og **S5-18** for en reproducerbar, syntetisk
+CI/webtest af orange menuadvarsel. Der må ikke
+påstås en aktuel portscanning eller en ægte
+sudo-alarm, hvis den eneste forekomst er lavet
+som testfixture.
