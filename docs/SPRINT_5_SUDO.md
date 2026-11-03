@@ -441,3 +441,55 @@ er **ikke** udført eller godkendt.
 sudo-kommandoer eller angreb. Den oprindelige sudo-test med
 exit-kode 1 har fortsat ikke et verificeret label
 eller en bekræftet detektorrespons.
+
+### Journal-scope identificeret og rettet: 627 sudo-poster synlige for worker
+
+**3. november 2026, read-only kontrol.** Den samme journalsøgning
+med `_EXE=/usr/bin/sudo` blev sammenlignet som root og
+`yggdrasil-worker` for perioden fra
+`2026-11-02 00:00:00` til aktuel lokal tid:
+
+| Scope | Root | yggdrasil-worker |
+| --- | ---: | ---: |
+| `journalctl --system` | 0 | 0 |
+| `journalctl` uden `--system` | **627** | **627** |
+
+En separat, bredere systemsøgning havde tidligere fundet
+626 sudo-poster uden `--system` samt én `logger`-testbesked,
+mens `--system` gav nul. Differencen 626 → 627 kan skyldes
+yderligere aktivitet mellem målingerne; tallene er ikke
+antal kommandoer, angreb eller særlige brugere.
+
+**Konklusion:** Sudo-data er tilgængelige for den eksisterende
+worker, men uden for systemjournalvisningen. Diagnosen om
+ophørt sudo-logning fra 2. november var derfor forkert.
+Årsagen var begrænset **journal-scope**, ikke dokumenteret
+sudo-policy-, syslog-, socket- eller journalrettighedsfejl.
+Det er endnu ikke dokumenteret præcis hvilken journalfil
+posterne ligger i.
+
+**Kodeændring i Sprint 5:** Den selvstændige, skrivebeskyttede
+`deploy/sprint5_sudo_trusted_exe_audit.py` og dens delte
+`read_journal` (benyttet af
+`deploy/sprint5_sudo_rule_preview.py`) fjerner `--system`,
+men beholder det journalsupplerede kildefilter
+`_EXE=/usr/bin/sudo` og en grænse på 10.000 rækker.
+Den skrivebeskyttede metadata-diagnose anvender også
+alle tilgængelige journaler. Unit-regressionstests
+kontrollerer, at `--system` ikke bliver genindført.
+
+**Adskilt fra produktion:** Den eksisterende
+`JournalCollector` for SSH og UFW bliver **ikke**
+ændret til at læse alle brugerjournaler. Det ville
+udvide både datamængde og privatlivseksponering uden
+for den aftalte test. Sudo skal integreres som en
+særskilt, begrænset kilde efter særskilte tests
+og backup-/rollbackkontrol; ingen ny live-collector,
+SQLite-migration eller Discord-alarm er aktiveret.
+
+**Næste gate:** Kør den opdaterede offline-preview som
+`yggdrasil-worker` fra en fuld, CI-godkendt commit
+med `PYTHONPATH` fra en midlertidig checkout.
+Del kun aggregeret JSON; lad rå sudo-journalmeddelelser
+blive på Pi. Evaluer hvor mange af de 627 poster,
+der kan parses, og om virkelige fejltyper genkendes.
