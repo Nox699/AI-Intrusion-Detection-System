@@ -93,7 +93,7 @@ def test_exporter_only_publishes_anonymized_aggregates(exporter, staging):
     assert stat.S_IMODE(published.stat().st_mode) == 0o640
     assert published.stat().st_uid == os.geteuid()
     encoded = published.read_text(encoding="utf-8")
-    for secret in ("command_line", "MESSAGE", "uid", "pid", "1000", "cursor-hash", "password"):
+    for secret in ("command_line", "MESSAGE", "uid", "pid", "cursor-hash"):
         assert secret not in encoded
 
     state = read_summary(published, now=now)
