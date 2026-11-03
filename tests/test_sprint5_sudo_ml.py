@@ -84,15 +84,19 @@ def test_closing_only_signal_is_not_a_new_attempt():
 
 def test_duplicate_cursor_conflict_and_unordered_inputs_refused():
     with pytest.raises(ValueError, match="Conflicting"):
-        attempts_from_signals([
-            signal(1, BASE, "pam_auth_failure"),
-            signal(1, BASE + 1, "incorrect_password"),
-        ])
+        attempts_from_signals(
+            [
+                signal(1, BASE, "pam_auth_failure"),
+                signal(1, BASE + 1, "incorrect_password"),
+            ]
+        )
     with pytest.raises(ValueError, match="chronological"):
-        attempts_from_signals([
-            signal(1, BASE + 2, "pam_auth_failure"),
-            signal(2, BASE + 1, "pam_auth_failure"),
-        ])
+        attempts_from_signals(
+            [
+                signal(1, BASE + 2, "pam_auth_failure"),
+                signal(2, BASE + 1, "pam_auth_failure"),
+            ]
+        )
 
 
 def test_feature_names_have_no_identity_data_and_invalid_vectors_rejected(fitted):
@@ -122,9 +126,7 @@ def test_training_splits_independent_and_model_is_deterministic(lab, fitted):
     assert all(s["version"].startswith("sudo-if-") for s in scores)
 
 
-def test_model_json_roundtrip_is_nonexecutable_and_rejects_tampering(
-    fitted, tmp_path
-):
+def test_model_json_roundtrip_is_nonexecutable_and_rejects_tampering(fitted, tmp_path):
     path = tmp_path / "sudo-if.json"
     fitted.save(path)
     assert path.stat().st_mode & 0o077 == 0
@@ -143,9 +145,7 @@ def test_model_json_roundtrip_is_nonexecutable_and_rejects_tampering(
         SudoIsolationForest.load(path)
 
 
-def test_labelled_validation_and_test_report_both_rules_and_if(
-    lab, fitted
-):
+def test_labelled_validation_and_test_report_both_rules_and_if(lab, fitted):
     _, validation, test = lab.create_splits()
     for cases in (validation, test):
         report = lab.evaluate(fitted, cases)
@@ -161,9 +161,7 @@ def test_labelled_validation_and_test_report_both_rules_and_if(
     assert lab._manifest_hash(validation) != lab._manifest_hash(test)
 
 
-def test_private_experiment_no_live_writes_and_only_synthetic(
-    lab, tmp_path
-):
+def test_private_experiment_no_live_writes_and_only_synthetic(lab, tmp_path):
     output = tmp_path / "sudo-if-experiment"
     report = lab.experiment(output)
     assert report["synthetic_only"] is True
