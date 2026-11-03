@@ -40,6 +40,7 @@ from werkzeug.security import check_password_hash
 from . import __version__
 from .config import AppConfig, load_config
 from .storage import Repository
+from .sudo_dashboard import PUBLIC_STATUS, read_experiment, read_summary
 
 DETECTORS = {
     "ssh.failed_burst": "Mange fejlede forsøg",
@@ -54,6 +55,7 @@ PAGE_SECTIONS = {
     "events": "SSH-hændelser",
     "preauth": "Før login",
     "network": "Netværk",
+    "sudo": "Sudo · Shadow",
     "alerts": "Alarmer",
     "alert_detail": "Alarmdetaljer",
     "model": "SSH · Machine learning",
@@ -149,6 +151,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
     )
     repo = Repository(cfg.database_path, readonly=True)
     app.extensions["ids_repository"] = repo
+    app.config["SUDO_PUBLIC_STATUS_PATH"] = PUBLIC_STATUS
     app.extensions["ids_config"] = cfg
     throttle = LoginThrottle()
     app.extensions["ids_login_throttle"] = throttle
@@ -473,6 +476,15 @@ def create_app(config: AppConfig | None = None) -> Flask:
         read_status()
         result = call("list_preauth", hours=period, **paging())
         return render_template("preauth.html", result=result, hours=period)
+
+    @app.get("/sudo")
+    def sudo_dashboard() -> Any:
+        read_status()
+        return render_template(
+            "sudo.html",
+            sudo=read_summary(Path(app.config["SUDO_PUBLIC_STATUS_PATH"])),
+            benchmark=read_experiment(),
+        )
 
     @app.get("/alerts")
     def alerts() -> Any:
