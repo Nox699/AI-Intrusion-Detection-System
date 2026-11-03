@@ -261,8 +261,7 @@ class DiscordNotifier:
             f"Type: {label}\n"
             f"Niveau: {event['severity']}\n"
             f"Tid: {stamp:%d.%m.%Y %H:%M:%S}\n"
-            f"Reference: {event['ref']}\n"
-            + guidance
+            f"Reference: {event['ref']}\n" + guidance
         )
 
     def poll(self):
