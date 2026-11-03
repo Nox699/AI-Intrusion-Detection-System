@@ -207,6 +207,10 @@ def poll_once(
         metrics: Counter[str] = Counter()
         categories: Counter[str] = Counter()
         matches: Counter[str] = Counter()
+        # Stage only normalized, bounded signals in MEMORY. An incomplete
+        # journal stream must never persist a signal without its later
+        # candidate: replaying that duplicate could silently lose evidence.
+        staged = []
         journal = journal_records(since, until) if records is None else records
         for record in journal:
             metrics["read"] += 1
@@ -218,6 +222,12 @@ def poll_once(
             signal = parsed.signal
             categories[signal.kind] += 1
             match = rules.evaluate(signal)
+            staged.append((signal, match))
+
+        # Journal subprocess has now exited successfully and all records are
+        # validated. Database writes can begin. Each append atomically stores
+        # both the normalized signal AND its candidate (if any).
+        for signal, match in staged:
             if store.append(signal, match):
                 metrics["new"] += 1
                 if match:
