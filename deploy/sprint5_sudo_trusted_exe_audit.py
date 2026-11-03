@@ -4,7 +4,7 @@
 The original audit required (_COMM=sudo AND _UID=0) and missed all real Pi
 records. This version requires journald's trusted _EXE=/usr/bin/sudo field,
 irrespective of the logging process's UID or _COMM, and emits aggregate
-counts only. No SQLite, systemd, sudoers, firewall or notifier changes.
+counts only. It reads all journals accessible to the worker, not just --system. No SQLite, systemd, sudoers, firewall or notifier changes.
 """
 
 from __future__ import annotations
@@ -132,7 +132,6 @@ def aggregate(records: Iterable[dict[str, Any]]) -> dict[str, Any]:
 def read_journal(since: str) -> Iterable[dict[str, Any]]:
     command = [
         "journalctl",
-        "--system",
         "--quiet",
         "--no-pager",
         "--output=json",
