@@ -28,6 +28,8 @@ ikke automatisk uploadet eller vurderet af ChatGPT.
 | **S5-11** | **Manuel sudo-shadow systemd-oneshot: `Result=success`, `ExecMainStatus=0`, 54 journalposter, 0 alarmkandidater og `discord_alerts_sent=0`** | **Praktisk test bestået; screenshot-kandidat, fil endnu ikke gennemgået; timer stadig `inactive`** | Dokumenterer rigtig sudo-sensor under systemd uden uønskede alarmer |
 | **S5-12** | **Aktiveret sudo-shadow-timer: `active`/`enabled`, seneste systemd-`success`, 69 private SQLite-rækker, 0 sudo-kandidater og checkpoint 10:51:33 CET** | **Terminalmålinger verificeret 3. november; bruger har taget screenshot fra timerstatus til og med checkpoint; billedfil endnu ikke gennemgået** | Dokumenterer periodisk systemd-shadow-overvågning uden sudo→Discord-alarmer |
 
+| S5-13 | Sidste sudo-shadow-integritetskontrol: alle fire enheder aktive; mappe `0700`, SQLite `0600`, integrity `ok`, 75 gemte poster og 0 kandidater | Terminalresultat bestået 3. november; screenshotstatus ukendt | Underbygger sikker datalagring og afsluttende accept |
+
 ## Andre sprint-kandidater
 
 | Kandidat | Visning | Status |
