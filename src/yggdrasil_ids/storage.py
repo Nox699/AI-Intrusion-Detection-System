@@ -700,6 +700,31 @@ class Repository:
             "unique_ports": int(totals["unique_ports"]),
         }
 
+    def nav_alert_counts(self, hours: int = 24) -> dict[str, int]:
+        """Recent confirmed rule/ML *alert cases*, not raw events or unread badges.
+
+        The four navigation indicators are a 24-hour snapshot of the existing
+        alerts table. Shadow-only sudo candidates never appear here.
+        """
+        start, end = self._period(hours)
+        totals = {"ssh": 0, "preauth": 0, "network": 0, "alerts": 0}
+        with self.reader() as db:
+            rows = db.execute(
+                "SELECT detector_id, COUNT(*) AS cases FROM alerts "
+                "WHERE last_seen>=? AND last_seen<=? GROUP BY detector_id",
+                (start, end),
+            )
+            for row in rows:
+                name, cases = row["detector_id"], row["cases"]
+                totals["alerts"] += cases
+                if name == "network.tcp_port_scan":
+                    totals["network"] += cases
+                elif name == "ssh.preauth_burst":
+                    totals["preauth"] += cases
+                elif name.startswith("ssh."):
+                    totals["ssh"] += cases
+        return totals
+
     def list_alerts(
         self, hours: int = 24, detector: str = "", page: int = 1, per_page: int = 25
     ) -> dict:
