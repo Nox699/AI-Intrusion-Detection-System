@@ -795,3 +795,43 @@ driftsklar service kræver særskilte checks af
 journaltilgængelighed, sikker init/backup/rollback,
 backpressure, diskbudget og systemd-livscyklus,
 før den eventuelt integreres.
+
+### Næste Pi-gate: genstart/replay på et fast snapshot af ægte sudo-journal
+
+`deploy/sprint5_sudo_journal_restart_accept.py` er en
+**manuelt kørt, afgrænset accepttest** af den isolerede
+sudo-kilde. Det er ikke en installeret sensor, og den
+tilføjer ikke servicekonfiguration, SQLite-schema eller
+Discord-data til den aktive IDS.
+
+Scriptet kører som `yggdrasil-worker`, læser kun
+`_EXE=/usr/bin/sudo` i tilgængelige journaler og
+fryser en 1–48 timers historisk tidsperiode
+(standard 24 timer, højst 3.000 poster pr. læsning).
+Den indledende scanning bruger udelukkende tidsstempler
+til at vælge et todelt testinterval. Tre efterfølgende
+journal-læsninger bruger en **privat, midlertidig
+worker-ejet SQLite** og *nye* `SudoRuleDetector`-instanser
+for hver simuleret processtart.
+
+Første fase indlæser den ældre halvdel. Anden fase
+fortsætter fra checkpoint minus 300 sekunder (+1 sekund
+overlap), med tidligere poster gentaget og senere
+poster nyindlæst. Tredje fase genafspiller slutningen
+endnu en gang og kræver 0 nye gemte rækker og 0 nye
+kandidater. Samtidig kontrollerer scriptet, at antallet
+af unikke rows i databasen svarer til snapshot-antallet.
+
+**Output er kun aggregerede tal.** Rå sudo-MESSAGE,
+kommandoer, username, UID/PID, cursor, boot-ID og
+filsystemstier offentliggøres ikke. Arbejdsdatabasen
+slettes, før resultatet udskrives; ingen handlinger
+køres med root ud over eksisterende eksplicit
+autoriseret journaladgang via worker.
+
+**Bestået test betyder kun:** replay/checkpoint og
+deduplikering fungerede for det frosne historiske
+journal-snapshot. Det er **ikke** et bevis på tabsfri
+langtidsdrift, journalrotation, suspend/reboot,
+store tidsændringer, overload eller en korrekt
+sikkerhedsalarm ved et virkeligt angreb.
