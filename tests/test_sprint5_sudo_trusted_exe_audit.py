@@ -131,4 +131,4 @@ def test_journal_command_restricts_to_sudo_executable_without_uid_condition(inve
     assert "_EXE=/usr/bin/sudo" in seen_commands[0]
     assert "_UID=0" not in seen_commands[0]
     assert "_COMM=sudo" not in seen_commands[0]
-    assert "--system" in seen_commands[0]
+    assert "--system" not in seen_commands[0]
