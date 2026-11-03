@@ -146,9 +146,11 @@ def test_journal_error_does_not_advance_checkpoint(shadow, database, monkeypatch
     with pytest.raises(RuntimeError, match="broken journald"):
         shadow.poll_once(database, now=BASE + 100)
     assert checkpoint(database) == baseline
+    with sqlite3.connect(database) as db:
+        assert db.execute("SELECT COUNT(*) FROM sudo_signals").fetchone()[0] == 2
     monkeypatch.setattr(shadow, "journal_records", snapshot(first + [row(3, BASE + 70)]))
     completed = shadow.poll_once(database, now=BASE + 110)
-    assert completed["new_normalized_sudo_rows"] == 0
+    assert completed["new_normalized_sudo_rows"] == 1
     assert completed["private_staging_summary"]["persisted_log_rows"] == 3
     assert completed["private_staging_summary"]["candidate_rule_matches"] == {
         "sudo.permission_denied": 0,
