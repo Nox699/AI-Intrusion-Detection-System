@@ -1,0 +1,28 @@
+[Unit]
+Description=Yggdrasil sudo rule alarms and frozen ML shadow snapshot
+After=yggdrasil-sudo-shadow.service yggdrasil-collector.service
+ConditionPathExists=/var/lib/yggdrasil-sudo-integration-private/mixed_full-model.json
+
+[Service]
+Type=oneshot
+User=yggdrasil-worker
+Group=yggdrasil-data
+WorkingDirectory=/opt/yggdrasil-ids
+Environment=PYTHONPATH=/opt/yggdrasil-sudo-integration/src
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/yggdrasil-ids/venv/bin/python /opt/yggdrasil-sudo-integration/deploy/sprint5_sudo_integration_poll.py
+UMask=0077
+TimeoutStartSec=45
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX
+ReadOnlyPaths=/var/lib/yggdrasil-sudo-shadow /var/lib/yggdrasil-sudo-integration-private
+ReadWritePaths=/var/lib/yggdrasil-ids /var/lib/yggdrasil-sudo-public

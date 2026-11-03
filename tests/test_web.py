@@ -809,7 +809,7 @@ def test_nav_warnings_are_authenticated_real_alert_cases_not_shadow(client, conf
     data = first.get_json()
     assert data["meaning"] == "registered_alert_cases_in_last_24_hours_not_unread"
     assert data["period_hours"] == 24
-    assert data["counts"] == {"ssh": 1, "preauth": 0, "network": 0, "alerts": 1}
+    assert data["counts"] == {"ssh": 1, "preauth": 0, "network": 0, "sudo": 0, "alerts": 1}
 
     stamp = time.time() - 60
     with repo.transaction() as db:
@@ -838,7 +838,7 @@ def test_nav_warnings_are_authenticated_real_alert_cases_not_shadow(client, conf
                 ),
             )
     result = client.get("/api/nav-alerts").get_json()
-    assert result["counts"] == {"ssh": 2, "preauth": 1, "network": 1, "alerts": 4}
+    assert result["counts"] == {"ssh": 2, "preauth": 1, "network": 1, "sudo": 0, "alerts": 4}
     # The user-facing triangle is dynamically populated; it's not an unread badge.
     html = client.get("/sudo").get_data(as_text=True)
     assert 'data-alert-section="network"' in html

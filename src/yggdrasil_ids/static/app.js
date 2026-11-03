@@ -17,10 +17,10 @@
   document.querySelectorAll(".refresh-page").forEach(button => button.addEventListener("click", () => window.location.reload()));
 
   // Navigation warnings reflect recorded alert CASES from the past 24h,
-  // not unread notifications and never experimental sudo-shadow candidates.
+  // not unread notifications, rule candidates or provisional ML scores.
   // This poller runs on every authenticated page, not only the SSH overview.
   const navAlertLinks = [...document.querySelectorAll(".nav-link[data-alert-section]")]
-    .filter(link => ["ssh", "preauth", "network", "alerts"].includes(
+    .filter(link => ["ssh", "preauth", "network", "sudo", "alerts"].includes(
       link.dataset.alertSection
     ));
   let navAlertsInFlight = false;
@@ -40,7 +40,7 @@
       if (data.meaning !== "registered_alert_cases_in_last_24_hours_not_unread" ||
           data.period_hours !== 24 || !data.counts) return;
       const counts = data.counts;
-      if (!["ssh", "preauth", "network", "alerts"].every(
+      if (!["ssh", "preauth", "network", "sudo", "alerts"].every(
         key => Number.isSafeInteger(counts[key]) && counts[key] >= 0
       )) return;
 

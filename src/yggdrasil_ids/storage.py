@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import sqlite3
 import time
 from contextlib import contextmanager
@@ -15,7 +16,18 @@ from .domain import Finding, SSHEvent
 from .firewall import FirewallEvent
 from .network_rules import NetworkFinding
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
+SUDO_RULES = {
+    "sudo.repeated_auth_failure": (
+        "Gentagne sudo-autentificeringsfejl",
+        "Gentagne autentificeringsfejl er registreret på tværs af forskellige sudo-processer.",
+    ),
+    "sudo.permission_denied": (
+        "Afvist sudo-adgang",
+        "En sudo-proces blev afvist af sudoers-politikken.",
+    ),
+}
+SUDO_EVENT_ID = re.compile(r"[0-9a-f]{64}\Z")
 
 # Previously ignored trusted journal records remain visible after migration.
 # Preauth disconnects are never authentication events, rule inputs or ML features.
@@ -103,6 +115,17 @@ CREATE TABLE IF NOT EXISTS network_evidence (
  PRIMARY KEY(event_id,detector_id)
 );
 CREATE INDEX IF NOT EXISTS network_evidence_alert ON network_evidence(alert_id,timestamp);
+-- Only redacted rule evidence crosses from the private sudo staging store.
+-- These identities do not refer to SSH events or expose sudo UID/PID values.
+CREATE TABLE IF NOT EXISTS sudo_evidence (
+ event_id TEXT NOT NULL,
+ alert_id INTEGER NOT NULL REFERENCES alerts(id) ON DELETE CASCADE,
+ timestamp REAL NOT NULL, detector_id TEXT NOT NULL,
+ process_count INTEGER NOT NULL, reason TEXT NOT NULL, details TEXT NOT NULL,
+ PRIMARY KEY(event_id,detector_id)
+);
+CREATE INDEX IF NOT EXISTS sudo_evidence_alert ON sudo_evidence(alert_id,timestamp);
+CREATE INDEX IF NOT EXISTS sudo_evidence_time ON sudo_evidence(timestamp);
 -- Independent notification identities survive deletion or reuse of alert IDs.
 -- Never cascade-delete outbox rows when the alert history is pruned.
 CREATE TABLE IF NOT EXISTS discord_outbox (
@@ -176,7 +199,7 @@ class Repository:
         db = self.connect()
         try:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, 2, 3, SCHEMA_VERSION):
+            if version not in (0, 1, 2, 3, 4, SCHEMA_VERSION):
                 raise ValueError(
                     f"Databaseversion {version} understøttes ikke; tag backup før migration"
                 )
@@ -343,6 +366,61 @@ class Repository:
             ),
         )
         return int(alert_id)
+
+    @staticmethod
+    def add_sudo_alert(
+        db: sqlite3.Connection,
+        *,
+        event_id: str,
+        detector_id: str,
+        timestamp: float,
+        process_count: int,
+    ) -> int:
+        """Add one redacted rule case inside the caller's write transaction.
+
+        The private rule engine already applies its per-group cooldown. Keep
+        its candidates separate here instead of publishing a user identity
+        or combining unrelated local processes. The existing alarm trigger
+        creates one Discord outbox entry in the same transaction.
+        """
+        if not db.in_transaction:
+            raise ValueError("Sudo alarms require an active write transaction")
+        if (
+            not isinstance(event_id, str)
+            or SUDO_EVENT_ID.fullmatch(event_id) is None
+            or not isinstance(detector_id, str)
+            or detector_id not in SUDO_RULES
+            or type(timestamp) not in (int, float)
+            or not math.isfinite(timestamp)
+            or not 0 <= timestamp < 4_102_444_800
+            or type(process_count) is not int
+            or not 1 <= process_count <= 50_000
+        ):
+            raise ValueError("Invalid redacted sudo rule evidence")
+        previous = db.execute(
+            "SELECT alert_id,timestamp,process_count FROM sudo_evidence "
+            "WHERE event_id=? AND detector_id=?",
+            (event_id, detector_id),
+        ).fetchone()
+        if previous is not None:
+            if previous["timestamp"] != timestamp or previous["process_count"] != process_count:
+                raise ValueError("Conflicting sudo rule evidence identity")
+            return int(previous["alert_id"])
+        title, reason = SUDO_RULES[detector_id]
+        details = encode({"source": "sudo_rules", "process_count": process_count})
+        result = db.execute(
+            "INSERT INTO alerts(detector_id,title,severity,reason,source_ip,"
+            "first_seen,last_seen,count,score,model_version,details) "
+            "VALUES(?,?,'medium',?,'local',?,?,1,NULL,NULL,?)",
+            (detector_id, title, reason, timestamp, timestamp, details),
+        )
+        alert_id = int(result.lastrowid)
+        db.execute(
+            "INSERT INTO sudo_evidence(event_id,alert_id,timestamp,detector_id,"
+            "process_count,reason,details) VALUES(?,?,?,?,?,?,?)",
+            (event_id, alert_id, timestamp, detector_id, process_count, reason, details),
+        )
+        return alert_id
 
     @staticmethod
     def insert_preauth_disconnect(
@@ -703,11 +781,11 @@ class Repository:
     def nav_alert_counts(self, hours: int = 24) -> dict[str, int]:
         """Recent confirmed rule/ML *alert cases*, not raw events or unread badges.
 
-        The four navigation indicators are a 24-hour snapshot of the existing
-        alerts table. Shadow-only sudo candidates never appear here.
+        Navigation indicators are a snapshot of the alerts table. Private
+        sudo candidates and ML shadow observations never appear here.
         """
         start, end = self._period(hours)
-        totals = {"ssh": 0, "preauth": 0, "network": 0, "alerts": 0}
+        totals = {"ssh": 0, "preauth": 0, "network": 0, "sudo": 0, "alerts": 0}
         with self.reader() as db:
             rows = db.execute(
                 "SELECT detector_id, COUNT(*) AS cases FROM alerts "
@@ -723,6 +801,8 @@ class Repository:
                     totals["preauth"] += cases
                 elif name.startswith("ssh."):
                     totals["ssh"] += cases
+                elif name.startswith("sudo."):
+                    totals["sudo"] += cases
         return totals
 
     def list_alerts(
@@ -773,9 +853,18 @@ class Repository:
                 "ORDER BY n.timestamp DESC LIMIT 100",
                 (alert_id,),
             ).fetchall()
+            sudo = db.execute(
+                "SELECT s.event_id,s.timestamp,s.detector_id,s.reason,s.details,"
+                "NULL AS score,NULL AS model_version,NULL AS username,"
+                "'sudo' AS outcome,NULL AS message "
+                "FROM sudo_evidence s WHERE s.alert_id=? "
+                "ORDER BY s.timestamp DESC LIMIT 100",
+                (alert_id,),
+            ).fetchall()
             merged = [self._decode(r) for r in rows]
             merged.extend(self._decode(r) for r in evidence)
             merged.extend(self._decode(r) for r in network)
+            merged.extend(self._decode(r) for r in sudo)
             merged.sort(key=lambda item: (item["timestamp"], item["event_id"]), reverse=True)
             alert["findings"] = merged[:100]
             alert["findings_truncated"] = alert["count"] > len(alert["findings"])
@@ -872,25 +961,30 @@ class Repository:
             firewall_events = db.execute(
                 "DELETE FROM firewall_events WHERE timestamp<?", (cutoff,)
             ).rowcount
+            db.execute("DELETE FROM sudo_evidence WHERE timestamp<?", (cutoff,))
             db.execute(
                 "DELETE FROM alerts WHERE "
                 "NOT EXISTS(SELECT 1 FROM findings WHERE alert_id=alerts.id) "
                 "AND NOT EXISTS(SELECT 1 FROM preauth_evidence WHERE alert_id=alerts.id) "
-                "AND NOT EXISTS(SELECT 1 FROM network_evidence WHERE alert_id=alerts.id)"
+                "AND NOT EXISTS(SELECT 1 FROM network_evidence WHERE alert_id=alerts.id) "
+                "AND NOT EXISTS(SELECT 1 FROM sudo_evidence WHERE alert_id=alerts.id)"
             )
             db.execute(
                 "UPDATE alerts SET "
                 "count=(SELECT COUNT(*) FROM findings WHERE alert_id=alerts.id)"
                 "+(SELECT COUNT(*) FROM preauth_evidence WHERE alert_id=alerts.id)"
-                "+(SELECT COUNT(*) FROM network_evidence WHERE alert_id=alerts.id),"
+                "+(SELECT COUNT(*) FROM network_evidence WHERE alert_id=alerts.id)"
+                "+(SELECT COUNT(*) FROM sudo_evidence WHERE alert_id=alerts.id),"
                 "first_seen=(SELECT MIN(timestamp) FROM ("
                 "SELECT timestamp FROM findings WHERE alert_id=alerts.id UNION ALL "
                 "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id UNION ALL "
-                "SELECT timestamp FROM network_evidence WHERE alert_id=alerts.id)),"
+                "SELECT timestamp FROM network_evidence WHERE alert_id=alerts.id UNION ALL "
+                "SELECT timestamp FROM sudo_evidence WHERE alert_id=alerts.id)),"
                 "last_seen=(SELECT MAX(timestamp) FROM ("
                 "SELECT timestamp FROM findings WHERE alert_id=alerts.id UNION ALL "
                 "SELECT timestamp FROM preauth_evidence WHERE alert_id=alerts.id UNION ALL "
-                "SELECT timestamp FROM network_evidence WHERE alert_id=alerts.id))"
+                "SELECT timestamp FROM network_evidence WHERE alert_id=alerts.id UNION ALL "
+                "SELECT timestamp FROM sudo_evidence WHERE alert_id=alerts.id))"
             )
         # Reuse freed pages; avoids blocking a live collector with a full VACUUM.
         return {"events": events, "records": records, "firewall_events": firewall_events}

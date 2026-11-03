@@ -9,11 +9,49 @@
   </div>
   <button class="button button-quiet refresh-page" type="button">{{ icon('refresh',17) }} Opdatér</button>
 </section>
+{% if integration.rules_active %}
+<div class="notice info">
+  {{ icon('shield',20) }}
+  <div><strong>Sudo-regler opretter alarmer · ML i shadow</strong>
+  <span>Nye regelfund registreres i alarmoversigten og den eksisterende notifikationskø. Levering til Discord skal kontrolleres særskilt. Isolation Forest viser foreløbige afvigelser og sender ingen alarmer.</span></div>
+</div>
+{% elif integration.state in ['error', 'stale'] %}
+<div class="notice warning">
+  {{ icon('info',20) }}
+  <div><strong>Sudo-integrationen kræver opmærksomhed</strong>
+  <span>{{ 'Den seneste status er forældet.' if integration.state == 'stale' else 'Regelfund kan ikke bekræftes overført til alarmoversigten.' }} Tidligere registrerede alarmer kan stadig læses. Kontroller integrationens service.</span></div>
+</div>
+{% else %}
 <div class="notice info">
   {{ icon('shield',20) }}
   <div><strong>Shadow-mode · Ingen automatiske sudo-alarmer</strong>
   <span>Sudo analyseres uafhængigt af SSH og UFW. Denne visning viser kun anonymiserede tællinger. Regelkandidater i shadow-databasen sendes ikke til Discord eller den almindelige alarmoversigt.</span></div>
 </div>
+{% endif %}
+
+{% if integration.state != 'unavailable' or sudo_alerts %}
+<section class="panel" id="sudo-alarms" aria-label="Registrerede sudo-alarmer">
+  <div class="panel-heading"><div>
+    <h2>Registrerede sudo-alarmer</h2>
+    <p>{{ sudo_alert_count|number }} alarmforløb i de seneste 24 timer · højst fem vises</p>
+  </div><a class="text-link" href="{{ url_for('alerts') }}">Åbn alarmoversigten {{ icon('arrow',16) }}</a></div>
+  {% if sudo_alerts %}
+  <div class="table-scroll"><table>
+    <thead><tr><th>Tidspunkt</th><th>Regel</th><th></th></tr></thead>
+    <tbody>{% for item in sudo_alerts %}
+      <tr><td class="nowrap muted">{{ item.last_seen|localtime }}</td>
+        <td><strong>{{ item.title }}</strong></td>
+        <td><a class="text-link" href="{{ url_for('alert_detail',alert_id=item.id) }}">Se alarm {{ icon('arrow',16) }}</a></td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}
+    {{ empty('Ingen registrerede sudo-alarmer i perioden', 'Regelkandidater i den separate sensor er ikke i sig selv registrerede alarmer.') }}
+  {% endif %}
+  {% if integration.rules_active %}
+    <p class="panel-note">Integration aktiveret {{ integration.activated_at|localtime }}. Historiske regelkandidater fra før aktiveringen overføres ikke.</p>
+  {% endif %}
+</section>
+{% endif %}
 
 {% if sudo.state == 'unavailable' %}
 <div class="notice warning">{{ icon('info',20) }}<div>
@@ -56,7 +94,7 @@
       <h2>Seneste mistænkelige sudo-aktivitet</h2>
       <p>Regelkandidater fremhæves før den almindelige hændelsesliste · seneste 24 timer</p>
     </div>
-    <span class="badge severity-medium">Shadow · Ikke udsendte alarmer</span>
+    <span class="badge severity-medium">Sensorkandidater · Se registrerede alarmer særskilt</span>
   </div>
   {% if activity.state == 'unavailable' %}
     <div class="notice warning">{{ icon('info',18) }}<div>
@@ -133,7 +171,7 @@
   <section class="panel details-panel">
     <div class="panel-heading"><h2>Sensorstatus</h2><span class="status-pill {{ 'good' if sudo.state == 'ready' else 'warning' }}">{{ 'Aktuel eksport' if sudo.state == 'ready' else 'Forældet eksport' }}</span></div>
     <dl class="key-values">
-      <div><dt>Tilstand</dt><dd>Regelbaseret shadow</dd></div>
+      <div><dt>Tilstand</dt><dd>Privat regelsensor · separat eksport</dd></div>
       <div><dt>Seneste checkpoint</dt><dd>{{ sudo.checkpoint_at|localtime }}</dd></div>
       <div><dt>Opsummering dannet</dt><dd>{{ sudo.generated_at|localtime }}</dd></div>
       <div><dt>Gemte logposter i alt</dt><dd>{{ sudo.total_signals|number }}</dd></div>
@@ -153,9 +191,44 @@
 </div>
 {% endif %}
 
+<section class="panel" id="sudo-ml-live" aria-label="Isolation Forest i shadow">
+  <div class="panel-heading"><div>
+    <h2>Isolation Forest · Løbende shadow</h2>
+    <p>Foreløbige procesvurderinger i et rullende 15-minutters vindue</p>
+  </div><span class="badge severity-info">Ingen ML-alarmer</span></div>
+  {% set ml = integration.ml %}
+  {% if ml.state == 'unavailable' %}
+    {{ empty('Ingen verificeret løbende ML-vurdering', 'En frisk modelvurdering er ikke tilgængelig. Dette betyder ikke nul afvigelser.') }}
+  {% else %}
+    {% if ml.state == 'stale' or integration.state == 'stale' %}
+    <div class="notice warning">{{ icon('info',18) }}<div><strong>Modelvurderingen er forældet</strong><span>De viste resultater beskriver den seneste gyldige eksport.</span></div></div>
+    {% endif %}
+    <dl class="key-values">
+      <div><dt>Modelversion</dt><dd class="mono">{{ ml.model_version }}</dd></div>
+      <div><dt>Fast tærskel</dt><dd>{{ ml.threshold|score }}</dd></div>
+      <div><dt>Vurderede procespositioner</dt><dd>{{ ml.total_scored|number }}</dd></div>
+      <div><dt>Foreløbige ML-afvigelser</dt><dd>{{ ml.anomalous|number }}</dd></div>
+      <div><dt>Seneste kilde-checkpoint</dt><dd>{{ ml.source_checkpoint|localtime }}</dd></div>
+    </dl>
+    {% if ml.latest %}
+    {% set ml_labels = {'session_opened':'Sudo-session åbnet', 'command_logged':'Sudo-kommando registreret', 'authentication_failed':'Autentificering mislykkedes', 'permission_denied':'Sudoers-afvisning'} %}
+    <div class="table-scroll"><table>
+      <thead><tr><th>Tidspunkt</th><th>Hændelse</th><th>Score</th><th>ML-vurdering</th></tr></thead>
+      <tbody>{% for item in ml.latest %}
+        <tr><td class="nowrap muted">{{ item.timestamp|localtime }}</td><td>{{ ml_labels[item.category] }}</td>
+          <td>{{ item.score|score }}</td><td><span class="badge {{ 'severity-medium' if item.is_anomaly else 'severity-info' }}">{{ 'Foreløbig afvigelse' if item.is_anomaly else 'Under tærsklen' }}</span></td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% else %}
+      {{ empty('Ingen genkendte procespositioner i vinduet', 'Kilde-checkpointet er ajour. Ingen procespositioner er vurderet i de seneste 15 minutter.') }}
+    {% endif %}
+    <p class="panel-note">Højere score betyder større afvigelse fra træningsgrundlaget. Scoren er ikke en sandsynlighed for angreb. Resultater genberegnes og kan ændres, når flere logposter ankommer. De er procespositioner, ikke udsendte alarmer. {{ ml.skipped_ambiguous_processes|number }} tvetydige procesgrupper er udeladt.</p>
+  {% endif %}
+</section>
+
 <section class="panel">
   <div class="panel-heading">
-    <div><h2>Isolation Forest mod sudo-regler</h2><p>Offline evaluering på adskilte, syntetiske scenarier</p></div>
+    <div><h2>Isolation Forest mod sudo-regler</h2><p>Historisk offline evaluering på adskilte, syntetiske scenarier · en separat model</p></div>
     <span class="badge severity-medium">Eksperiment · Ikke live</span>
   </div>
   {% if benchmark.unavailable %}
@@ -181,5 +254,5 @@
   <p class="panel-note"><strong>Konklusion for det syntetiske sluttestsæt:</strong> Reglerne fandt 24 af 32 mærkede mistænkelige scenarier uden falske positiver i de 32 normale. Isolation Forest fandt 12 og gav 4 falske positiver. Resultaterne siger ikke noget sikkert om faktisk detektionsgrad på Yggdrasil.</p>
   {% endif %}
 </section>
-<p class="hint">Sudo-Isolation-Forest er endnu ikke en del af den automatiske sensor. Produktionsalarmer, SSH-score og Discord er uændrede.</p>
+<p class="hint">Regler og Isolation Forest vurderes særskilt. Den historiske benchmark ovenfor må ikke læses som en måling af den løbende shadow-models detektionsgrad.</p>
 {% endblock %}

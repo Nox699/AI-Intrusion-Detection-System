@@ -47,6 +47,7 @@ from .sudo_dashboard import (
     read_experiment,
     read_summary,
 )
+from .sudo_integration_dashboard import PUBLIC_INTEGRATION, read_integration
 
 DETECTORS = {
     "ssh.failed_burst": "Mange fejlede forsøg",
@@ -55,6 +56,8 @@ DETECTORS = {
     "ssh.unexpected_success": "Uventet login",
     "ssh.isolation_forest": "Isolation Forest",
     "network.tcp_port_scan": "Mulig TCP-portscanning",
+    "sudo.repeated_auth_failure": "Sudo · Gentagne autentificeringsfejl",
+    "sudo.permission_denied": "Sudo · Manglende sudoers-rettighed",
 }
 PAGE_SECTIONS = {
     "overview": "Overblik",
@@ -159,6 +162,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
     app.extensions["ids_repository"] = repo
     app.config["SUDO_PUBLIC_STATUS_PATH"] = PUBLIC_STATUS
     app.config["SUDO_PUBLIC_ACTIVITY_PATH"] = PUBLIC_ACTIVITY
+    app.config["SUDO_PUBLIC_INTEGRATION_PATH"] = PUBLIC_INTEGRATION
     app.extensions["ids_config"] = cfg
     throttle = LoginThrottle()
     app.extensions["ids_login_throttle"] = throttle
@@ -487,11 +491,27 @@ def create_app(config: AppConfig | None = None) -> Flask:
     @app.get("/sudo")
     def sudo_dashboard() -> Any:
         read_status()
+        integration = read_integration(Path(app.config["SUDO_PUBLIC_INTEGRATION_PATH"]))
+        rule_alerts = [
+            call("list_alerts", hours=24, detector=detector, per_page=5)
+            for detector in ("sudo.repeated_auth_failure", "sudo.permission_denied")
+        ]
+        latest_alerts = sorted(
+            [item for result in rule_alerts for item in result["items"]],
+            key=lambda item: (item["last_seen"], item["id"]),
+            reverse=True,
+        )[:5]
         return render_template(
             "sudo.html",
             sudo=read_summary(Path(app.config["SUDO_PUBLIC_STATUS_PATH"])),
             activity=read_activity(Path(app.config["SUDO_PUBLIC_ACTIVITY_PATH"])),
             benchmark=read_experiment(),
+            integration=integration,
+            sudo_alerts=latest_alerts,
+            sudo_alert_count=sum(result["total"] for result in rule_alerts),
+            page_section=(
+                "Sudo · Regler og ML-shadow" if integration["rules_active"] else "Sudo · Shadow"
+            ),
         )
 
     @app.get("/alerts")
