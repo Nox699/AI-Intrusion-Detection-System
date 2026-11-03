@@ -1212,3 +1212,80 @@ midlertidige outbox/notifier-state og **ingen
 delt test-cooldown**. Undgå unødvendige
 dubletbeskeder. Registrér screenshot som S5-07
 først efter faktisk modtagelse og gennemgang.
+
+### Klargøring til permanent shadow-sensor: Pi-journal og separat timer (3. november 2026)
+
+**Verificeret læseadgang under `yggdrasil-worker`:**
+`yggdrasil-collector.service`,
+`yggdrasil-web.service` og
+`yggdrasil-notifier.service` var alle `active`.
+Worker-brugeren havde grupperne
+`yggdrasil-data systemd-journal`.
+En *læsebaseret* 24-timers forespørgsel
+(`journalctl --all --output=json _EXE=/usr/bin/sudo`)
+gav **411 sudo-journalposter**, hvor **alle 411**
+havde de seks nødvendige metadatafelter, og
+**0** var `pam_unix(sudo:auth): authentication failure`.
+Dette er et journalinventar og **ikke** en målt
+falsk-positiv-rate eller et bevis på, at alle 411
+poster opfylder den fulde parser-validering.
+Resultatet er foreneligt med normal drift uden
+registrerede PAM-sudo-fejl.
+
+**Ny udviklingskode (ikke installeret endnu):**
+
+- `deploy/sprint5_sudo_shadow_poll.py`:
+  isoleret one-shot scanner af
+  `_EXE=/usr/bin/sudo`, uden `--system`,
+  **ingen netværk**, ingen Discord, og
+  ingen produktions-IDS-database.
+- `SudoStagingStore` gemmer kun normaliserede
+  kategorier, proces-/UID-/bootmetadata,
+  hændelsestid og SHA-256 af journald-identiteten
+  i **privat worker-ejet SQLite**.
+- En separat `shadow_poll_checkpoint` angiver
+  seneste **fuldførte** journalinterval.
+  Hver kørsel genafspiller et overlappende interval
+  for at rekonstruere regelvinduet og cooldown.
+  **Afbrudt journallæsning gemmer ingen nye poster
+  og flytter ikke interval-checkpointet**.
+- Kørsel er afgrænset til maksimalt
+  **3.000 poster og 20 sekunders journalindlæsning**.
+  En afbrydelse over 48 timer eller et tilbagespring
+  i systemuret giver en eksplicit fejl og kræver
+  gennemgang, ikke stille datatab.
+- `deploy/yggdrasil-sudo-shadow.service`:
+  **en oneshot-service** med separat
+  `StateDirectory` mode `0700`,
+  `User=yggdrasil-worker`,
+  `PrivateNetwork=true`, ingen capabilities.
+  `deploy/yggdrasil-sudo-shadow.timer`
+  er kun et forslag til at køre omtrent hvert minut.
+- `deploy/sprint5_sudo_shadow_probe_pi.sh`:
+  først en **manuel accept** med to på hinanden
+  følgende polls mod Yggdrasils rigtige sudo-journal.
+  Kode og privat SQLite er midlertidige og slettes
+  automatisk; de eksisterende services berøres ikke.
+
+**Vigtig regression:** En første CI-test fandt,
+at et afbrudt journalstream kunne efterlade
+en normaliseret hændelse uden den senere beregnede
+alarmkandidat ved retry. Implementationen blev
+ændret til at validere og beregne samtlige
+maksimalt 3.000 poster i hukommelsen **før**
+SQLite-skrivning. Først når journalstreamen
+afsluttes uden fejl, starter persisteringen.
+Dette er et dokumenteret eksempel på, hvordan
+CI og enhedstests fandt en relevant
+sikkerhedsmæssig fejl i recovery.
+
+**Aktiveringsgrænse:** Dokumentationen og CI
+godkender *ikke* installation på Pi af sig selv.
+Først skal den manuelle worker-probe bestå
+(`mode=shadow`, anden kørsel genkender checkpointet,
+ingen nye dobbeltgemte poster,
+`discord_alerts_sent=0`).
+Kun derefter udarbejdes og gennemgås en
+eksplicit installation/rollback. Produktionens
+collector, web, notifier, SQLite og Discord
+forbliver uændret indtil videre.
