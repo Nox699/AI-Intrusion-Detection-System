@@ -31,7 +31,9 @@ ikke automatisk uploadet eller vurderet af ChatGPT.
 | S5-13 | Sidste sudo-shadow-integritetskontrol: alle fire enheder aktive; mappe `0700`, SQLite `0600`, integrity `ok`, 75 gemte poster og 0 kandidater | Terminalresultat bestået 3. november; screenshotstatus ukendt | Underbygger sikker datalagring og afsluttende accept |
 | **S5-14** | **Sudo-IF vs regler, syntetisk sluttest: regler TP=24 FP=0 FN=8, IF TP=12 FP=4 FN=20; `synthetic_only=true`** | **Pi-test gennemført 3. november; screenshotfil endnu ikke gennemgået** | Fagligt stærk illustration af at regler overgår ML i denne case, ikke produktionsaccuracy |
 | **S5-15** | **Faktisk installeret dashboard: Overblik, Netværk, Alarmer og Machine learning (med browserzoom langt ude)** | **Fire screenshots gennemgået i samtalen 3. november; ikke publiceret på GitHub** | Dokumenterer det eksisterende design og at sudo endnu ikke var installeret i web |
-| S5-16 | Ny Sudo-side: anonymiseret checkpoint og sidste 24h regelkandidater samt særskilt syntetisk ML-benchmark | Ny UI-kode og sikker eksportør udviklet; preview/deploy afventer accept på Pi | Eksamensbilag for tydelig adskillelse af shadow-regler og eksperimentel ML |
+| **S5-16** | **Første Sudo-forhåndsvisning på 8766: korrekt markeret syntetisk Isolation Forest-vs-regler-tabel** | **Bruger har delt screenshot og godkendt grunddesignet 3. november; normal aktivitet efterspurgt højere op** | Dokumentation for redelig adskillelse af offline ML og shadow-regler |
+| S5-17 | Opdateret Sudo-side: seneste regelkandidater og seneste 15 processer står over ML-statistikken | Kode på udviklingsgren, ny Pi-preview afventer sikker opgradering | Dokumentér operativ visning med anonymiserede hændelser |
+| S5-18 | Orange ⚠ i venstremenu ved registreret network.tcp_port_scan i sidste døgn (isoleret testdata) | Implementeret API/nav-kode; syntetisk webtest, intet live-angreb for at fremkalde trekanten | Underbyg alarmernes synlighed uden at forveksle skyggefund med aktive alarmer |
 
 ## Andre sprint-kandidater
 
