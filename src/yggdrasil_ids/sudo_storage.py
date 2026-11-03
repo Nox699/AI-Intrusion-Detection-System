@@ -18,7 +18,9 @@ import re
 import sqlite3
 import stat
 from collections import Counter
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 
 from .sudo_rules import KINDS, SudoRuleMatch, SudoSignal
 
@@ -135,7 +137,8 @@ class SudoStagingStore:
         finally:
             os.close(fd)
 
-        with self._connect() as db:
+        db = self._connect()
+        try:
             version = db.execute("PRAGMA user_version").fetchone()[0]
             if version not in (0, SCHEMA_VERSION):
                 raise ValueError("Unsupported private sudo schema; do not overwrite")
@@ -144,11 +147,27 @@ class SudoStagingStore:
             db.executescript(
                 "BEGIN IMMEDIATE;\n" + SCHEMA + f"\nPRAGMA user_version={SCHEMA_VERSION};\nCOMMIT;"
             )
+        finally:
+            db.close()
         self._initialized = True
 
     def _require_ready(self) -> None:
         if not self._initialized:
             raise RuntimeError("Private sudo staging store must be explicitly initialized")
+
+    @contextmanager
+    def _transaction(self) -> Iterator[sqlite3.Connection]:
+        self._require_ready()
+        db = self._connect()
+        try:
+            db.execute("BEGIN IMMEDIATE")
+            yield db
+            db.commit()
+        except BaseException:
+            db.rollback()
+            raise
+        finally:
+            db.close()
 
     def append(self, signal: SudoSignal, candidate: SudoRuleMatch | None = None) -> bool:
         self._require_ready()
@@ -163,8 +182,7 @@ class SudoStagingStore:
             signal.uid,
             signal.pid,
         )
-        with self._connect() as db:
-            db.execute("BEGIN IMMEDIATE")
+        with self._transaction() as db:
             row = db.execute(
                 "SELECT event_id,timestamp,kind,boot_id,uid,pid FROM sudo_signals WHERE event_id=?",
                 (identity,),
@@ -200,8 +218,7 @@ class SudoStagingStore:
             or not 0 <= before_timestamp < 4_102_444_800
         ):
             raise ValueError("Invalid retention cutoff")
-        with self._connect() as db:
-            db.execute("BEGIN IMMEDIATE")
+        with self._transaction() as db:
             result = db.execute(
                 "DELETE FROM sudo_signals WHERE timestamp<?",
                 (before_timestamp,),
@@ -210,17 +227,24 @@ class SudoStagingStore:
 
     def summary(self) -> dict:
         self._require_ready()
-        with self._connect() as db:
+        db = self._connect()
+        try:
             categories = Counter(
-                {row["kind"]: row["n"] for row in db.execute(
-                    "SELECT kind,COUNT(*) AS n FROM sudo_signals GROUP BY kind"
-                )}
+                {
+                    row["kind"]: row["n"]
+                    for row in db.execute("SELECT kind,COUNT(*) AS n FROM sudo_signals GROUP BY kind")
+                }
             )
             matches = Counter(
-                {row["detector_id"]: row["n"] for row in db.execute(
-                    "SELECT detector_id,COUNT(*) AS n FROM sudo_candidates GROUP BY detector_id"
-                )}
+                {
+                    row["detector_id"]: row["n"]
+                    for row in db.execute(
+                        "SELECT detector_id,COUNT(*) AS n FROM sudo_candidates GROUP BY detector_id"
+                    )
+                }
             )
+        finally:
+            db.close()
         return {
             "kind": "private_sudo_staging_summary",
             "persisted_log_rows": sum(categories.values()),
