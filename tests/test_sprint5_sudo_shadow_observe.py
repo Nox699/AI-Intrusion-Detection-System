@@ -148,6 +148,7 @@ def test_record_size_and_count_are_bounded(watcher, monkeypatch):
     with pytest.raises(ValueError, match="record limit"):
         observer.ingest(b"something")
 
+
 def test_opt_in_private_staging_persists_only_normalized_events(watcher, tmp_path):
     from yggdrasil_ids.sudo_storage import SudoStagingStore
 
@@ -184,9 +185,10 @@ def test_opt_in_private_staging_persists_only_normalized_events(watcher, tmp_pat
         "sudo.permission_denied": 1,
         "sudo.repeated_auth_failure": 1,
     }
-    assert report["candidate_rule_matches"] == report["private_staging_summary"][
-        "candidate_rule_matches"
-    ]
+    assert (
+        report["candidate_rule_matches"]
+        == report["private_staging_summary"]["candidate_rule_matches"]
+    )
 
     rows = (folder / "sudo.sqlite3").read_bytes()
     for private in (b"--token", b"labuser", b"private-journal-cursor", b"logname=private"):
