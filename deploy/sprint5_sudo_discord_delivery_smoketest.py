@@ -17,7 +17,6 @@ import argparse
 import json
 import os
 import pwd
-import secrets
 import sqlite3
 import sys
 import time
@@ -96,7 +95,7 @@ def run(
                     time.time(),
                     time.time(),
                     3,
-                    json.dumps({"kind": "manual_test_only", "token": secrets.token_hex(8)}),
+                    json.dumps({"kind": "manual_test_only"}),
                 ),
             )
         with repo.reader() as db:
