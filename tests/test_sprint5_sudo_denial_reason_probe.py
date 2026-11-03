@@ -45,9 +45,7 @@ def test_probe_one_harmless_command_and_sanitized_response(probe, monkeypatch):
     called = []
 
     monkeypatch.setattr(probe.os, "geteuid", lambda: 1000)
-    monkeypatch.setattr(
-        probe.pwd, "getpwnam", lambda name: SimpleNamespace(pw_uid=997)
-    )
+    monkeypatch.setattr(probe.pwd, "getpwnam", lambda name: SimpleNamespace(pw_uid=997))
 
     def fake_run(command, **kwargs):
         called.append((command, kwargs))
@@ -70,7 +68,7 @@ def test_probe_one_harmless_command_and_sanitized_response(probe, monkeypatch):
         "-n",
         "/usr/bin/true",
     )
-    assert kwargs["shell"] is not True if "shell" in kwargs else True
+    assert kwargs.get("shell", False) is False
     assert kwargs["stdout"] is probe.subprocess.PIPE
     assert kwargs["stderr"] is probe.subprocess.PIPE
     assert kwargs["env"]["LC_ALL"] == "C"
@@ -92,18 +90,14 @@ def test_probe_refuses_root_and_root_target(probe, monkeypatch):
     with pytest.raises(ValueError, match="normal login"):
         probe.probe()
     monkeypatch.setattr(probe.os, "geteuid", lambda: 1000)
-    monkeypatch.setattr(
-        probe.pwd, "getpwnam", lambda name: SimpleNamespace(pw_uid=0)
-    )
+    monkeypatch.setattr(probe.pwd, "getpwnam", lambda name: SimpleNamespace(pw_uid=0))
     with pytest.raises(ValueError, match="privileged target"):
         probe.probe()
 
 
 def test_probe_timeout_is_sanitized(probe, monkeypatch):
     monkeypatch.setattr(probe.os, "geteuid", lambda: 1000)
-    monkeypatch.setattr(
-        probe.pwd, "getpwnam", lambda name: SimpleNamespace(pw_uid=997)
-    )
+    monkeypatch.setattr(probe.pwd, "getpwnam", lambda name: SimpleNamespace(pw_uid=997))
 
     def fake_timeout(*args, **kwargs):
         raise probe.subprocess.TimeoutExpired(args[0], 15, output=b"private-output")
