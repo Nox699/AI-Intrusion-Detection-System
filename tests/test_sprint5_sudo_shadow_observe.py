@@ -191,7 +191,9 @@ def test_opt_in_private_staging_persists_only_normalized_events(watcher, tmp_pat
     rows = (folder / "sudo.sqlite3").read_bytes()
     for private in (b"--token", b"labuser", b"private-journal-cursor", b"logname=private"):
         assert private not in rows
-    assert "private" not in json.dumps(report)
+    assert "labuser" not in json.dumps(report)
+    assert "--token" not in json.dumps(report)
+    assert "private-journal-cursor" not in json.dumps(report)
 
 
 def test_temp_stage_is_deleted_after_cli_and_never_runs_journal_reader(
