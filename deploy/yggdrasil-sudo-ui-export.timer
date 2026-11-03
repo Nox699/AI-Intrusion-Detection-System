@@ -1,0 +1,11 @@
+[Unit]
+Description=Publish anonymous sudo dashboard summary every minute
+
+[Timer]
+OnActiveSec=30s
+OnUnitInactiveSec=60s
+AccuracySec=3s
+Unit=yggdrasil-sudo-ui-export.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,37 @@
+[Unit]
+Description=Yggdrasil IDS isolated sudo shadow poll (no alerts)
+After=systemd-journald.service
+ConditionPathExists=/opt/yggdrasil-sudo-shadow/deploy/sprint5_sudo_shadow_poll.py
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=oneshot
+User=yggdrasil-worker
+Group=yggdrasil-data
+SupplementaryGroups=systemd-journal
+StateDirectory=yggdrasil-sudo-shadow
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/yggdrasil-sudo-shadow
+ExecStart=/opt/yggdrasil-ids/venv/bin/python /opt/yggdrasil-sudo-shadow/deploy/sprint5_sudo_shadow_poll.py
+Environment=PYTHONPATH=/opt/yggdrasil-sudo-shadow/src
+Environment=PYTHONUNBUFFERED=1
+TimeoutStartSec=35
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/yggdrasil-sudo-shadow
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+MemoryMax=256M
+TasksMax=16

@@ -16,12 +16,12 @@
     <a class="brand" href="{{ url_for('overview') }}">{{ brand() }}</a>
     <div class="nav-caption">SIKKERHED</div>
     <nav>
-    {% for endpoint,label,glyph in [('overview','Overblik','grid'),('events','SSH-hændelser','activity'),('preauth','Før login','clock'),('network','Netværk','activity'),('alerts','Alarmer','shield'),('model','Machine learning','model'),('system_status','Systemstatus','server')] %}
-      <a class="nav-link{% if request.endpoint == endpoint or (endpoint == 'alerts' and request.endpoint == 'alert_detail') %} active{% endif %}" href="{{ url_for(endpoint) }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ icon(glyph) }}<span>{{ label }}</span>{% if request.endpoint == endpoint %}<span class="nav-dot"></span>{% endif %}</a>
+    {% for endpoint,label,glyph in [('overview','Overblik','grid'),('events','SSH-hændelser','activity'),('preauth','Før login','clock'),('network','Netværk','activity'),('sudo_dashboard','Sudo','shield'),('alerts','Alarmer','shield'),('model','Machine learning','model'),('system_status','Systemstatus','server')] %}
+      <a class="nav-link{% if request.endpoint == endpoint or (endpoint == 'alerts' and request.endpoint == 'alert_detail') %} active{% endif %}" href="{{ url_for(endpoint) }}" data-alert-section="{{ {'events':'ssh','preauth':'preauth','network':'network','alerts':'alerts'}.get(endpoint,'') }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ icon(glyph) }}<span>{{ label }}</span><span class="nav-warning" aria-hidden="true" hidden>⚠</span>{% if request.endpoint == endpoint %}<span class="nav-dot"></span>{% endif %}</a>
     {% endfor %}
     </nav>
     <div class="sidebar-bottom">
-      <div class="server-label">{{ icon('server', 17) }}<div><strong>{{ app_cfg.host_label }}</strong><span>SSH · {{ 'Demo' if app_cfg.mode == 'demo' else 'Privat server' }}</span></div></div>
+      <div class="server-label">{{ icon('server', 17) }}<div><strong>{{ app_cfg.host_label }}</strong><span>IDS · {{ 'Demo' if app_cfg.mode == 'demo' else 'Privat server' }}</span></div></div>
       <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="logout-button" type="submit">{{ icon('logout', 18) }} Log ud</button></form>
       <span class="build-label">Yggdrasil IDS · {{ app_version }}</span>
     </div>
@@ -30,7 +30,7 @@
   <div class="workspace">
     <header class="topbar">
       <button class="icon-button mobile-nav" id="nav-toggle" type="button" aria-label="Åbn navigation" aria-controls="sidebar" aria-expanded="false">{{ icon('menu') }}</button>
-      <div class="breadcrumb">Dit sikkerhedsoverblik <span>/</span> <strong>SSH</strong></div>
+      <div class="breadcrumb">Dit sikkerhedsoverblik <span>/</span> <strong>{{ page_section }}</strong></div>
       <div class="topbar-right"><span class="status-pill {{ view_status.collector_tone }}" id="collector-badge"><span class="status-dot"></span><span id="collector-label">{{ view_status.collector_label }}</span></span><span class="avatar" aria-label="Privat administrator">N</span></div>
     </header>
     <main id="main">

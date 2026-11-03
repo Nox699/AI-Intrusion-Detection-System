@@ -40,6 +40,13 @@ from werkzeug.security import check_password_hash
 from . import __version__
 from .config import AppConfig, load_config
 from .storage import Repository
+from .sudo_dashboard import (
+    PUBLIC_ACTIVITY,
+    PUBLIC_STATUS,
+    read_activity,
+    read_experiment,
+    read_summary,
+)
 
 DETECTORS = {
     "ssh.failed_burst": "Mange fejlede forsøg",
@@ -49,6 +56,18 @@ DETECTORS = {
     "ssh.isolation_forest": "Isolation Forest",
     "network.tcp_port_scan": "Mulig TCP-portscanning",
 }
+PAGE_SECTIONS = {
+    "overview": "Overblik",
+    "events": "SSH-hændelser",
+    "preauth": "Før login",
+    "network": "Netværk",
+    "sudo_dashboard": "Sudo · Shadow",
+    "alerts": "Alarmer",
+    "alert_detail": "Alarmdetaljer",
+    "model": "SSH · Machine learning",
+    "system_status": "Systemstatus",
+}
+
 PERIODS = (
     (1, "Seneste time"),
     (6, "Seneste 6 timer"),
@@ -138,6 +157,8 @@ def create_app(config: AppConfig | None = None) -> Flask:
     )
     repo = Repository(cfg.database_path, readonly=True)
     app.extensions["ids_repository"] = repo
+    app.config["SUDO_PUBLIC_STATUS_PATH"] = PUBLIC_STATUS
+    app.config["SUDO_PUBLIC_ACTIVITY_PATH"] = PUBLIC_ACTIVITY
     app.extensions["ids_config"] = cfg
     throttle = LoginThrottle()
     app.extensions["ids_login_throttle"] = throttle
@@ -305,6 +326,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
             "csrf_token": csrf_token,
             "periods": PERIODS,
             "detector_names": DETECTORS,
+            "page_section": PAGE_SECTIONS.get(request.endpoint or "", "Overblik"),
             "page_url": page_url,
             "view_status": getattr(g, "ids_status", status_view({})),
             "authenticated": bool(session.get("authenticated")),
@@ -462,6 +484,16 @@ def create_app(config: AppConfig | None = None) -> Flask:
         result = call("list_preauth", hours=period, **paging())
         return render_template("preauth.html", result=result, hours=period)
 
+    @app.get("/sudo")
+    def sudo_dashboard() -> Any:
+        read_status()
+        return render_template(
+            "sudo.html",
+            sudo=read_summary(Path(app.config["SUDO_PUBLIC_STATUS_PATH"])),
+            activity=read_activity(Path(app.config["SUDO_PUBLIC_ACTIVITY_PATH"])),
+            benchmark=read_experiment(),
+        )
+
     @app.get("/alerts")
     def alerts() -> Any:
         period, detector = hours(), query_text("detector", 64)
@@ -507,6 +539,14 @@ def create_app(config: AppConfig | None = None) -> Flask:
             server_time=time.time(),
             timezone=cfg.timezone,
             source_kind=raw.get("source_kind"),
+        )
+
+    @app.get("/api/nav-alerts")
+    def api_nav_alerts() -> Any:
+        return jsonify(
+            period_hours=24,
+            meaning="registered_alert_cases_in_last_24_hours_not_unread",
+            counts=call("nav_alert_counts", hours=24),
         )
 
     @app.get("/api/status")

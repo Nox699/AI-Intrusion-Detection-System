@@ -1,0 +1,41 @@
+{
+  "format": "sudo-synthetic-benchmark-v1",
+  "synthetic_only": true,
+  "model_version": "sudo-if-4f95328112e7423b",
+  "threshold": 0.6480873096476828,
+  "training_scenarios": 180,
+  "training_process_rows": 681,
+  "source_run_commit": "0cd25bdc666a68625513e2f6b5bcc2d40e84ef5f",
+  "validation": {
+    "normal_scenarios": 32,
+    "suspicious_scenarios": 32,
+    "ml": {
+      "tp": 15,
+      "fp": 5,
+      "tn": 27,
+      "fn": 17
+    },
+    "rules": {
+      "tp": 24,
+      "fp": 0,
+      "tn": 32,
+      "fn": 8
+    }
+  },
+  "test": {
+    "normal_scenarios": 32,
+    "suspicious_scenarios": 32,
+    "ml": {
+      "tp": 12,
+      "fp": 4,
+      "tn": 28,
+      "fn": 20
+    },
+    "rules": {
+      "tp": 24,
+      "fp": 0,
+      "tn": 32,
+      "fn": 8
+    }
+  }
+}

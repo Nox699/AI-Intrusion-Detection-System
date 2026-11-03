@@ -246,16 +246,22 @@ class DiscordNotifier:
             "ssh.unexpected_success": "Uventet SSH-login",
             "ssh.isolation_forest": "Usædvanligt SSH-mønster",
             "network.tcp_port_scan": "Mulig TCP-portscanning (UFW)",
+            "sudo.repeated_auth_failure": "Gentagne sudo-autentificeringsfejl",
+            "sudo.permission_denied": "Afvist sudo-adgang",
         }.get(event["detector_id"], "Sikkerhedsalarm")
         stamp = datetime.fromtimestamp(event["happened_at"], self.zone)
+        guidance = (
+            "Undersøg hændelsen i den autoriserede lokale sudo-journal."
+            if event["detector_id"].startswith("sudo.")
+            else "Se detaljerne via dit private dashboard."
+        )
         return (
             f"🛡️ Yggdrasil IDS — ny alarm\n"
             f"Server: {self.host}\n"
             f"Type: {label}\n"
             f"Niveau: {event['severity']}\n"
             f"Tid: {stamp:%d.%m.%Y %H:%M:%S}\n"
-            f"Reference: {event['ref']}\n"
-            "Se detaljerne via dit private dashboard."
+            f"Reference: {event['ref']}\n" + guidance
         )
 
     def poll(self):

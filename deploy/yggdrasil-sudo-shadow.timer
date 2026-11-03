@@ -1,0 +1,12 @@
+[Unit]
+Description=Run private sudo shadow analysis every minute
+After=systemd-journald.service
+
+[Timer]
+OnActiveSec=30s
+OnUnitInactiveSec=60s
+AccuracySec=3s
+Unit=yggdrasil-sudo-shadow.service
+
+[Install]
+WantedBy=timers.target
