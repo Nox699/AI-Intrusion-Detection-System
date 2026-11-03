@@ -30,7 +30,8 @@ ikke automatisk uploadet eller vurderet af ChatGPT.
 
 | S5-13 | Sidste sudo-shadow-integritetskontrol: alle fire enheder aktive; mappe `0700`, SQLite `0600`, integrity `ok`, 75 gemte poster og 0 kandidater | Terminalresultat bestået 3. november; screenshotstatus ukendt | Underbygger sikker datalagring og afsluttende accept |
 | **S5-14** | **Sudo-IF vs regler, syntetisk sluttest: regler TP=24 FP=0 FN=8, IF TP=12 FP=4 FN=20; `synthetic_only=true`** | **Pi-test gennemført 3. november; screenshotfil endnu ikke gennemgået** | Fagligt stærk illustration af at regler overgår ML i denne case, ikke produktionsaccuracy |
-| S5-15 | Eksisterende dashboard: Overblik, Netværk, Machine learning, Systemstatus (skærmbilleder uden hemmeligheder) | UI-kode gennemgået; visuel browserkontrol endnu ikke gennemført | Vurder navigation og responsivt layout; sudo er endnu ikke en webside |
+| **S5-15** | **Faktisk installeret dashboard: Overblik, Netværk, Alarmer og Machine learning (med browserzoom langt ude)** | **Fire screenshots gennemgået i samtalen 3. november; ikke publiceret på GitHub** | Dokumenterer det eksisterende design og at sudo endnu ikke var installeret i web |
+| S5-16 | Ny Sudo-side: anonymiseret checkpoint og sidste 24h regelkandidater samt særskilt syntetisk ML-benchmark | Ny UI-kode og sikker eksportør udviklet; preview/deploy afventer accept på Pi | Eksamensbilag for tydelig adskillelse af shadow-regler og eksperimentel ML |
 
 ## Andre sprint-kandidater
 
