@@ -903,4 +903,3 @@ def test_sudo_page_prefers_recent_activity_above_synthetic_benchmark(app, client
     )
     assert "/usr/bin/" not in html
     assert "sudo.if.fake_live_alert" not in html
-
