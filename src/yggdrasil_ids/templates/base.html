@@ -17,7 +17,7 @@
     <div class="nav-caption">SIKKERHED</div>
     <nav>
     {% for endpoint,label,glyph in [('overview','Overblik','grid'),('events','SSH-hændelser','activity'),('preauth','Før login','clock'),('network','Netværk','activity'),('sudo_dashboard','Sudo','shield'),('alerts','Alarmer','shield'),('model','Machine learning','model'),('system_status','Systemstatus','server')] %}
-      <a class="nav-link{% if request.endpoint == endpoint or (endpoint == 'alerts' and request.endpoint == 'alert_detail') %} active{% endif %}" href="{{ url_for(endpoint) }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ icon(glyph) }}<span>{{ label }}</span>{% if request.endpoint == endpoint %}<span class="nav-dot"></span>{% endif %}</a>
+      <a class="nav-link{% if request.endpoint == endpoint or (endpoint == 'alerts' and request.endpoint == 'alert_detail') %} active{% endif %}" href="{{ url_for(endpoint) }}" data-alert-section="{{ {'events':'ssh','preauth':'preauth','network':'network','alerts':'alerts'}.get(endpoint,'') }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ icon(glyph) }}<span>{{ label }}</span><span class="nav-warning" aria-hidden="true" hidden>⚠</span>{% if request.endpoint == endpoint %}<span class="nav-dot"></span>{% endif %}</a>
     {% endfor %}
     </nav>
     <div class="sidebar-bottom">
