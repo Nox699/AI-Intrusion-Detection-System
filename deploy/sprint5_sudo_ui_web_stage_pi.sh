@@ -58,8 +58,8 @@ printf '%s\n' "$sha" > "$temporary/COMMIT"
 sudo install -o root -g root -m 0644 "$temporary/COMMIT" "$base/COMMIT"
 
 echo "=== Validate preview code as unprivileged yggdrasil-web ==="
-sudo -u yggdrasil-web env \
-  PYTHONPATH="$base/src" \
+sudo /usr/bin/setpriv --reuid=yggdrasil-web --regid=yggdrasil-web --groups=yggdrasil-data \
+  /usr/bin/env PYTHONPATH="$base/src" \
   YGGDRASIL_CONFIG=/etc/yggdrasil-ids/config.toml \
   /opt/yggdrasil-ids/venv/bin/python - <<'PY'
 from yggdrasil_ids.config import load_config
