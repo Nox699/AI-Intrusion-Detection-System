@@ -118,11 +118,7 @@ def validate_summary(value: Any, *, now: float) -> dict[str, Any]:
         or sum(normalized_detectors.values()) > candidates
     ):
         raise ValueError("Inconsistent sudo public summary counts")
-    state = (
-        "ready"
-        if now - exported_at <= MAX_AGE and now - checkpoint <= MAX_AGE
-        else "stale"
-    )
+    state = "ready" if now - exported_at <= MAX_AGE and now - checkpoint <= MAX_AGE else "stale"
     return {
         "state": state,
         "generated_at": exported_at,
