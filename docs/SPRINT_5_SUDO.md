@@ -1337,3 +1337,101 @@ yderligere ML for sudo er udsat til efter eksamen.
 Eksisterende Isolation Forest på SSH forbliver
 i shadow-mode; netværksscanning forbliver
 regelbaseret.
+
+### Pi-accept: normal sudo-hændelse, checkpoint og deduplikering (3. november 2026)
+
+Efter et almindeligt, vellykket `sudo /usr/bin/true` på
+Yggdrasil kørte ejeren `deploy/sprint5_sudo_shadow_probe_pi.sh`
+fra commit `4636d7c9019e951ecd13d10a8e7bfc2ad8d481db`.
+Den worker-ejede, **midlertidige** database blev slettet
+efter testen. Begge polls brugte den samme private DB
+under forsøget og læste autentiske journald-data:
+
+| Måling | Første poll | Anden poll |
+| --- | ---: | ---: |
+| `journal_rows_read` | **3** | **3** |
+| `new_normalized_sudo_rows` | **3** | **0** |
+| `overlap_duplicates_skipped` | 0 | **3** |
+| `previous_checkpoint_present` | `false` | **`true`** |
+| `command_invoked` | 1 | 1 |
+| `pam_session_opened` | 1 | 1 |
+| `pam_session_closed` | 1 | 1 |
+| Sudo-alarmkandidater | **0** | **0** |
+
+Yderligere verificeret i output:
+`production_services_modified=false`,
+`production_database_modified=false`,
+`discord_messages_sent=0`,
+`temporary_staging_deleted=true`.
+Dette er en **bestået positiv Pi-accept af
+normal journalindlæsning, genoptaget checkpoint
+og deduplikering**. Vi har fortsat ikke målt
+24-timers oppetid med en permanent timer eller
+produceret en ny vellykket sudo-detektoralarm på Pi.
+Positiv detektion med tre autentificeringsfejl
+er tidligere demonstreret **i isoleret Ubuntu-VM**,
+ikke ved at påvirke produktionskontoen.
+
+**Screenshot S5-10:** Tag `second_poll`, så
+`previous_checkpoint_present=true`,
+`journal_rows_read=3`,
+`new_normalized_sudo_rows=0` og
+`overlap_duplicates_skipped=3`
+ses samtidigt. Bevar originalen til senere udvælgelse.
+
+### Stage → aktivering → rollback: begrænset systemd-shadow-sensor
+
+Efter denne accept er tre scripts udviklet:
+
+1. `deploy/sprint5_sudo_shadow_install_pi.sh`:
+   kræver pinned og verificeret Git-commit samt
+   tre aktive eksisterende IDS-tjenester.
+   Stager **kun** de nødvendige sudo-kildefiler
+   root-ejet i `/opt/yggdrasil-sudo-shadow/`,
+   en `COMMIT`-manifestfil og en selvstændig
+   `yggdrasil-sudo-shadow.service` +
+   `yggdrasil-sudo-shadow.timer` i systemd.
+   Kører `systemd-analyze verify`, men **aktiverer
+   hverken timer eller service**.
+2. `deploy/sprint5_sudo_shadow_activate_pi.sh`:
+   sammenligner hvert installeret kilde- og
+   enhedsindhold med pinned commit. Starter
+   **én** servicekørsel og kræver `Result=success`,
+   før timeren aktiveres med `enable --now`.
+   Kontrollerer, at de tre eksisterende services
+   stadig er aktive. Ved fejl efter timerstart
+   deaktiveres timeren igen.
+3. `deploy/sprint5_sudo_shadow_rollback_pi.sh`:
+   deaktiverer og stopper **kun** sudo-shadow-unitten,
+   fjerner de stagerede kildefiler og units
+   og genindlæser systemd. Den worker-ejede
+   SQLite-testhistorik bevares til audit, medmindre
+   ejeren senere særskilt beslutter at slette den.
+
+**Driftsgrænser:** oneshot via systemd-timer omtrent
+én gang/minut, `PrivateNetwork=true`,
+`NoNewPrivileges=true`, `ProtectSystem=strict`,
+`User=yggdrasil-worker`, privat
+`StateDirectoryMode=0700` med særskilt
+`/var/lib/yggdrasil-sudo-shadow/sudo-shadow.sqlite3`.
+Koden indeholder ingen webhook, og den eksisterende
+Discord-notifier kender **ikke** sudo-sensoren endnu.
+Ingen `sudo`-fund er derfor koblet til
+produktions-`alerts` eller dashboard i denne fase.
+
+**Inden stage:** godkend CI på pinned SHA,
+kontrollér at de tre normale IDS-tjenester er
+aktive, og stop hvis der allerede findes en
+shadow-installation. Efter stage: bekræft
+`timer started=NO` og `timer enabled=NO`.
+Først derefter aktiveres den særskilt og
+kontrolleres for fejl. Særlig fejlbehandling
+kræves for journald-gap over 48 timer og
+pludselige systemurændringer; ingen komplet
+lossless-recovery-garanti er hævdet.
+
+**Eksamensscope:** Når sudo er afsluttet,
+fryses udviklingen af nye IDS-sensorkilder;
+FIM/filintegritet og ekstra ML udskydes til
+efter eksamen. Prioritér evaluering af regler,
+Isolation Forest og falske positiver i rapporten.
