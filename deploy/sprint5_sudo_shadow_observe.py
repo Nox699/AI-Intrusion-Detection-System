@@ -25,9 +25,7 @@ from yggdrasil_ids.sudo_rules import KINDS, SudoRuleDetector, parse_sudo
 MAX_SECONDS = 60
 MAX_RECORDS = 2000
 MAX_RECORD_BYTES = 65536
-OUTPUT_FIELDS = (
-    "MESSAGE,_EXE,_UID,_PID,_BOOT_ID,__CURSOR,__REALTIME_TIMESTAMP"
-)
+OUTPUT_FIELDS = "MESSAGE,_EXE,_UID,_PID,_BOOT_ID,__CURSOR,__REALTIME_TIMESTAMP"
 RULE_IDS = ("sudo.repeated_auth_failure", "sudo.permission_denied")
 
 
