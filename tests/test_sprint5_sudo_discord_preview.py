@@ -38,16 +38,19 @@ def row(index: int, message: str):
     }
 
 
-def test_true_sudo_candidate_produces_redacted_notifier_event(tmp_path):
-    signal = SudoSignal("private-cursor", BASE, BOOT, "1000", 7001, "pam_auth_failure")
+def test_true_sudo_candidate_produces_redacted_notifier_event():
+    signal = SudoSignal("private-cursor", BASE + 2, BOOT, "1000", 7001, "pam_auth_failure")
     detector = SudoRuleDetector()
     for i in range(2):
         assert detector.evaluate(
             SudoSignal(f"failed-{i}", BASE + i, BOOT, "1000", 7002 + i, "pam_auth_failure")
         ) is None
     finding = detector.evaluate(signal)
-    # The timestamp is earlier than the previously ingested events: rejected.
-    assert finding is None
+    assert finding is not None
+    assert finding.count == 3
+    event = notification_event(signal, finding)
+    assert event["detector_id"] == "sudo.repeated_auth_failure"
+    assert "private-cursor" not in json.dumps(event)
 
 
 def test_three_distinct_realistic_failures_preview_one_message(tool):
