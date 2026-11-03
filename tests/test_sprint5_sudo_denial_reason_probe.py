@@ -32,7 +32,11 @@ def probe():
             "command_not_permitted",
         ),
         ("sudo: a terminal is required to read the password", 1, "tty_required"),
-        ("sudo: effective uid is not 0, is /usr/bin/sudo on nosuid?", 1, "privilege_execution_blocked"),
+        (
+            "sudo: effective uid is not 0, is /usr/bin/sudo on nosuid?",
+            1,
+            "privilege_execution_blocked",
+        ),
         ("system-specific diagnostic: private-token", 1, "unclassified_failure"),
         ("", 0, "unexpected_success"),
     ],
