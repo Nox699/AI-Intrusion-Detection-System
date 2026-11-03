@@ -534,3 +534,39 @@ Næste sikre gate er **højst ét** tilsvarende, harmløst
 forsøg med *lokal klassificering* af stderr i grove kategorier,
 uden at udskrive rå fejltekst og uden at ændre sudoers,
 brugerrettigheder, systemd, SQLite eller Discord.
+
+### Håndtering af tidligere uafklaret `sudo -n`-fejl
+
+`deploy/sprint5_sudo_denial_reason_probe.py` er en særskilt,
+**manuelt udløst** diagnostik, der højst udfører ét
+ikke-interaktivt `sudo -n /usr/bin/true` fra den allerede
+eksisterende lavtprivilegerede servicekonto `yggdrasil-web`.
+Det ydre sudo-kald kan forudgås af `sudo -v` som
+den almindelige loginbruger for at verificere adgang
+uden at ændre sudoers. Scriptet nægter at køre som root
+eller med en root-targetkonto.
+
+Stderr og stdout fra processen læses kun i hukommelsen.
+Outputtet er JSON med exit-kode og **grov fejlkategori**,
+eksempelvis `password_required_noninteractive`,
+`not_in_sudoers`, `command_not_permitted`,
+`tty_required`, `privilege_execution_blocked` eller
+`unclassified_failure`. Ingen rå fejltekst,
+kommandoargumenter fra journal, PID'er, UID'er,
+brugernavne eller adgangskoder udskrives.
+
+Hvis resultatet er `password_required_noninteractive`,
+har sudo krævet autentificering, men `-n` kunne ikke
+spørge efter adgangskoden. Det er *ikke* samme ting
+som et faktisk `not_in_sudoers`-forløb.
+En efterfølgende eventuel detektortest skal udvælge
+en reelt logget afvisning, ikke blot en ikke-nul
+exit-kode. Et ukendt resultat må ikke gættes til
+en autentificeringsfejl.
+
+Scriptet er kun et midlertidigt **diagnoseværktøj**,
+ikke en ny tjeneste eller intrusion-detektor; det
+ændrer ikke sudoers, systemd, SQLite eller Discord.
+Tests sikrer ét fast harmløst kommandoforløb og
+sanitiseret output. Kør først fra en fuld CI-godkendt
+Git-commit.
