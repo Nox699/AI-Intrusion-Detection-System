@@ -977,3 +977,64 @@ DB-kopi. Først derefter vurderes, om en
 produktionsnotifikation skal aktiveres. Eksisterende
 SSH/UFW-collector, Isolation Forest og Discord-secret
 må ikke flyttes eller ændres ved et labforsøg.
+
+### Discord-forhåndsvisning på ægte VM-logs: to uafhængige sudo-forløb (3. november 2026)
+
+En manuel offline-preview på `ubuntu-gateway`, som genanalyserer
+eksisterende journald-hændelser fra `2026-11-03 00:00:00`,
+gav **72 sudo-journalposter**, `malformed_or_untrusted=0`,
+og **to** `sudo.repeated_auth_failure`-kandidater.
+Der var ingen `sudo.permission_denied`-kandidater.
+Brugeren kørte preview-kommandoen **to gange**, men
+previewen er stateless og genanalyserer historikken fra
+start **ved hver kørsel**. Tallet 2 svarer til de to
+tidligere separate kontrollerede sudo-fejlserier; det
+betyder **ikke**, at hver kørsel skabte to nye
+vedvarende alarmer, og slet ikke fire Discord-beskeder.
+
+Den redigerede besked blev dannet af den eksisterende
+`DiscordNotifier.message`, nu med dansk sudo-label,
+`medium` og neutral henvisning til den autoriserede
+sudo-journal. Den indeholdt ingen rå kommandoer,
+brugeridentiteter eller adgangskoder.
+**`discord_messages_sent=0`** og
+**`webhook_read=false`**. Dette var kun én
+forhåndsvisning af den første kandidat og **ingen
+levering**.
+
+### Isoleret SQLite-outbox → fake-Discord-integration
+
+`deploy/sprint5_sudo_outbox_lab.py` forbinder
+**for første gang** en sudo-kandidat fra den rigtige
+`SudoRuleDetector` til en separat, midlertidig
+`Repository`-database med `alerts` og den
+eksisterende `discord_outbox`-trigger. En separat
+`DiscordNotifier` bootstrappes **før** nye alarmer
+indskrives. `poll()` anvender en eksplicit injiceret
+**falsk sender** og en syntetisk, ubrugelig
+Discord-lignende webhook. Der foretages ingen netværkskald.
+
+Alle SQLite-filer, fake webhook og notifier-checkpoint
+ligger i `TemporaryDirectory` og slettes før
+rapportering. Output indeholder kun aggregater
+og højst én redigeret eksempelbesked. Der skrives
+**aldrig** til produktions-IDS, dens notifier-state,
+Discord-secrets eller til den aktive webhook.
+Ingen nye sudo-forsøg er nødvendige; testens
+`--since` genbruger eksisterende VM-historik.
+
+**Acceptkriterier:** Med de to kontrollerede serier skal
+der være 2 kandidater → 2 midlertidige alerts →
+2 outbox-events → 2 fake-leveringer med pending=0,
+samt `discord_messages_sent=0` og
+`temporary_databases_deleted=true`.
+Det er en arkitekturtest af outbox/notifier med
+falsk sender, **ikke** en faktisk Discord-levering.
+
+**Videre mod virkelig Discord:** Integrér senere en
+begrænset sudo-eventstream i Yggdrasils eget
+alarmdataskema med en kontrolleret, opt-in
+migrations-/rollbackplan. Lab-VM'en får **aldrig**
+produktions-Discord-webhook; en virkelig
+notifikation må kun leveres fra den adskilte
+notifier på den betroede server.
