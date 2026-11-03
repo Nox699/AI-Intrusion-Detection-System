@@ -1570,3 +1570,29 @@ Fremtidig FIM/filintegritet og sudo-ML udsættes til efter eksamen.
 
 En kort samlet resultattabel, begrænsninger og screenshot-kandidater
 findes i [Sprint 5-afslutningen](SPRINT_5_CLOSEOUT.md).
+
+### Sudo-Isolation-Forest: sidste aftalte eksamensfunktion under udvikling
+
+Den regelbaserede sudo-shadow-sensor er stabilt testet,
+men Sprint 5 er **ikke endeligt afsluttet med ML**.
+På brugerens præcisering fortsætter vi
+udelukkende med den **oprindeligt planlagte sudo-Isolation-Forest**,
+hvorefter der fryses for nye IDS-funktioner inden eksamen.
+FIM/filintegritet udskydes til efter eksamen.
+
+`src/yggdrasil_ids/sudo_ml.py` indeholder en
+**separat** `SudoIsolationForest` med et fast 7-feature
+procesbaseret skema. `deploy/sprint5_sudo_ml_lab.py`
+opretter kun syntetisk normaltræning,
+adskilte validerings- og låste testscenarier,
+og måler regler kontra ML på **samme** forsøg.
+`deploy/sprint5_sudo_ml_run_pi.sh`
+er en manuel pinned-SHA-wrapper, som kun
+bruger privat output under hjemmemappen.
+Ingen model er installeret i produktions-sudo-sensoren,
+og ingen sudo-ML-alarmer er aktive.
+
+**Før Pi-test:** kræv CI-bestået. Efter syntetisk
+evaluering kontrolleres datadækning på **rigtige**
+sudo-journalposter i ren shadow/readonly-tilstand.
+Se [design, features og vurderingskriterier](SPRINT_5_SUDO_ML.md).
