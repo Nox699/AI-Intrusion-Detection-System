@@ -753,3 +753,45 @@ deduplikering, fortsættelse efter afbrydelse,
 atomisk kandidatlagring og begrænsning af
 overlapstid. Ingen ny systemd-service eller
 permanent database aktiveres som led i denne test.
+
+### Genstarts-/replayprototype: timestamp-checkpoint i isoleret SQLite (udvikling)
+
+**Prototype i Sprint 5-grenen, ikke installeret som service.**
+Den private `SudoStagingStore` har nu schema v2 og et
+`sudo_checkpoint` med **kun højeste committed
+Unix-tidspunkt**. Hver ny normaliseret sudo-række,
+eventuel kandidat og timestamp-watermark committes
+atomisk i SQLite. Ved en fejlet kandidattransaktion
+rulles alle tre tilbage.
+
+Vi gemmer **ikke** rå journald-cursors, `MESSAGE`,
+`COMMAND` eller brugernavne. En næste journalreader
+kan beregne `--since` som
+`last_committed_timestamp - overlap_seconds - 1`
+og genafspille de overlappende journalposter. Deres
+hash-baserede identiteter gør lagring idempotent.
+Regelmotoren skal samtidig **genopbygges fra
+replayede hændelser** for at bevare vinduer og
+cooldown og undgå utilsigtet alarm efter genstart.
+Overlap skal mindst dække både regelvindue og cooldown.
+
+Den dedikerede
+`deploy/sprint5_sudo_recovery_lab.py`
+gennemfører tre syntetiske processessioner mod en
+**ny privat, midlertidig SQLite**. Der verificeres
+genstart, overlap, identiske cursorhash-dubletter,
+en enkelt syntetisk regelkandidat, efterfølgende
+cooldown, retention og overlevelse af checkpoint
+efter sletning af gamle rækker. Ingen virkelig
+sudo-journal læses og ingen produktionsfil ændres.
+
+**Vigtig begrænsning:** Tidsstempel-overlap giver
+*best effort*, **ikke fuldstændig exactly-once
+eller garanti mod logtab**. Journalrotation,
+større urhop, out-of-order journald-meddelelser
+og lange afbrydelser kan give huller, der må
+registreres som data-gap. En fremtidig
+driftsklar service kræver særskilte checks af
+journaltilgængelighed, sikker init/backup/rollback,
+backpressure, diskbudget og systemd-livscyklus,
+før den eventuelt integreres.
