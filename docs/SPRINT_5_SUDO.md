@@ -835,3 +835,41 @@ journal-snapshot. Det er **ikke** et bevis på tabsfri
 langtidsdrift, journalrotation, suspend/reboot,
 store tidsændringer, overload eller en korrekt
 sikkerhedsalarm ved et virkeligt angreb.
+
+### Pi-accept: 402 sudo-poster over tre simulerede genstarter (3. november 2026)
+
+Den isolerede, manuelt kørte `deploy/sprint5_sudo_journal_restart_accept.py`
+har læst **402 eksisterende sudo-journalposter** fra et fast
+24-timers historisk snapshot som `yggdrasil-worker`. En privat
+midlertidig SQLite blev anvendt til tre genafspilningsfaser.
+
+| Kontrol | Resultat |
+| --- | ---: |
+| `result` | `success` |
+| Første indlæsning: nye poster | 201 |
+| Anden indlæsning: nye poster | 201 |
+| Anden indlæsning: dubletter | 183 |
+| Tredje indlæsning: nye poster | **0** |
+| Tredje indlæsning: dubletter | 3 |
+| Unikke rækker i privat SQLite | **402** |
+| `sudo.permission_denied` / `sudo.repeated_auth_failure` | **0 / 0** |
+| Midlertidig database slettet | `true` |
+| Produktionsdatabase ændret / Discord | `false / false` |
+
+**Resultat:** Den private lagring dækker alle 402 unikke
+journalposter fra dette **faste, historiske** datagrundlag
+og opretter ingen nye rækker ved tredje replay. De tre
+dubletter i sidste gennemløb skyldes den korte
+checkpoint-overlapperiode, ikke blot at hele historikken
+blev læst igen.
+
+**Afgrænsning:** Der er fortsat **ingen faktisk, verificeret
+afvist sudo-handling** i disse data, så en sudo-alarm er
+ikke demonstreret. Testen må ikke kaldes bevis for
+tabsfri genstart af en vedvarende `journalctl --follow`-service.
+Dette er nu tilstrækkelig infrastrukturafprøvning til at
+påbegynde en **kontrolleret negativ sudo-test i et isoleret
+lab** og eventuelt installere en adskilt shadow-sensor efter
+særskilt sikkerhedsgennemgang. Undgå at forsøge at fremkalde
+mange PAM-fejl på produktionskontoen `vidar` eller
+IDS-servicekontiene.
