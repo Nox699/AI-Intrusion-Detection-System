@@ -604,3 +604,38 @@ nuværende tidspunkt. En rigtig detektionsaccept
 kræver senere en valideret hændelse i et kontrolleret
 testmiljø med kendt forventet logformat. Sudo-alarmer
 er stadig ikke aktive på produktionsserveren.
+
+### Sprint 5: kortvarig sudo-shadow-observation (ikke producerende service)
+
+`deploy/sprint5_sudo_shadow_observe.py` følger **kun**
+`_EXE=/usr/bin/sudo` fra alle journaler, som
+`yggdrasil-worker` har adgang til, uden at ændre
+den eksisterende SSH/UFW-collectors `--system`-scope.
+Den kører kun ved **manuel start** i 5–60 sekunder
+(standard 15) og afbryder sit `journalctl --follow`-barn
+ved slutningen.
+
+Den modtager `MESSAGE`, cursor og nødvendige metadata,
+men opbevarer udelukkende et kortvarigt, hukommelsesbaseret
+analysevindue. Hver post er begrænset til 64 KiB; højst
+2.000 poster tælles pr. observation. Parseren genbruger
+`parse_sudo` og `SudoRuleDetector` fra den isolerede
+prototypemodel. Den udskriver alene grov kategori,
+antal og **kandidatfund**. Der skrives intet til SQLite,
+ingen sudo-/SSH/UFW-konfiguration ændres, og ingen
+Discord-beskeder sendes.
+
+Denne observation **er ikke** en installeret
+sudo-detektor, selv når den genkender et syntetisk
+sikkerhedsmønster. Udtrykket `shadow` betyder her
+`observeret og analyseret uden alarmhandling`,
+ikke den eksisterende SSH-Isolation-Forest-model.
+
+**Accept:** GitHub CI (pytest + Ruff + wheel) på
+Python 3.11 og 3.13, derefter kort manuel
+Pi-observation som worker med én legitim
+`sudo /usr/bin/true` fra den almindelige
+loginbruger, hvis man ønsker en kontrolleret
+succes-hændelse. Der er ikke brug for flere
+bevidst fejlede sudo-logins.
+Ingen rå logposter eller modelartefakter uploades.
