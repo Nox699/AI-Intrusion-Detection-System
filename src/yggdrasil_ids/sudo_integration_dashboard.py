@@ -188,3 +188,41 @@ def read_integration(
         return validate_integration(_read_json(path, MAX_SIZE, secure=True), now=clock)
     except (OSError, ValueError, TypeError, OverflowError, RecursionError):
         return {"state": "unavailable", "rules_active": False, "ml": {"state": "unavailable"}}
+
+
+def require_current_run(
+    path: Path = PUBLIC_INTEGRATION,
+    *,
+    not_before: float,
+    expected_activation: float,
+    expected_model: str,
+    now: float | None = None,
+) -> dict[str, Any]:
+    """Prove a completed deployment invocation through its anonymous export.
+
+    A skipped systemd condition can return success without running the worker.
+    A previous healthy export is insufficient: both rule and ML results must
+    have been generated since this invocation started, for the armed release.
+    """
+    clock = time.time() if now is None else now
+    started = _time(not_before, clock)
+    activated = _time(expected_activation, clock)
+    if (
+        not activated <= started <= clock
+        or not isinstance(expected_model, str)
+        or not _VERSION.fullmatch(expected_model)
+    ):
+        raise ValueError("Invalid deployment snapshot expectation")
+    status = read_integration(path, now=clock)
+    ml = status["ml"]
+    if (
+        status["state"] != "ready"
+        or not status["rules_active"]
+        or status["activated_at"] != activated
+        or not started <= status["generated_at"] <= clock
+        or ml["state"] != "ready"
+        or ml["model_version"] != expected_model
+        or ml["generated_at"] != status["generated_at"]
+    ):
+        raise ValueError("Current sudo integration run was not verified")
+    return status

@@ -12,6 +12,7 @@ import fcntl
 import grp
 import hashlib
 import json
+import math
 import os
 import pwd
 import re
@@ -87,7 +88,7 @@ def properties(unit: str) -> dict:
             "show",
             unit,
             "--no-pager",
-            "--property=ActiveState,UnitFileState,User,Group,SupplementaryGroups,DropInPaths,Environment,Result,ExecMainStatus,ConditionResult",
+            "--property=ActiveState,UnitFileState,User,Group,SupplementaryGroups,DropInPaths,Environment",
         ]
     ).stdout
     return dict(line.split("=", 1) for line in raw.splitlines() if "=" in line)
@@ -335,6 +336,33 @@ def login_check() -> None:
     raise DeployError("Production login page is not healthy")
 
 
+def initial_snapshot(activated_at: float) -> None:
+    """Wait for a real current export, not disposable oneshot unit metadata."""
+    for attempt in range(4):
+        snapshot_exit = None
+        started_at = time.time()
+        result = command(["systemctl", "start", SERVICE], check=False)
+        if not result.returncode:
+            verification = worker(
+                "from yggdrasil_ids.sudo_integration_dashboard import require_current_run; "
+                f"require_current_run(not_before={started_at!r}, "
+                f"expected_activation={activated_at!r}, expected_model={MODEL_VERSION!r})",
+                user="yggdrasil-web",
+                check=False,
+            )
+            snapshot_exit = verification.returncode
+            if not snapshot_exit:
+                print("PASS: current rule and frozen-ML snapshot verified as web user", flush=True)
+                return
+        if attempt == 3:
+            raise DeployError(
+                "Initial integration verification failed "
+                f"(start_exit={result.returncode}, snapshot_check_exit={snapshot_exit})"
+            )
+        command(["systemctl", "reset-failed", SERVICE], check=False)
+        time.sleep(1)
+
+
 def recover(*, manual: bool = False) -> bool:
     """Disable integration, preserving post-install history and notifier state."""
     if manual and not reversible_database(DATABASE):
@@ -454,30 +482,18 @@ def install(source: Path, sha: str) -> None:
             "=== Arm new rule cases only; validate frozen ML snapshot and start timer ===",
             flush=True,
         )
-        worker(
-            "from yggdrasil_ids.storage import Repository; "
+        activation = worker(
+            "import json; from yggdrasil_ids.storage import Repository; "
             "from yggdrasil_ids.sudo_live_bridge import arm_rules; "
-            f"arm_rules(Repository('{DATABASE}'))"
+            f"print(json.dumps({{'activated_at':arm_rules(Repository('{DATABASE}'))}}))"
         )
-        for attempt in range(4):
-            result = command(["systemctl", "start", SERVICE], check=False)
-            info = properties(SERVICE)
-            if (
-                not result.returncode
-                and info.get("Result") == "success"
-                and info.get("ConditionResult") == "yes"
-            ):
-                break
-            if attempt == 3:
-                raise DeployError("Initial sudo integration snapshot failed")
-            command(["systemctl", "reset-failed", SERVICE], check=False)
-            time.sleep(1)
-        worker(
-            "from yggdrasil_ids.sudo_integration_dashboard import read_integration; "
-            "status=read_integration(); assert status['rules_active']; "
-            f"assert status['ml']['state']=='ready' and status['ml']['model_version']=='{MODEL_VERSION}'",
-            user="yggdrasil-web",
-        )
+        try:
+            activated_at = json.loads(activation.stdout)["activated_at"]
+        except (ValueError, KeyError, TypeError):
+            raise DeployError("Worker activation response was not verified") from None
+        if type(activated_at) not in (float, int) or not math.isfinite(activated_at):
+            raise DeployError("Worker activation timestamp was not verified")
+        initial_snapshot(activated_at)
         command(["systemctl", "enable", "--now", TIMER])
         if properties(TIMER).get("ActiveState") != "active":
             raise DeployError("Sudo integration timer is not active")
@@ -495,8 +511,10 @@ def install(source: Path, sha: str) -> None:
             "No controlled alarm generated; verify the dashboard before a separate live probe",
             flush=True,
         )
-    except BaseException:
+    except BaseException as exc:
         if changed:
+            if isinstance(exc, DeployError):
+                print("ERROR: " + str(exc), flush=True)
             print(
                 "ERROR: deployment interrupted; recovering compatible production roles", flush=True
             )
@@ -540,10 +558,17 @@ def main() -> None:
                         raise DeployError("An integration override was modified after installation")
                 if not recover(manual=True):
                     raise DeployError("New sudo evidence arrived; compatible schema5 retained")
-        except (OSError, ValueError, RuntimeError, sqlite3.Error, subprocess.SubprocessError):
+        except (
+            OSError,
+            ValueError,
+            RuntimeError,
+            sqlite3.Error,
+            subprocess.SubprocessError,
+        ) as exc:
+            reason = str(exc) if isinstance(exc, DeployError) else type(exc).__name__
             parser.exit(
                 1,
-                "STOP: sudo integration deployment did not complete; inspect the last printed phase\n",
+                "STOP: sudo integration deployment did not complete: " + reason + "\n",
             )
 
 

@@ -1,9 +1,12 @@
 """Coordinated migration and rollback preserve current history and outbox identity."""
 
+import ast
 import hashlib
 import importlib.util
+import json
 import os
 import sqlite3
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -72,6 +75,7 @@ def machine(deploy, tmp_path, monkeypatch):
         "yggdrasil-sudo-ui-export.timer",
     }
     calls = []
+    controls = SimpleNamespace(skip_run=False, start_exit=0)
     users = ["yggdrasil-worker", "yggdrasil-web", "yggdrasil-notifier"]
     groups = ["yggdrasil-data", "yggdrasil-web", "yggdrasil-notifier"]
 
@@ -82,7 +86,8 @@ def machine(deploy, tmp_path, monkeypatch):
             "DropInPaths": "",
             "Environment": "",
             "Result": "success",
-            "ConditionResult": "yes",
+            # An inactive oneshot may already have lost its execution metadata.
+            "ConditionResult": "no",
         }
         if unit in deploy.PRODUCTION:
             i = deploy.PRODUCTION.index(unit)
@@ -91,20 +96,55 @@ def machine(deploy, tmp_path, monkeypatch):
 
     def command(args, **kwargs):
         calls.append(tuple(args))
+        exit_code = 0
         if args[:2] == ["systemctl", "stop"]:
             active.difference_update(args[2:])
         elif args[:2] == ["systemctl", "start"]:
             active.update(args[2:])
             if deploy.SERVICE in args:
-                deploy.PUBLIC.write_text("{}")
-                deploy.PUBLIC.chmod(0o640)
+                exit_code = controls.start_exit
+                if not controls.skip_run and not exit_code:
+                    stamp = time.time()
+                    deploy.PUBLIC.write_text(
+                        json.dumps(
+                            {
+                                "schema": "sudo-integration-v1",
+                                "generated_at": stamp,
+                                "source_checkpoint": stamp - 2,
+                                "activated_at": repo.get_state(deploy.ARM_KEY),
+                                "rules": {"state": "active", "imported_total": 0, "message": ""},
+                                "ml": {
+                                    "format": "sudo-ml-shadow-v1",
+                                    "mode": "shadow",
+                                    "generated_at": stamp,
+                                    "source_checkpoint": stamp - 2,
+                                    "snapshot_cutoff": stamp - 2,
+                                    "window_seconds": 900,
+                                    "warmup_seconds": 300,
+                                    "model_version": deploy.MODEL_VERSION,
+                                    "threshold": 0.66,
+                                    "provisional": True,
+                                    "total_scored": 0,
+                                    "anomalous": 0,
+                                    "skipped_ambiguous_processes": 0,
+                                    "latest_limit": 15,
+                                    "latest": [],
+                                    "sends_alerts": False,
+                                    "shares_production_database": False,
+                                },
+                            }
+                        )
+                    )
+                    deploy.PUBLIC.chmod(0o640)
+                active.discard(deploy.SERVICE)
         elif args[:3] == ["systemctl", "enable", "--now"]:
             active.update(args[3:])
         elif args[:3] == ["systemctl", "disable", "--now"]:
             active.difference_update(args[3:])
-        return SimpleNamespace(returncode=0, stdout="")
+        return SimpleNamespace(returncode=exit_code, stdout="")
 
     def worker(code, **kwargs):
+        ast.parse(code)
         calls.append(("worker", kwargs.get("user", "yggdrasil-worker"), code))
         if ".initialize()" in code:
             assert not set(deploy.PRODUCTION) & active
@@ -113,14 +153,25 @@ def machine(deploy, tmp_path, monkeypatch):
         elif "arm_rules" in code:
             assert set(deploy.PRODUCTION) <= active
             repo.set_state(deploy.ARM_KEY, 1000.0)
-        return SimpleNamespace(returncode=0)
+            return SimpleNamespace(returncode=0, stdout=json.dumps({"activated_at": 1000.0}))
+        elif "require_current_run" in code:
+            from yggdrasil_ids.sudo_integration_dashboard import require_current_run
+
+            # Exercise the real public validator used by the unprivileged child.
+            call = ast.parse(code).body[-1].value
+            arguments = {item.arg: ast.literal_eval(item.value) for item in call.keywords}
+            try:
+                require_current_run(deploy.PUBLIC, **arguments)
+            except ValueError:
+                return SimpleNamespace(returncode=1, stdout="")
+        return SimpleNamespace(returncode=0, stdout="")
 
     monkeypatch.setattr(deploy, "command", command)
     monkeypatch.setattr(deploy, "properties", properties)
     monkeypatch.setattr(deploy, "worker", worker)
     monkeypatch.setattr(deploy, "login_check", lambda: None)
     monkeypatch.setattr(deploy.time, "sleep", lambda _: None)
-    return SimpleNamespace(repo=repo, source=source, active=active, calls=calls)
+    return SimpleNamespace(repo=repo, source=source, active=active, calls=calls, controls=controls)
 
 
 def new_ssh_alarm(repo, index=1):
@@ -166,6 +217,36 @@ def test_successful_release_stops_all_roles_before_migration_and_arms_after_heal
     assert (backup / "events-schema4.sqlite3").stat().st_mode & 0o777 == 0o600
     assert "test-user" not in (backup / "manifest.json").read_text()
     assert not any("bootstrap" in " ".join(call) for call in machine.calls)
+    assert deploy.SERVICE not in machine.active
+    assert machine.calls.count(("systemctl", "start", deploy.SERVICE)) == 1
+
+
+def test_skipped_start_cannot_reuse_previous_healthy_snapshot(deploy, machine):
+    from yggdrasil_ids.sudo_integration_dashboard import read_integration
+
+    deploy.install(machine.source, "f" * 40)
+    assert read_integration(deploy.PUBLIC)["rules_active"]
+    machine.controls.skip_run = True
+    machine.calls.clear()
+    with pytest.raises(deploy.DeployError, match="start_exit=0, snapshot_check_exit=1"):
+        deploy.initial_snapshot(1000.0)
+    assert machine.calls.count(("systemctl", "start", deploy.SERVICE)) == 4
+
+
+def test_nonzero_job_result_is_rejected_even_with_previous_valid_export(deploy, machine):
+    deploy.install(machine.source, "f" * 40)
+    machine.controls.start_exit = 1
+    machine.calls.clear()
+    with pytest.raises(deploy.DeployError, match="start_exit=1"):
+        deploy.initial_snapshot(1000.0)
+    assert not any(call[0] == "worker" for call in machine.calls)
+
+
+def test_skipped_job_without_export_is_rejected_with_diagnostics(deploy, machine):
+    machine.controls.skip_run = True
+    with pytest.raises(deploy.DeployError, match="snapshot_check_exit=1"):
+        deploy.initial_snapshot(1000.0)
+    assert not deploy.PUBLIC.exists()
 
 
 def test_late_failure_rolls_back_without_losing_new_ssh_or_replacing_delivery_state(

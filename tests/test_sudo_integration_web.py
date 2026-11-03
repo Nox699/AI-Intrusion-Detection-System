@@ -9,7 +9,11 @@ from werkzeug.security import generate_password_hash
 
 from yggdrasil_ids.config import AppConfig
 from yggdrasil_ids.storage import Repository
-from yggdrasil_ids.sudo_integration_dashboard import read_integration, validate_integration
+from yggdrasil_ids.sudo_integration_dashboard import (
+    read_integration,
+    require_current_run,
+    validate_integration,
+)
 from yggdrasil_ids.web import create_app
 
 
@@ -61,6 +65,57 @@ def test_strict_reader_distinguishes_fresh_stale_and_unavailable(tmp_path):
     data["ml"]["latest"][0]["uid"] = "private-identity"
     path.write_text(json.dumps(data))
     assert read_integration(path, now=now)["state"] == "unavailable"
+
+
+def test_current_run_requires_fresh_rule_and_ml_results_from_same_invocation(tmp_path):
+    now = time.time()
+    path = tmp_path / "integration.json"
+    data = payload(now)
+    path.write_text(json.dumps(data))
+    path.chmod(0o640)
+    result = require_current_run(
+        path,
+        not_before=now - 1,
+        expected_activation=now - 100,
+        expected_model=data["ml"]["model_version"],
+        now=now,
+    )
+    assert result["rules_active"]
+    data["ml"]["generated_at"] = now - 10
+    path.write_text(json.dumps(data))
+    assert read_integration(path, now=now)["state"] == "ready"
+    with pytest.raises(ValueError, match="not verified"):
+        require_current_run(
+            path,
+            not_before=now - 1,
+            expected_activation=now - 100,
+            expected_model=data["ml"]["model_version"],
+            now=now,
+        )
+
+
+@pytest.mark.parametrize("changed", ["old_export", "different_activation", "different_model"])
+def test_recent_healthy_export_is_not_proof_of_the_requested_deployment(tmp_path, changed):
+    now = time.time()
+    path = tmp_path / "integration.json"
+    data = payload(now - 10 if changed == "old_export" else now)
+    expected_activation = data["activated_at"]
+    expected_model = data["ml"]["model_version"]
+    if changed == "different_activation":
+        data["activated_at"] -= 1
+    elif changed == "different_model":
+        data["ml"]["model_version"] = "sudo-if-" + "a" * 16
+    path.write_text(json.dumps(data))
+    path.chmod(0o640)
+    assert read_integration(path, now=now)["state"] == "ready"
+    with pytest.raises(ValueError, match="not verified"):
+        require_current_run(
+            path,
+            not_before=now - 1,
+            expected_activation=expected_activation,
+            expected_model=expected_model,
+            now=now,
+        )
 
 
 @pytest.mark.parametrize(

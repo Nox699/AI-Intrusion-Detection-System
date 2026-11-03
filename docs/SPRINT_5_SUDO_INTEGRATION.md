@@ -77,6 +77,23 @@ timer. The updated dashboard is served on production port **8765**. A previously
 started manual preview on 8766 uses its old source and is separate. The installer
 does not generate controlled sudo failures or test notifications.
 
+Initial acceptance verifies the export as the actual web account: both rule
+and ML status must be ready, use the expected activation boundary and frozen
+model version, and share a generation time at or after the current start call.
+A zero start exit status alone cannot pass because a failed systemd condition
+may skip execution; an older otherwise healthy export cannot pass either.
+
+The first Pi attempt completed four integration runs with active rules, zero
+new cases and ML in shadow, as recorded in its journal. The installer then
+incorrectly rejected the run and completed recovery to schema4. Its acceptance
+gate depended on `Result`/`ConditionResult` after an inactive oneshot finished.
+Those execution properties were not captured, so their exact observed values
+are unknown. The [systemd unit documentation](https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html#Unit%20Garbage%20Collection)
+documents that unreferenced inactive units can lose their runtime state after
+collection. Acceptance now depends on the durable current export rather than
+those disposable properties. Regression tests use an inactive completed
+service with `ConditionResult=no`, and separately test skipped/failed starts.
+
 Automatic recovery stops the integration and production roles together. When
 no sudo alarm evidence exists, it removes the schema5-only empty table and
 activation state, returns all roles to their original installed source, and
@@ -130,3 +147,6 @@ The deployment revision passed 839 tests with those 14 root-incompatible tests
 deselected. The complete workflow lint/format commands and new shell/Python
 syntax checks passed. Production service execution remains a Pi acceptance
 step, rather than something simulated tests can establish.
+
+The current-run acceptance fix passed 846 tests with the same 14 exclusions;
+workflow lint/format and the installer syntax checks also passed.
