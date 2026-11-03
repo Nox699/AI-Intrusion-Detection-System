@@ -1085,3 +1085,43 @@ fra den isolerede outbox-test dokumenterer
 `fake_notifier_deliveries=2`,
 `discord_messages_sent=0` og
 `temporary_databases_deleted=true`.
+
+### Forberedt: enkelt virkelig Discord-LABTEST fra betroet Yggdrasil-notifier
+
+`deploy/sprint5_sudo_discord_delivery_smoketest.py` skaber
+et helt **midlertidigt** schema-v4-IDS med **én tydeligt
+mærket, simuleret sudo-kandidat**, og kører den gennem
+de allerede eksisterende `alerts` → `discord_outbox`
+→ `DiscordNotifier.poll()`-komponenter.
+Standardkørsel bruger en *falsk afsender* og giver
+**aldrig** et netværkskald.
+
+En virkelig meddelelse kan **kun** sendes med **begge**
+`--send-real --confirm-lab-message`, og kun som
+systembrugeren `yggdrasil-notifier`. Den må køres
+fra en **ny, kortvarig, isoleret systemd-testservice**
+med `LoadCredential=discord-webhook.url:/etc/yggdrasil-ids/discord-webhook.url`.
+Hemmeligheden bliver på Raspberry Pi'en, ikke i
+GitHub, terminaloutput eller `ubuntu-gateway`.
+De oprindelige produktionsservices og databaser
+stoppes/ændres ikke. Alle test-SQLite-filer slettes
+før output. Ingen sudo-loginfejl fremprovokeres.
+
+**Præcis hvad sådan en bestået test dokumenterer:**
+en reelt modtaget **LAB-MÆRKET** Discord-besked
+fra Yggdrasils egen notifierkode, med én
+syntetisk sudo-kandidat indsat i en privat
+test-outbox. Den dokumenterer **ikke** en
+automatisk Discord-levering af VM'ens to
+tidligere angrebsfund, og er **ikke** bevis for
+en aktiveret permanent sudo-detektor.
+
+**Skærmbillede S5-07:** Tag både beskeden i
+Discord (med tydelig `SUDO LABTEST`-markering)
+og terminal-JSON med `mode=real_discord`,
+`notifier_acknowledged=1`, `notifier_pending=0`,
+`production_database_modified=false`,
+`temporary_databases_deleted=true`.
+Gem originaler lokalt og vælg senere.
+Ingen credentials/webhook-URL på billeder.
+Se `docs/SCREENSHOT_CANDIDATES.md`.
