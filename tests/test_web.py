@@ -798,3 +798,100 @@ def test_sudo_page_displays_only_anonymized_worker_export(app, client, tmp_path)
     assert "command_invoked" not in text
     assert "/var/lib/yggdrasil-sudo-shadow/" not in text
     assert "sudo-status.json" not in text
+
+
+def test_nav_warnings_are_authenticated_real_alert_cases_not_shadow(client, configured):
+    assert client.get("/api/nav-alerts").status_code == 401
+    _config, repo = configured
+    login(client)
+    first = client.get("/api/nav-alerts")
+    assert first.status_code == 200
+    data = first.get_json()
+    assert data["meaning"] == "registered_alert_cases_in_last_24_hours_not_unread"
+    assert data["period_hours"] == 24
+    assert data["counts"] == {"ssh": 1, "preauth": 0, "network": 0, "alerts": 1}
+
+    stamp = time.time() - 60
+    with repo.transaction() as db:
+        for detector, age in [
+            ("network.tcp_port_scan", 0),
+            ("ssh.preauth_burst", 0),
+            ("ssh.failed_burst", 0),
+            ("network.tcp_port_scan", 90000),
+        ]:
+            db.execute(
+                "INSERT INTO alerts(detector_id,title,severity,reason,source_ip,"
+                "first_seen,last_seen,count,score,model_version,details) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    detector, "Kontrolleret laboratoriealarm", "medium", "Test",
+                    "192.0.2.8", stamp - age, stamp - age, 1, None, None, "{}",
+                ),
+            )
+    result = client.get("/api/nav-alerts").get_json()
+    assert result["counts"] == {"ssh": 2, "preauth": 1, "network": 1, "alerts": 4}
+    # The user-facing triangle is dynamically populated; it's not an unread badge.
+    html = client.get("/sudo").get_data(as_text=True)
+    assert 'data-alert-section="network"' in html
+    assert 'data-alert-section="ssh"' in html
+    assert 'class="nav-warning"' in html
+
+
+def test_sudo_page_prefers_recent_activity_above_synthetic_benchmark(
+    app, client, tmp_path
+):
+    now = time.time()
+    activity_file = tmp_path / "sudo-activity.json"
+    activity_file.write_text(
+        json.dumps(
+            {
+                "format": "sudo-shadow-activity-v1",
+                "mode": "shadow",
+                "generated_at": now,
+                "checkpoint_at": now - 2,
+                "period_seconds": 86400,
+                "latest_limit": 15,
+                "latest": [
+                    {
+                        "timestamp": now - 50,
+                        "category": "authentication_failed",
+                        "attention": "rule_candidate",
+                        "detector_id": "sudo.repeated_auth_failure",
+                    },
+                    {
+                        "timestamp": now - 100,
+                        "category": "session_opened",
+                        "attention": "normal",
+                        "detector_id": None,
+                    },
+                ],
+                "candidate_limit": 8,
+                "candidates": [
+                    {
+                        "timestamp": now - 50,
+                        "detector_id": "sudo.repeated_auth_failure",
+                        "process_count": 3,
+                    }
+                ],
+                "source": "worker_owned_private_sudo_staging",
+                "sends_alerts": False,
+                "shares_production_database": False,
+            }
+        )
+    )
+    activity_file.chmod(0o640)
+    app.config["SUDO_PUBLIC_ACTIVITY_PATH"] = activity_file
+    login(client)
+    result = client.get("/sudo")
+    assert result.status_code == 200
+    html = result.get_data(as_text=True)
+    assert "Seneste mistænkelige sudo-aktivitet" in html
+    assert "Autentificering mislykkedes" in html
+    assert "Seneste 15 sudo-forløb" in html
+    assert "Regelkandidat" in html
+    assert html.index("Seneste mistænkelige sudo-aktivitet") < html.index(
+        "Seneste 15 sudo-forløb"
+    ) < html.index("Isolation Forest mod sudo-regler")
+    assert "/usr/bin/" not in html
+    assert "sudo.if.fake_live_alert" not in html
+
