@@ -59,6 +59,11 @@ with TemporaryDirectory(prefix="yggdrasil-sudo-shadow-probe-") as root:
     first = poll_once(db)
     second = poll_once(db)
 
+    if first["journal_rows_read"] == 0:
+        raise RuntimeError("No sudo journal rows in the last 15 minutes; positive acceptance incomplete")
+    if second["overlap_duplicates_skipped"] == 0:
+        raise RuntimeError("The second poll did not verify journal deduplication")
+
     # Legitimate sudo activity may occur between polls. Check additive
     # persistence instead of assuming journald stays completely unchanged.
     first_stored = first["private_staging_summary"]["persisted_log_rows"]
