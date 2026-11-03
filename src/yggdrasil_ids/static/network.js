@@ -66,8 +66,10 @@
       };
       const activityLayout = {
         ...base,
-        xaxis: { ...base.xaxis, type: "date" },
-        yaxis: { ...base.yaxis, rangemode: "tozero", tickformat: ",d", dtick: 1 },
+        // Empty Plotly date axes otherwise default to misleading dates around year 2000.
+        xaxis: { ...base.xaxis, type: "date", visible: rows.length > 0 },
+        yaxis: { ...base.yaxis, rangemode: "tozero", tickformat: ",d", dtick: 1,
+          visible: rows.length > 0 },
         annotations: rows.length ? [] : [{
           x: 0.5, y: 0.5, xref: "paper", yref: "paper",
           text: "Ingen loggede blokerede SYN-pakker i perioden",
@@ -94,8 +96,10 @@
       const portLayout = {
         ...base,
         margin: { l: 110, r: 22, t: 14, b: 42 },
-        xaxis: { ...base.xaxis, rangemode: "tozero", tickformat: ",d", dtick: 1 },
-        yaxis: { type: "category", fixedrange: true, automargin: true },
+        xaxis: { ...base.xaxis, rangemode: "tozero", tickformat: ",d", dtick: 1,
+          visible: labels.length > 0 },
+        yaxis: { type: "category", fixedrange: true, automargin: true,
+          visible: labels.length > 0 },
         annotations: labels.length ? [] : [{
           x: 0.5, y: 0.5, xref: "paper", yref: "paper",
           text: "Ingen porte registreret i perioden",
