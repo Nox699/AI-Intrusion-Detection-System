@@ -493,3 +493,44 @@ med `PYTHONPATH` fra en midlertidig checkout.
 Del kun aggregeret JSON; lad rå sudo-journalmeddelelser
 blive på Pi. Evaluer hvor mange af de 627 poster,
 der kan parses, og om virkelige fejltyper genkendes.
+
+### Pi-accept af korrigeret journalscope: 641 sudo-poster (3. november 2026)
+
+På Yggdrasil blev den rene Sprint 5-gren fra commit
+`7a46c935a505dcaeda70b35335ee8298e6e7293b` kørt
+**read-only** som `yggdrasil-worker`, med
+`PYTHONPATH` og kode udtrukket fra fast Git-SHA til en midlertidig mappe,
+og `--since "2026-11-02 00:00:00"`.
+
+| Resultat | Antal |
+| --- | ---: |
+| `journal_rows_seen` | **641** |
+| `parsed_sudo_rows` | **641** |
+| `command_invoked` | 214 |
+| `pam_session_opened` | 214 |
+| `pam_session_closed` | 213 |
+| `pam_auth_failure` | 0 |
+| `incorrect_password` | 0 |
+| `not_in_sudoers` | 0 |
+| `other_sudo` | 0 |
+| `malformed_or_incomplete_metadata` | 0 |
+| `sudo.repeated_auth_failure` | **0** kandidatfund |
+| `sudo.permission_denied` | **0** kandidatfund |
+
+Rettelsen af journal-scope er dermed **verificeret på Pi** for
+den reelle kilde: 641/641 læste poster er strukturelt parsebare,
+og normale sudo-kommandoer/PAM-sessioner udløser ikke kandidatfund.
+Dette er **ikke** 641 uafhængige normale handlinger,
+ikke en estimeret falsk-positiv-rate og ikke en validering
+af detektorens evne til at opdage afviste sudo-forsøg.
+Der er **ingen verificerede fejl-/afvisningsposter** i dette
+testinterval.
+
+Den tidligere forsøgte `sudo -n /usr/bin/true` under
+`yggdrasil-web` gav exit-kode 1, men stderr blev undertrykt.
+Det kan have været et manglende interaktivt password,
+ikke nødvendigvis en faktisk `not_in_sudoers`-afvisning.
+Næste sikre gate er **højst ét** tilsvarende, harmløst
+forsøg med *lokal klassificering* af stderr i grove kategorier,
+uden at udskrive rå fejltekst og uden at ændre sudoers,
+brugerrettigheder, systemd, SQLite eller Discord.
