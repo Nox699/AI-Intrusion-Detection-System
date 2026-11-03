@@ -18,7 +18,8 @@ for unit in yggdrasil-collector.service yggdrasil-web.service yggdrasil-notifier
   systemctl is-active --quiet "$unit" ||
     { echo "STOP: Existing required service inactive: $unit" >&2; exit 2; }
 done
-id -nG yggdrasil-web | tr ' ' '\n' | grep -Fxq yggdrasil-data ||
+systemctl show yggdrasil-web.service -p SupplementaryGroups --value |
+  tr ' ' '\n' | grep -Fxq yggdrasil-data ||
   { echo "STOP: Web reader is not in the existing yggdrasil-data group" >&2; exit 2; }
 sudo -u yggdrasil-worker test -r /var/lib/yggdrasil-sudo-shadow/sudo-shadow.sqlite3 ||
   { echo "STOP: Worker cannot read private sudo staging database" >&2; exit 2; }
