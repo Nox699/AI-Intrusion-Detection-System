@@ -246,6 +246,8 @@ class DiscordNotifier:
             "ssh.unexpected_success": "Uventet SSH-login",
             "ssh.isolation_forest": "Usædvanligt SSH-mønster",
             "network.tcp_port_scan": "Mulig TCP-portscanning (UFW)",
+            "sudo.repeated_auth_failure": "Gentagne sudo-autentificeringsfejl",
+            "sudo.permission_denied": "Afvist sudo-adgang",
         }.get(event["detector_id"], "Sikkerhedsalarm")
         stamp = datetime.fromtimestamp(event["happened_at"], self.zone)
         return (
