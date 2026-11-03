@@ -321,3 +321,8 @@ main{padding:25px 18px 0}
 /* Recent real alert cases only; shadow sudo candidates are deliberately excluded. */
 .nav-warning{margin-left:auto;flex-shrink:0;color:var(--amber);font-size:17px;line-height:1}
 .nav-link .nav-warning:not([hidden]){filter:drop-shadow(0 0 3px rgba(232,185,108,.2))}
+
+/* Operational sudo events precede the offline ML report, with clear spacing. */
+#sudo-findings,#sudo-latest{margin-bottom:22px}
+#sudo-findings>.notice,#sudo-latest>.notice{margin:6px 20px 18px}
+#sudo-latest>.panel-note{padding:10px 20px 18px;margin:0}
