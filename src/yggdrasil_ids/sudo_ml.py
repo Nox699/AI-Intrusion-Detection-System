@@ -143,7 +143,11 @@ def _validated_rows(rows: Sequence[Sequence[float]], minimum: int = 1) -> np.nda
     for row in rows:
         if not isinstance(row, (list, tuple, np.ndarray)) or len(row) != len(FEATURE_NAMES):
             raise ValueError("Sudo ML requires the fixed seven-feature schema")
-        if any(isinstance(item, (bool, np.bool_)) or not isinstance(item, (int, float, np.number)) for item in row):
+        if any(
+            isinstance(item, (bool, np.bool_))
+            or not isinstance(item, (int, float, np.integer, np.floating))
+            for item in row
+        ):
             raise ValueError("Sudo ML feature values must be numeric")
         values = [float(x) for x in row]
         if not all(math.isfinite(x) for x in values):
@@ -233,7 +237,9 @@ class SudoIsolationForest:
             raise ValueError("Sudo model artifact exceeds maximum size")
         temp = None
         try:
-            with tempfile.NamedTemporaryFile(dir=target.parent, prefix=".sudo-if-", delete=False) as handle:
+            with tempfile.NamedTemporaryFile(
+                dir=target.parent, prefix=".sudo-if-", delete=False
+            ) as handle:
                 temp = Path(handle.name)
                 handle.write(encoded)
                 handle.flush()
@@ -292,9 +298,14 @@ class SudoIsolationForest:
             raise ValueError("Sudo model timestamp is invalid") from exc
         signature = payload["sha256"]
         body = {key: value for key, value in payload.items() if key != "sha256"}
-        if not isinstance(signature, str) or hashlib.sha256(_canonical(body)).hexdigest() != signature:
+        if (
+            not isinstance(signature, str)
+            or hashlib.sha256(_canonical(body)).hexdigest() != signature
+        ):
             raise ValueError("Sudo model fingerprint mismatch")
-        restored = cls(payload["normal_training_rows"], payload["provenance"], payload["trained_at"])
+        restored = cls(
+            payload["normal_training_rows"], payload["provenance"], payload["trained_at"]
+        )
         if type(payload["threshold"]) not in (int, float) or not math.isclose(
             payload["threshold"], restored.threshold, rel_tol=0, abs_tol=1e-12
         ):
