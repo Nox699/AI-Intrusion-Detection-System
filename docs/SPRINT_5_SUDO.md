@@ -570,3 +570,37 @@ ikke en ny tjeneste eller intrusion-detektor; det
 Tests sikrer ét fast harmløst kommandoforløb og
 sanitiseret output. Kør først fra en fuld CI-godkendt
 Git-commit.
+
+### Pi-test: `sudo -n` krævede password, ikke verificeret sudoers-afvisning (3. november 2026)
+
+Det isolerede, manuelt udløste
+`deploy/sprint5_sudo_denial_reason_probe.py` blev kørt på
+Yggdrasil fra commit
+`53453691b8205d407becaa26cbce07ae7996bc9f`.
+Den normale loginbruger verificerede sin egen sudo-adgang
+med `sudo -v`, og værktøjet udførte derefter ét
+ikke-interaktivt `sudo -n /usr/bin/true` via
+`yggdrasil-web`. Kun sanitiseret JSON blev offentliggjort.
+
+| Felt | Faktisk resultat |
+| --- | --- |
+| `status` | `completed` |
+| `exit_code` | `1` |
+| `reason_category` | `password_required_noninteractive` |
+| `raw_stdout_stderr_exposed` | `false` |
+| `sudoers_or_services_modified` | `false` |
+
+**Konklusion:** Dette var **ikke** et dokumenteret
+`not_in_sudoers`-forsøg eller en journalverificeret
+`pam_auth_failure`. Det betyder alene, at sudo krævede
+autentificering, som `-n` forhindrede. Den tidligere
+`sudo.permission_denied=0` er derfor forventelig og ikke
+bevis på en fejl i regelmotoren.
+
+Sprint 5 fortsætter med syntetisk positive tests og
+adskilt passiv sudo-journalindsamling; der er ikke behov
+for yderligere bevidst fejlede sudo-forsøg på Pi på
+nuværende tidspunkt. En rigtig detektionsaccept
+kræver senere en valideret hændelse i et kontrolleret
+testmiljø med kendt forventet logformat. Sudo-alarmer
+er stadig ikke aktive på produktionsserveren.
