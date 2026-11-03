@@ -2,7 +2,7 @@
 """Read-only sudo journald provenance diagnostic with strictly aggregate output.
 
 The previous strict (_COMM=sudo AND _UID=0) query returned zero on the Pi.
-This diagnostic probes journal visibility and two broader indexed filters.
+This diagnostic probes all accessible journal visibility and two broader indexed filters.
 SYSLOG_IDENTIFIER=sudo is a DISCOVERY hint only, never trusted evidence.
 Raw messages, user identities, commands, ports, paths and cursors are not shown.
 No SQLite, sudoers, services, firewall, model, or notification changes.
@@ -19,7 +19,7 @@ from datetime import datetime
 from typing import Any, Iterable
 
 MAX_ROWS_PER_QUERY = 10000
-PROBES = ("recent_system", "comm_sudo", "tag_sudo")
+PROBES = ("recent_accessible", "comm_sudo", "tag_sudo")
 
 
 def journal_command(since: str, probe: str) -> list[str]:
@@ -27,13 +27,12 @@ def journal_command(since: str, probe: str) -> list[str]:
         raise ValueError("Unexpected diagnostic probe")
     command = [
         "journalctl",
-        "--system",
         "--quiet",
         "--no-pager",
         "--output=json",
         "--since=" + since,
     ]
-    if probe == "recent_system":
+    if probe == "recent_accessible":
         command.append("--lines=1")
     elif probe == "comm_sudo":
         command.append("_COMM=sudo")
@@ -55,7 +54,7 @@ def read_journal(since: str, probe: str) -> Iterable[dict[str, Any]]:
     )
     try:
         assert child.stdout is not None
-        limit = 1 if probe == "recent_system" else MAX_ROWS_PER_QUERY
+        limit = 1 if probe == "recent_accessible" else MAX_ROWS_PER_QUERY
         seen = 0
         for line in child.stdout:
             seen += 1
@@ -171,13 +170,13 @@ def audit(since: str) -> dict[str, Any]:
 
     return {
         "kind": "read_only_sudo_journald_metadata_diagnostic",
-        "recent_system_entry_visible": seen["recent_system"]["rows"] > 0,
+        "recent_accessible_entry_visible": seen["recent_accessible"]["rows"] > 0,
         "comm_sudo_query": seen["comm_sudo"],
         "tag_sudo_query": seen["tag_sudo"],
         "production_sudo_detection_active": False,
         "only_aggregated_metadata_exposed": True,
         "note": (
-            "Journal system visibility is a limited probe; lack of matching rows "
+            "Journal visibility is a limited probe; lack of matching rows "
             "does not prove absence of sudo activity. A sudo syslog tag is "
             "spoofable and MUST NOT qualify as trusted evidence. Rows can "
             "represent multiple messages from one action."
