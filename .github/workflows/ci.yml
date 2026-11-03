@@ -71,7 +71,7 @@ jobs:
         run: bash -n deploy/sprint5_sudo_discord_pi_lab_send.sh deploy/sprint5_sudo_shadow_probe_pi.sh
 
       - name: Validate sudo shadow systemd install activation and rollback syntax
-        run: bash -n deploy/sprint5_sudo_shadow_install_pi.sh deploy/sprint5_sudo_shadow_activate_pi.sh deploy/sprint5_sudo_shadow_rollback_pi.sh deploy/sprint5_sudo_ml_run_pi.sh deploy/sprint5_sudo_ml_v2_run_pi.sh deploy/sprint5_sudo_real_export_pi.sh deploy/sprint5_sudo_mixed_ml_run_pi.sh deploy/sprint5_sudo_score_diagnostics_pi.sh deploy/sprint5_sudo_baseline_run_pi.sh deploy/sprint5_sudo_frozen_probe_pi.sh deploy/sprint5_sudo_integration_preflight_pi.sh deploy/sprint5_sudo_integration_install_pi.sh deploy/sprint5_sudo_live_probe_pi.sh
+        run: bash -n deploy/sprint5_sudo_shadow_install_pi.sh deploy/sprint5_sudo_shadow_activate_pi.sh deploy/sprint5_sudo_shadow_rollback_pi.sh deploy/sprint5_sudo_ml_run_pi.sh deploy/sprint5_sudo_ml_v2_run_pi.sh deploy/sprint5_sudo_real_export_pi.sh deploy/sprint5_sudo_mixed_ml_run_pi.sh deploy/sprint5_sudo_score_diagnostics_pi.sh deploy/sprint5_sudo_baseline_run_pi.sh deploy/sprint5_sudo_frozen_probe_pi.sh deploy/sprint5_sudo_integration_preflight_pi.sh deploy/sprint5_sudo_integration_install_pi.sh deploy/sprint5_sudo_live_probe_pi.sh deploy/sprint5_nav_unread_web_pi.sh
 
       - name: Validate sudo UI exporter, stage, activation, preview and rollback scripts
         run: bash -n deploy/sprint5_sudo_ui_stage_pi.sh deploy/sprint5_sudo_ui_activate_pi.sh deploy/sprint5_sudo_ui_export_rollback_pi.sh deploy/sprint5_sudo_ui_web_stage_pi.sh deploy/sprint5_sudo_ui_preview_pi.sh deploy/sprint5_sudo_ui_web_activate_pi.sh deploy/sprint5_sudo_ui_web_rollback_pi.sh deploy/sprint5_sudo_activity_upgrade_pi.sh deploy/sprint5_sudo_activity_rollback_pi.sh deploy/sprint5_sudo_ui_preview_upgrade_pi.sh
@@ -84,6 +84,9 @@ jobs:
 
       - name: Run tests
         run: python -m pytest --junitxml=test-results/pytest.xml
+
+      - name: Test navigation seen markers
+        run: node --test tests/nav_alerts.test.cjs
 
       - name: Build wheel
         run: python -m build --wheel --no-isolation

@@ -39,6 +39,7 @@ from werkzeug.security import check_password_hash
 
 from . import __version__
 from .config import AppConfig, load_config
+from .nav_alerts import snapshot as nav_alert_snapshot
 from .storage import Repository
 from .sudo_dashboard import (
     PUBLIC_ACTIVITY,
@@ -280,7 +281,20 @@ def create_app(config: AppConfig | None = None) -> Flask:
         if raw.get("mode") is not None and raw["mode"] != cfg.mode:
             raise DataUnavailable("Database and dashboard belong to different environments")
         g.ids_status = status_view(raw)
+        if request.endpoint in PAGE_SECTIONS and not hasattr(g, "nav_alert_snapshot"):
+            try:
+                read_nav_alerts()
+            except DataUnavailable:
+                g.nav_alert_snapshot = None
         return raw
+
+    def read_nav_alerts() -> dict:
+        if not hasattr(g, "nav_alert_snapshot"):
+            try:
+                g.nav_alert_snapshot = nav_alert_snapshot(repo)
+            except (OSError, ValueError, TypeError, sqlite3.Error) as exc:
+                raise DataUnavailable("Alarmmarkeringerne kan ikke indlæses.") from exc
+        return g.nav_alert_snapshot
 
     @app.template_filter("localtime")
     def localtime(value: Any, short: bool = False) -> str:
@@ -324,6 +338,26 @@ def create_app(config: AppConfig | None = None) -> Flask:
             args["page"] = str(page)
             return url_for(request.endpoint or "overview", **args)
 
+        nav_view = None
+        scope = {
+            "events": "ssh",
+            "preauth": "preauth",
+            "network": "network",
+            "sudo_dashboard": "sudo",
+            "alerts": "alerts",
+            "alert_detail": "detail",
+        }.get(request.endpoint, "")
+        if getattr(g, "nav_read_disabled", False):
+            scope = ""
+        if session.get("authenticated"):
+            try:
+                nav_view = {
+                    "snapshot": read_nav_alerts(),
+                    "scope": scope,
+                    "alert_id": (request.view_args or {}).get("alert_id"),
+                }
+            except DataUnavailable:
+                pass
         return {
             "app_cfg": cfg,
             "app_version": __version__,
@@ -334,6 +368,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
             "page_url": page_url,
             "view_status": getattr(g, "ids_status", status_view({})),
             "authenticated": bool(session.get("authenticated")),
+            "nav_alert_view": nav_view,
         }
 
     @app.before_request
@@ -563,11 +598,8 @@ def create_app(config: AppConfig | None = None) -> Flask:
 
     @app.get("/api/nav-alerts")
     def api_nav_alerts() -> Any:
-        return jsonify(
-            period_hours=24,
-            meaning="registered_alert_cases_in_last_24_hours_not_unread",
-            counts=call("nav_alert_counts", hours=24),
-        )
+        read_status()
+        return jsonify(read_nav_alerts())
 
     @app.get("/api/status")
     def api_status() -> Any:
@@ -591,6 +623,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
 
     @app.errorhandler(DataUnavailable)
     def unavailable(_error: Any) -> Any:
+        g.nav_read_disabled = True
         if request.path.startswith("/api/") or request.path == "/healthz":
             return jsonify(
                 error="data_unavailable",
@@ -608,6 +641,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
     @app.errorhandler(405)
     @app.errorhandler(413)
     def request_error(error: Any) -> Any:
+        g.nav_read_disabled = True
         code = error.code
         message = {
             400: "Forespørgslen indeholder en ugyldig værdi.",
@@ -624,6 +658,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
 
     @app.errorhandler(500)
     def internal_error(_error: Any) -> Any:
+        g.nav_read_disabled = True
         if request.path.startswith("/api/"):
             return jsonify(error="internal_error", message="Der opstod en intern fejl."), 500
         return render_template(

@@ -16,65 +16,7 @@
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") setNav(false); });
   document.querySelectorAll(".refresh-page").forEach(button => button.addEventListener("click", () => window.location.reload()));
 
-  // Navigation warnings reflect recorded alert CASES from the past 24h,
-  // not unread notifications, rule candidates or provisional ML scores.
-  // This poller runs on every authenticated page, not only the SSH overview.
-  const navAlertLinks = [...document.querySelectorAll(".nav-link[data-alert-section]")]
-    .filter(link => ["ssh", "preauth", "network", "sudo", "alerts"].includes(
-      link.dataset.alertSection
-    ));
-  let navAlertsInFlight = false;
-
-  async function refreshNavWarnings() {
-    if (!navAlertLinks.length || navAlertsInFlight || document.hidden) return;
-    navAlertsInFlight = true;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    try {
-      const response = await fetch("/api/nav-alerts", {
-        credentials: "same-origin", cache: "no-store",
-        headers: { Accept: "application/json" }, signal: controller.signal
-      });
-      if (!response.ok) return;
-      const data = await response.json();
-      if (data.meaning !== "registered_alert_cases_in_last_24_hours_not_unread" ||
-          data.period_hours !== 24 || !data.counts) return;
-      const counts = data.counts;
-      if (!["ssh", "preauth", "network", "sudo", "alerts"].every(
-        key => Number.isSafeInteger(counts[key]) && counts[key] >= 0
-      )) return;
-
-      for (const link of navAlertLinks) {
-        const count = counts[link.dataset.alertSection];
-        const marker = link.querySelector(".nav-warning");
-        if (!marker) continue;
-        const baseLabel = link.querySelector("span")?.textContent || "";
-        marker.hidden = count === 0;
-        if (count > 0) {
-          const noun = count === 1 ? "registreret alarmforløb" : "registrerede alarmforløb";
-          const detail = `${baseLabel}: ${count} ${noun} de seneste 24 timer`;
-          link.title = detail;
-          link.setAttribute("aria-label", detail);
-        } else {
-          link.removeAttribute("title");
-          link.removeAttribute("aria-label");
-        }
-      }
-    } catch (_error) {
-      // Never turn a failed or missing API response into a false zero.
-    } finally {
-      clearTimeout(timeout);
-      navAlertsInFlight = false;
-    }
-  }
-  if (navAlertLinks.length) {
-    refreshNavWarnings();
-    const navAlertTimer = setInterval(refreshNavWarnings, 15000);
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) refreshNavWarnings();
-    });
-    window.addEventListener("pagehide", () => clearInterval(navAlertTimer), { once: true });
-  }
+  window.YggdrasilNavAlerts?.start(document, window);
 
   const chart = document.getElementById("activity-chart");
   if (!chart) return;
