@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
 import stat
 from dataclasses import replace
@@ -85,9 +84,8 @@ def test_persist_normalized_events_without_raw_journal_or_names(private_store):
         row = db.execute("SELECT event_id FROM sudo_signals ORDER BY timestamp LIMIT 1").fetchone()
         assert row[0] == event_id(item)
         assert not {"MESSAGE", "COMMAND", "raw_json", "cursor", "username"} & columns
-        assert "private-journal-cursor" not in json.dumps(db.execute(
-            "SELECT * FROM sudo_signals"
-        ).fetchall())
+        persisted_rows = [tuple(row) for row in db.execute("SELECT * FROM sudo_signals")]
+        assert "private-journal-cursor" not in json.dumps(persisted_rows)
 
 
 def test_candidate_insert_is_atomic_and_idempotent(private_store):
