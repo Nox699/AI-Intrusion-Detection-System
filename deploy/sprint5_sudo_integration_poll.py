@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """One-shot rule integration and independent frozen-ML shadow snapshot.
 
-This is deployment preparation, not an installer. Never starts another
+Runs under the installed minute timer, not as an installer. Never starts another
 notifier, opens a network connection, migrates a DB or changes a model.
 """
 

@@ -1,7 +1,6 @@
 [Unit]
 Description=Yggdrasil sudo rule alarms and frozen ML shadow snapshot
 After=yggdrasil-sudo-shadow.service yggdrasil-collector.service
-ConditionPathExists=/var/lib/yggdrasil-sudo-integration-private/mixed_full-model.json
 
 [Service]
 Type=oneshot
@@ -26,7 +25,8 @@ ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 RestrictAddressFamilies=AF_UNIX
-ReadOnlyPaths=/var/lib/yggdrasil-sudo-shadow /var/lib/yggdrasil-sudo-integration-private
+# A missing shadow model must not block production rule alarms.
+ReadOnlyPaths=/var/lib/yggdrasil-sudo-shadow -/var/lib/yggdrasil-sudo-integration-private
 ReadWritePaths=/var/lib/yggdrasil-ids /var/lib/yggdrasil-sudo-public
 MemoryMax=768M
 TasksMax=64

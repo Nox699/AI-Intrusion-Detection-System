@@ -1,10 +1,17 @@
 # Sudo: rule alarms and frozen ML in shadow
 
-Status: implementation and coordinated Pi deployment runner. The read-only
-preflight was run on Yggdrasil and confirmed all three production roles use
-schema4 with no source overrides; the private source checkpoint was fresh and
-the frozen 1100-row mixed model hash/version matched. Activation still requires
-running the pinned `deploy/sprint5_sudo_integration_install_pi.sh` on the Pi.
+Status on Yggdrasil, 3 November 2026: schema5 integration was deployed from
+`9ced7d60ab7b6776af95a12e83596683e04676ae`. The controlled live probe passed:
+three rejected sudo processes produced one registered rule alarm and a matching
+Discord acknowledgement. The frozen mixed model runs in shadow and emitted no
+ML alarm. The separate web update at
+`614579ca2ab6fb246c363a8a95dc9a15a7135db3` is installed; the user confirmed its
+navigation warning clears after viewing the relevant section.
+
+The final unit-only reliability fix is prepared in this branch; its Pi
+activation remains a separate step. See [sudo operations](SUDO_OPERATIONS.md)
+for the finish runner, operating limits and exam evidence. This branch has not
+been merged into `main`; repository-wide consolidation is separate work.
 
 ## Behavior after coordinated deployment
 
@@ -161,8 +168,24 @@ wrong process manifests, ambiguous outbox mapping, background failures, missing
 ML positions, independent rule delivery during a temporary shadow export failure,
 and stopping after an unexpected command outcome. The reused frozen invocation
 tests also pass. A broad run before that final independent-shadow check passed
-861 tests with the same 14 root-incompatible exclusions; live Pi results remain
-a separate acceptance step.
+861 tests with the same 14 root-incompatible exclusions.
+
+### Observed live acceptance, 3 November 2026
+
+The user ran the pinned probe at
+`24a0b206edfe3f690bdf70e2efc35dd3117850cb`. It reported three matched failed
+processes in one parser group, one candidate, no other failed processes in the
+rule context, and alarm **4** with three processes. The unambiguous outbox
+reference was `7ed92c291071761580e50cbbebbcfb39`; the existing notifier recorded
+its Discord acknowledgement and the user supplied the corresponding Discord
+notification screenshot. The private source completed beyond the probe end.
+
+All three ML positions matched the probe and two were flagged in shadow by
+`sudo-if-15207a3b77b40fe2`. This is a separate episode from the earlier frozen
+prospective experiment (one flag among three). Neither result establishes
+population recall/FPR. The live rule, registration, outbox and Discord path is
+verified for this one controlled authentication-failure episode; the permission
+denial rule has not received a separate live acceptance claim.
 
 ## Evidence for the exam
 

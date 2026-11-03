@@ -1,12 +1,12 @@
 """Private, opt-in SQLite staging store for *normalized* sudo signals only.
 
-This module is deliberately NOT installed as a running service or wired into
-the existing Yggdrasil IDS SQLite database, notifier or dashboard.
+The separate journal poll owns this store. The live bridge imports only
+redacted rule evidence into the production IDS; web reads anonymous exports.
 
 Never persist sudo MESSAGE/COMMAND, raw journal JSON, username, or journal
 cursor: only a cursor hash, timestamps, coarse category and numeric metadata
-needed for future grouping. The entire database belongs to a private worker-
-owned directory; no web process is granted access at this stage.
+needed for process grouping. The entire database belongs to a private worker-
+owned directory; no web process is granted access.
 """
 
 from __future__ import annotations

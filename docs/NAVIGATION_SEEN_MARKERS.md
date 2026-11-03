@@ -58,4 +58,8 @@ observe its return on a subsequent new or updated registered alarm.
 Validation: 865 Python tests passed with the 14 existing root-incompatible
 worker tests deselected, and all 9 Node interaction tests passed. Workflow
 lint/format, JavaScript/shell syntax and both inline Python blocks passed.
-Pi activation remains a separate web-only acceptance step.
+The user installed `614579ca2ab6fb246c363a8a95dc9a15a7135db3` on the Pi and
+confirmed the warning triangles disappear after refreshing and viewing the
+section. The initial two connection-refused errors were health-check retries
+while Gunicorn started; the installer subsequently passed. Return of a warning
+on a later new/updated case remains a separate browser acceptance observation.

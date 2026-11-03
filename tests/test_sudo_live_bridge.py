@@ -183,6 +183,27 @@ def test_model_failure_does_not_block_rules_or_expose_private_exception(
     assert "private-username" not in json.dumps(result)
 
 
+@pytest.mark.parametrize("model_state", ["missing_file", "missing_directory", "corrupt_file"])
+def test_actual_missing_or_corrupt_model_keeps_rule_delivery_idempotent(
+    setup_bridge, poll_module, tmp_path, model_state
+):
+    repo, source = setup_bridge
+    arm_rules(repo, now=NOW - 100)
+    candidate(source, 1, NOW - 50)
+    model = tmp_path / "model-private" / "mixed_full-model.json"
+    if model_state != "missing_directory":
+        model.parent.mkdir(mode=0o700)
+    if model_state == "corrupt_file":
+        model.write_text("private-training-data-corrupt")
+        model.chmod(0o400)
+    for _ in range(2):
+        result = poll_module.run_once(repo, source.path, model, now=NOW, retention_seconds=86400)
+        assert result["rules"]["state"] == "active"
+        assert result["ml"]["state"] == "unavailable"
+        assert counts(repo) == (1, 1, 1)
+        assert "private-training-data" not in json.dumps(result)
+
+
 def test_atomic_publication_rejects_symlink_and_preserves_previous_snapshot(tmp_path, poll_module):
     folder = tmp_path / "public"
     folder.mkdir(mode=0o750)
