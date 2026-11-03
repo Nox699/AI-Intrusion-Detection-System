@@ -1125,3 +1125,45 @@ og terminal-JSON med `mode=real_discord`,
 Gem originaler lokalt og vælg senere.
 Ingen credentials/webhook-URL på billeder.
 Se `docs/SCREENSHOT_CANDIDATES.md`.
+
+### Manuel Pi-test af virkelig Discord-transport – gated runner, ikke udsendt endnu
+
+`deploy/sprint5_sudo_discord_pi_lab_send.sh` er en
+**manuelt aktiveret** wrapper. Den verificerer en
+fast Git-SHA, at `yggdrasil-notifier.service`
+er aktiv, og at testkode kun kommer fra en
+verificeret udviklingscommit. Først køres
+`sprint5_sudo_discord_delivery_smoketest.py`
+offline med en falsk afsender og en ny privat
+SQLite-outbox. Derefter kræves den **eksakte**
+terminalbekræftelse `SEND`.
+
+Ved bekræftelse starter wrapperen en **enkelt kortvarig
+systemd-unit**, under `yggdrasil-notifier` og med
+`LoadCredential` fra den eksisterende lokale
+webhook. Unitten bruger en række sandbox-properties,
+en privat temp-SQLite og afsluttes efter præcis
+én meddelelse til Discord (eller fejl).
+Ingen produktionsservice genstartes, og hverken
+VM'en, SSH/UFW eller den aktive SQLite får
+skriverettigheder til webhooken. Kun testkoden,
+udtrukket til en kortvarig læsbar `/tmp`-mappe,
+kører i transient testunit; mappen slettes bagefter.
+
+**Vigtigt metodisk skel:** Det sendte event er
+**syntetisk, men alarmformatet og Discord-leveringen
+er rigtige**. Discord-beskedens serverfelt er
+`Yggdrasil – SUDO LABTEST (ikke produktionsalarm)`.
+Denne prøve beviser *ikke* automatisk
+VM-attack → Yggdrasil-prod-alarm → Discord.
+Det kræver en senere særskilt integration med
+autoriseret kilde, dedup/checkpoint, persistence og
+rollback.
+
+**Screenshot S5-07:** Gem eventuelt både den rigtige
+Discord-besked med `SUDO LABTEST` og terminalens
+`mode=real_discord`, `notifier_acknowledged=1`,
+`temporary_databases_deleted=true`. Undlad
+webhook-URL og andre hemmeligheder. Der kan
+gemmes flere kandidater; kun de stærkeste skal
+udvælges til selve eksamensrapporten.
