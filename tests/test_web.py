@@ -641,6 +641,11 @@ def test_network_charts_js_limits_visible_ports():
     assert 'labels.push("Øvrige porte")' in script
     assert "/api/network-charts?hours=" in script
     assert "newPlot(ports" in script
+    # An empty TCP SYN filter must not render fabricated year-2000 axis dates,
+    # even when the firewall table has valid UDP or other traffic.
+    assert "visible: rows.length > 0" in script
+    assert "visible: labels.length > 0" in script
+    assert "Ingen loggede blokerede SYN-pakker i perioden" in script
 
 
 def test_authenticated_network_page_displays_firewall_history_and_scan_alert(configured, client):
