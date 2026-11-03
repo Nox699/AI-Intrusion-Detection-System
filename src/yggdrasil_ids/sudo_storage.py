@@ -24,7 +24,7 @@ from typing import Iterator
 
 from .sudo_rules import KINDS, SudoRuleMatch, SudoSignal
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DETECTOR_IDS = frozenset({"sudo.repeated_auth_failure", "sudo.permission_denied"})
 _BOOT = re.compile(r"[0-9a-fA-F]{32}\Z")
 _DIGITS = re.compile(r"[0-9]+\Z")
@@ -48,6 +48,15 @@ CREATE TABLE IF NOT EXISTS sudo_candidates (
   PRIMARY KEY (event_id,detector_id)
 );
 CREATE INDEX IF NOT EXISTS sudo_candidates_time ON sudo_candidates(timestamp);
+-- Store ONLY the maximum committed event timestamp, not a raw journald cursor.
+-- This permits timestamp-overlap replay without persisting the private cursor.
+CREATE TABLE IF NOT EXISTS sudo_checkpoint (
+  id INTEGER PRIMARY KEY CHECK(id=1),
+  last_committed_timestamp REAL NOT NULL
+);
+-- Safe migration of any pre-existing private schema-v1 staging DB.
+INSERT OR IGNORE INTO sudo_checkpoint(id,last_committed_timestamp)
+SELECT 1,MAX(timestamp) FROM sudo_signals HAVING COUNT(*)>0;
 """
 
 
@@ -140,7 +149,7 @@ class SudoStagingStore:
         db = self._connect()
         try:
             version = db.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, SCHEMA_VERSION):
+            if version not in (0, 1, SCHEMA_VERSION):
                 raise ValueError("Unsupported private sudo schema; do not overwrite")
             db.execute("PRAGMA journal_mode=DELETE")
             db.execute("PRAGMA synchronous=FULL")
@@ -208,7 +217,40 @@ class SudoStagingStore:
                         candidate.count,
                     ),
                 )
+            # Commit watermark and signal/candidate in the SAME transaction.
+            # A failed candidate insert must not advance restart replay.
+            db.execute(
+                "INSERT INTO sudo_checkpoint(id,last_committed_timestamp) VALUES(1,?) "
+                "ON CONFLICT(id) DO UPDATE SET "
+                "last_committed_timestamp=MAX(last_committed_timestamp,excluded.last_committed_timestamp)",
+                (signal.timestamp,),
+            )
         return True
+
+    def resume_since(self, overlap_seconds: int = 300) -> float | None:
+        """Safe best-effort timestamp replay boundary, not a journal cursor.
+
+        The overlap must include the rule window AND cooldown. Dedupe is
+        journal-cursor-hash based. A missing/rotated journald segment or large
+        clock jump can still cause a gap: no exactly-once guarantee is claimed.
+        """
+        self._require_ready()
+        if type(overlap_seconds) is not int or not 60 <= overlap_seconds <= 7200:
+            raise ValueError("Invalid restart overlap duration")
+        db = self._connect()
+        try:
+            row = db.execute(
+                "SELECT last_committed_timestamp FROM sudo_checkpoint WHERE id=1"
+            ).fetchone()
+        finally:
+            db.close()
+        if row is None:
+            return None
+        timestamp = float(row[0])
+        if not math.isfinite(timestamp) or not 0 <= timestamp < 4_102_444_800:
+            raise ValueError("Corrupt private sudo checkpoint")
+        # One extra second avoids missing same-second timestamps due to --since rounding.
+        return max(0.0, timestamp - overlap_seconds - 1.0)
 
     def prune(self, before_timestamp: float) -> int:
         self._require_ready()
