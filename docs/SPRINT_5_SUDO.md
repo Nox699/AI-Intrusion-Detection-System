@@ -1435,3 +1435,57 @@ fryses udviklingen af nye IDS-sensorkilder;
 FIM/filintegritet og ekstra ML udskydes til
 efter eksamen. Prioritér evaluering af regler,
 Isolation Forest og falske positiver i rapporten.
+
+### Pi-accept: manuel sudo-shadow systemd-oneshot bestået (3. november 2026)
+
+Efter installation af root-ejet kode og systemd-units fra
+pinned kildecommit `6b662fe07c85b2c4caa34129c8cac0f2146b9b80`
+rapporterede ejeren:
+
+- Installation: `shadow code and units staged successfully`,
+  `Shadow timer started: NO`, `Shadow timer enabled: NO`.
+- **Manuel** `systemctl start yggdrasil-sudo-shadow.service`
+  gennemførtes med `Result=success`, `ExecMainStatus=0`,
+  `ActiveState=inactive` (*forventet* for oneshot).
+- Faktisk worker-ejet sudo-poll:
+  `mode=shadow`, `journal_rows_read=54`,
+  `new_normalized_sudo_rows=54`,
+  `overlap_duplicates_skipped=0`,
+  `previous_checkpoint_present=false`.
+- De 54 poster fordelte sig i
+  **18 `command_invoked`**,
+  **18 `pam_session_opened`** og
+  **18 `pam_session_closed`**.
+  **0** `pam_auth_failure`,
+  **0** `incorrect_password`,
+  **0** `not_in_sudoers`,
+  **0** kandidatmatch af begge sudo-regler.
+- `private_staging_summary.persisted_log_rows=54`,
+  `private_database_only=true`,
+  `production_database_modified=false`,
+  `discord_alerts_sent=0`.
+- Shadow timeren var fortsat **`inactive`**.
+
+**Accept:** En reel, vellykket systemd-start med journaladgang
+og privat persistering af 54 normale sudo-poster er
+demonstreret. Dette er **ikke** dokumentation for en
+aktiv vedvarende timer, længere oppetid eller en
+automatisk Discord-alarm fra sudo.
+
+**Screenshot S5-11:** Gem et billede med
+`Result=success`, `ExecMainStatus=0`,
+`journal_rows_read=54`, `mode=shadow`,
+`discord_alerts_sent=0` og eventuelt
+`timer=inactive`. Screenshotfilen er endnu
+ikke gennemgået her.
+
+**Næste, særskilt aktiveringsgate:** Kør den pinned
+`deploy/sprint5_sudo_shadow_activate_pi.sh`
+fra **den installerede commit `6b662fe07...`**.
+Den kontrollerer kildens integritet,
+gennemfører endnu en oneshot, og først derefter
+`systemctl enable --now` for den isolerede
+sudo-shadow-timer. Ved fejl kan timeren stoppes med
+`sudo systemctl disable --now yggdrasil-sudo-shadow.timer`.
+Der sker ingen tilsigtet ændring af produktions-SSH,
+UFW, ML, web eller notifier.
