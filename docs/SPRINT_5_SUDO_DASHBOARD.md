@@ -95,8 +95,8 @@ viser da korrekt status **ikke tilgængelig**.
 
 ## Acceptance og screenshots
 
-- [ ] CI grøn for de påkrævede Python-versioner.
-- [ ] Eksportservice og timer aktiv, webkonto kan læse
+- [x] CI grøn for Python 3.11 og 3.13 ved commit `02de116b4a2a90435b4135e220be8371687c2576`.
+- [x] Eksportservice og timer aktiv, webkonto kan læse
       anonym fil og ikke privat sudo-SQLite.
 - [ ] Preview-port 8766 viser Sudo-siden bag login.
 - [ ] Siden viser ægte checkpoint og tællinger,
@@ -118,3 +118,22 @@ HTTP. Produktions-sudo er stadig **regler i shadow-mode**;
 Isolation Forest sammenlignes i laboratoriet.
 Der er endnu ingen dokumenteret langtids-FPR
 eller automatisk sudo→Discord-detektion.
+
+
+## Første aktivering af anonym eksport (ejerens terminaloutput 3. november 2026)
+
+Efter stagen af den pinned eksportør rapporterede ejeren:
+`PASS: sudo UI exporter staged; service and timer NOT started/enabled`.
+Efter særskilt aktivering rapporterede scriptet:
+`PASS: Web user can read only safe anonymous sudo summary`,
+checkpoint `1793704743.288613`, **126** sudo-logposter i
+seneste 24 timer, **0** regelkandidater og
+`PASS: Anonymous sudo dashboard export ACTIVE`.
+`systemctl list-timers` viste næste planlagte eksport
+**2026-11-03 12:19:50 CET**. En første aktiv timer
+viser planlægning, ikke endnu langtidspålidelighed.
+Ingen genstart af produktions-web/SSH/UFW/Discord blev udført.
+
+**Næste gated trin:** Stage den nye webkode til separat
+loopback-forhåndsvisning 8766. Den installerede
+webtjeneste på 8765 er stadig uændret.
