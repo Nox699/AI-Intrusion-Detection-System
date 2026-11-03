@@ -51,8 +51,8 @@
         const baseLabel = link.querySelector("span")?.textContent || "";
         marker.hidden = count === 0;
         if (count > 0) {
-          const suffix = count === 1 ? "alarmforløb" : "alarmforløb";
-          const detail = `${baseLabel}: ${count} registrerede ${suffix} de seneste 24 timer`;
+          const noun = count === 1 ? "registreret alarmforløb" : "registrerede alarmforløb";
+          const detail = `${baseLabel}: ${count} ${noun} de seneste 24 timer`;
           link.title = detail;
           link.setAttribute("aria-label", detail);
         } else {
