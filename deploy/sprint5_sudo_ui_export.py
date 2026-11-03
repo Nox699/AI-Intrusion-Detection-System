@@ -91,9 +91,7 @@ def build_summary(database: Path, *, now: float | None = None) -> dict:
 
         start = now - 86400
         total = _count(db.execute("SELECT COUNT(*) FROM sudo_signals").fetchone()[0])
-        total_matches = _count(
-            db.execute("SELECT COUNT(*) FROM sudo_candidates").fetchone()[0]
-        )
+        total_matches = _count(db.execute("SELECT COUNT(*) FROM sudo_candidates").fetchone()[0])
         recent = _count(
             db.execute(
                 "SELECT COUNT(*) FROM sudo_signals WHERE timestamp > ? AND timestamp <= ?",
@@ -150,9 +148,9 @@ def publish(summary: dict, target: Path) -> None:
             or stat.S_IMODE(existing.st_mode) & 0o137
         ):
             raise PermissionError("Refusing unsafe existing public summary")
-    encoded = json.dumps(
-        summary, sort_keys=True, separators=(",", ":"), allow_nan=False
-    ).encode("utf-8")
+    encoded = json.dumps(summary, sort_keys=True, separators=(",", ":"), allow_nan=False).encode(
+        "utf-8"
+    )
     if len(encoded) > 12_288:
         raise ValueError("Sudo public summary is unexpectedly large")
     temporary = None
