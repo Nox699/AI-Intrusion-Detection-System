@@ -791,7 +791,7 @@ def test_sudo_page_displays_only_anonymized_worker_export(app, client, tmp_path)
     assert "Aktuel eksport" in text
     assert "105" in text
     assert "15" in text
-    assert "Shadow-mode" in text
+    assert "Shadow-status" in text
     assert "Ingen automatiske sudo-alarmer" in text
     assert "Reglerne fandt 24 af 32" in text
     assert "sudo-if-4f95328112e7423b" in text

@@ -24,8 +24,8 @@
 {% else %}
 <div class="notice info">
   {{ icon('shield',20) }}
-  <div><strong>Shadow-mode · Ingen automatiske sudo-alarmer</strong>
-  <span>Sudo analyseres uafhængigt af SSH og UFW. Denne visning viser kun anonymiserede tællinger. Regelkandidater i shadow-databasen sendes ikke til Discord eller den almindelige alarmoversigt.</span></div>
+  <div><strong>Shadow-status · Ingen automatiske sudo-alarmer bekræftet</strong>
+  <span>Der er ingen gyldig status for alarmoverførsel. Regelsensorens fund vises nedenfor; kontrollér integrationens status for at bekræfte, om nye fund overføres til alarmoversigten og notifikationskøen.</span></div>
 </div>
 {% endif %}
 
@@ -84,7 +84,7 @@
   <article class="metric">
     <div class="metric-top"><span>Regelkandidater</span><span class="metric-icon violet">{{ icon('shield',19) }}</span></div>
     <strong>{{ sudo.recent_candidates|number }}</strong>
-    <span class="metric-caption">Mulige mønstre, ikke bekræftede angreb eller udsendte alarmer</span>
+    <span class="metric-caption">Fund fra regelsensoren · registrerede alarmforløb vises særskilt</span>
   </article>
 </div>
 {% endif %}

@@ -1,8 +1,10 @@
 # Sudo: rule alarms and frozen ML in shadow
 
-Status: implementation and read-only Pi preflight. Nothing in this change
-installs, migrates, arms or starts production automatically. The only Pi runner
-provided at this stage is `deploy/sprint5_sudo_integration_preflight_pi.sh`.
+Status: implementation and coordinated Pi deployment runner. The read-only
+preflight was run on Yggdrasil and confirmed all three production roles use
+schema4 with no source overrides; the private source checkpoint was fresh and
+the frozen 1100-row mixed model hash/version matched. Activation still requires
+running the pinned `deploy/sprint5_sudo_integration_install_pi.sh` on the Pi.
 
 ## Behavior after coordinated deployment
 
@@ -32,7 +34,7 @@ processes; unreadable or stale sources produce unavailable status.
 The saved JSON model reconstructs the forest using its saved normal training
 rows. New live observations never enter training or threshold calibration.
 
-Frozen mixed artifact, copied privately during future deployment:
+Frozen mixed artifact, copied privately during deployment:
 
 - Version: `sudo-if-15207a3b77b40fe2`
 - SHA256: `5839076103232763379a2ae401ee1590b39d22cb28e31ea272fe7ced539bf370`
@@ -58,14 +60,45 @@ and frozen model hash/version. It never prints webhook credentials, complete
 unit environments, log records, training vectors or raw config contents. It
 does not stop services, migrate, arm, copy a model or send a notification.
 
-After its output is reviewed, deployment needs a versioned root-owned source
-snapshot; backups of the production DB and all affected role overrides; a
-coordinated service stop/migration/restart; a privately installed frozen model;
-an explicit activation time; and a verified integration timer. Preserve the
-existing notifier delivery state throughout. Rollback must restore both the
-schema-compatible DB backup and the matching role source/overrides together.
-The new integration service and timer files are preparation, not activation
-instructions.
+The installer rechecks these runtime assumptions, stages a root-owned source
+overlay for all three roles, copies the frozen model into worker-private state,
+and validates configuration, existing SSH model loading, sudo model identity
+and web privacy as the actual service accounts before stopping production.
+It then stops the roles together, makes a root-private SQLite backup, adds
+coordinated source overrides, migrates to schema5 as the worker, and verifies
+fingerprints of every pre-existing table including the outbox and its identity.
+The existing venv, configuration and notifier delivery database are preserved.
+There is no pip install, credential rotation or notifier bootstrap.
+
+After role access, service health and the login page are verified, the installer
+records the activation boundary and runs the integration service once. It
+checks the anonymous snapshot as the web account, then enables the new minute
+timer. The updated dashboard is served on production port **8765**. A previously
+started manual preview on 8766 uses its old source and is separate. The installer
+does not generate controlled sudo failures or test notifications.
+
+Automatic recovery stops the integration and production roles together. When
+no sudo alarm evidence exists, it removes the schema5-only empty table and
+activation state, returns all roles to their original installed source, and
+restarts them. It preserves current SSH/UFW records and outbox contents, including
+activity added after the upgrade; it does **not** restore a stale DB image over
+live history or replace notifier delivery state. The offline backup remains
+available for separate disaster recovery.
+
+If a genuine sudo alarm was already committed, automatic recovery disables the
+integration while retaining the compatible schema5 source and its evidence.
+Manual rollback likewise refuses to discard new sudo evidence and requires a
+forward repair. With no sudo evidence and unchanged integration overrides, use
+the same pinned runner with a second argument `rollback`:
+
+```bash
+bash <(git show "$sha:deploy/sprint5_sudo_integration_install_pi.sh") "$sha" rollback
+```
+
+The runner refuses existing integration paths/backups instead of overwriting
+an earlier installation. The normal installation needs a brief coordinated
+restart of collector, web and notifier; the private sudo poll/export timers
+continue independently.
 
 ## Evidence for the exam
 
@@ -83,9 +116,17 @@ historical and are not live model performance measurements.
 
 ## Development validation
 
-The integration storage/bridge/ML/preflight/web tests pass: 69 tests. The broader
-suite passes 831 tests with 14 pre-existing worker-only tests deselected because
-this executor runs as root and cannot change UID. Their production root guards
-are unchanged. Ruff lint/format, Python compilation, shell syntax and JavaScript
-syntax checks pass. Actual installed Pi paths and service compatibility still
-require the read-only preflight; no deployment or live delivery is claimed.
+The integration storage/bridge/ML/preflight/web tests pass, with additional
+deployment tests covering a successful coordinated release, new SSH activity
+during failed activation, preservation of current outbox/delivery history,
+private umask permissions, pre-start validation failure and refusal to discard
+sudo evidence. The executor runs as root and cannot change UID; the 14
+pre-existing worker-only tests are excluded from its broad run. Their production
+root guards are unchanged. Ruff lint/format, Python compilation, shell syntax
+and JavaScript syntax checks are required. Actual Pi installation and live
+delivery are verified separately; preparation is not deployment evidence.
+
+The deployment revision passed 839 tests with those 14 root-incompatible tests
+deselected. The complete workflow lint/format commands and new shell/Python
+syntax checks passed. Production service execution remains a Pi acceptance
+step, rather than something simulated tests can establish.
