@@ -1,0 +1,678 @@
+{
+  "benign_stress_holdout": {
+    "flagged_by_scenario_type": {
+      "normal_corrected_double_typo": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 29,
+        "original_if": 29,
+        "original_rules": 0,
+        "scenarios": 50,
+        "simple_long_rule": 0
+      },
+      "normal_successful_automation": {
+        "candidate_hybrid": 50,
+        "candidate_if_with_policy": 50,
+        "original_hybrid": 50,
+        "original_if": 50,
+        "original_rules": 0,
+        "scenarios": 50,
+        "simple_long_rule": 0
+      }
+    },
+    "metrics": {
+      "candidate_hybrid": {
+        "false_positive_rate": 0.5,
+        "fn": 0,
+        "fp": 50,
+        "recall": null,
+        "tn": 50,
+        "tp": 0
+      },
+      "candidate_if_with_policy": {
+        "false_positive_rate": 0.5,
+        "fn": 0,
+        "fp": 50,
+        "recall": null,
+        "tn": 50,
+        "tp": 0
+      },
+      "original_hybrid": {
+        "false_positive_rate": 0.79,
+        "fn": 0,
+        "fp": 79,
+        "recall": null,
+        "tn": 21,
+        "tp": 0
+      },
+      "original_if": {
+        "false_positive_rate": 0.79,
+        "fn": 0,
+        "fp": 79,
+        "recall": null,
+        "tn": 21,
+        "tp": 0
+      },
+      "original_rules": {
+        "false_positive_rate": 0.0,
+        "fn": 0,
+        "fp": 0,
+        "recall": null,
+        "tn": 100,
+        "tp": 0
+      },
+      "simple_long_rule": {
+        "false_positive_rate": 0.0,
+        "fn": 0,
+        "fp": 0,
+        "recall": null,
+        "tn": 100,
+        "tp": 0
+      }
+    },
+    "normal_scenarios": 100,
+    "suspicious_scenarios": 0
+  },
+  "candidate_validation_results": [
+    {
+      "feature_count": 7,
+      "required_consecutive": 1,
+      "threshold": 0.6642714434962932,
+      "thresholds_examined": 129,
+      "validation": {
+        "false_positive_rate": 0.0,
+        "fn": 27,
+        "fp": 0,
+        "recall": 0.15625,
+        "tn": 32,
+        "tp": 5
+      },
+      "variant": "original_clock"
+    },
+    {
+      "feature_count": 7,
+      "required_consecutive": 2,
+      "threshold": 0.6415039178415952,
+      "thresholds_examined": 93,
+      "validation": {
+        "false_positive_rate": 0.0,
+        "fn": 14,
+        "fp": 0,
+        "recall": 0.5625,
+        "tn": 32,
+        "tp": 18
+      },
+      "variant": "original_clock"
+    },
+    {
+      "feature_count": 5,
+      "required_consecutive": 1,
+      "threshold": 0.6368030913958957,
+      "thresholds_examined": 20,
+      "validation": {
+        "false_positive_rate": 0.0,
+        "fn": 32,
+        "fp": 0,
+        "recall": 0.0,
+        "tn": 32,
+        "tp": 0
+      },
+      "variant": "counts_300"
+    },
+    {
+      "feature_count": 5,
+      "required_consecutive": 2,
+      "threshold": 0.6347562256248873,
+      "thresholds_examined": 20,
+      "validation": {
+        "false_positive_rate": 0.0,
+        "fn": 8,
+        "fp": 0,
+        "recall": 0.75,
+        "tn": 32,
+        "tp": 24
+      },
+      "variant": "counts_300"
+    },
+    {
+      "feature_count": 10,
+      "required_consecutive": 1,
+      "threshold": 0.6364665770158233,
+      "thresholds_examined": 22,
+      "validation": {
+        "false_positive_rate": 0.0,
+        "fn": 32,
+        "fp": 0,
+        "recall": 0.0,
+        "tn": 32,
+        "tp": 0
+      },
+      "variant": "counts_300_900"
+    },
+    {
+      "feature_count": 10,
+      "required_consecutive": 2,
+      "threshold": 0.6346208753448808,
+      "thresholds_examined": 23,
+      "validation": {
+        "false_positive_rate": 0.0,
+        "fn": 8,
+        "fp": 0,
+        "recall": 0.75,
+        "tn": 32,
+        "tp": 24
+      },
+      "variant": "counts_300_900"
+    },
+    {
+      "feature_count": 11,
+      "required_consecutive": 1,
+      "threshold": 0.6620889454417107,
+      "thresholds_examined": 53,
+      "validation": {
+        "false_positive_rate": 0.0,
+        "fn": 32,
+        "fp": 0,
+        "recall": 0.0,
+        "tn": 32,
+        "tp": 0
+      },
+      "variant": "counts_300_900_gap"
+    },
+    {
+      "feature_count": 11,
+      "required_consecutive": 2,
+      "threshold": 0.6452835396203574,
+      "thresholds_examined": 51,
+      "validation": {
+        "false_positive_rate": 0.0,
+        "fn": 16,
+        "fp": 0,
+        "recall": 0.5,
+        "tn": 32,
+        "tp": 16
+      },
+      "variant": "counts_300_900_gap"
+    }
+  ],
+  "confirmation_is_separate_alert_policy": true,
+  "dataset_sha256": {
+    "fresh": "b31d588bc421c2ece135d8a95fff4dc36b9d14af2febdc63d4f136e2847d3145",
+    "historical": "97dde6f737e9f11820dbd34585601dc8004ec44a99d969410c7f2ee408c1c682",
+    "stress": "b82423cebd136f980150a8dc902ffd9eaaf4bd87621c70508cb1435db61f9c6d",
+    "training": "c2b7f96bec0f78549c5d9b01a12aa34697df1bba6815c80fe56c22d906c31dc7",
+    "validation": "4b1f54b0a29ce124a8dff7c98efe09b761f826bb3715401d71a7b57fba07ff33"
+  },
+  "discord_messages_sent": 0,
+  "fresh_seed_holdout": {
+    "flagged_by_scenario_type": {
+      "mixed_auth_denial": {
+        "candidate_hybrid": 100,
+        "candidate_if_with_policy": 100,
+        "original_hybrid": 100,
+        "original_if": 76,
+        "original_rules": 100,
+        "scenarios": 100,
+        "simple_long_rule": 100
+      },
+      "normal_busy": {
+        "candidate_hybrid": 21,
+        "candidate_if_with_policy": 21,
+        "original_hybrid": 13,
+        "original_if": 13,
+        "original_rules": 0,
+        "scenarios": 100,
+        "simple_long_rule": 0
+      },
+      "normal_maintenance": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 0,
+        "original_if": 0,
+        "original_rules": 0,
+        "scenarios": 100,
+        "simple_long_rule": 0
+      },
+      "normal_quiet": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 0,
+        "original_if": 0,
+        "original_rules": 0,
+        "scenarios": 100,
+        "simple_long_rule": 0
+      },
+      "normal_spaced": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 0,
+        "original_if": 0,
+        "original_rules": 0,
+        "scenarios": 100,
+        "simple_long_rule": 0
+      },
+      "normal_typo": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 56,
+        "original_if": 56,
+        "original_rules": 0,
+        "scenarios": 100,
+        "simple_long_rule": 0
+      },
+      "slow_auth_failure": {
+        "candidate_hybrid": 100,
+        "candidate_if_with_policy": 100,
+        "original_hybrid": 66,
+        "original_if": 66,
+        "original_rules": 0,
+        "scenarios": 100,
+        "simple_long_rule": 100
+      },
+      "sudo_auth_burst": {
+        "candidate_hybrid": 100,
+        "candidate_if_with_policy": 100,
+        "original_hybrid": 100,
+        "original_if": 62,
+        "original_rules": 100,
+        "scenarios": 100,
+        "simple_long_rule": 100
+      },
+      "sudoers_denial": {
+        "candidate_hybrid": 100,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 100,
+        "original_if": 0,
+        "original_rules": 100,
+        "scenarios": 100,
+        "simple_long_rule": 100
+      }
+    },
+    "metrics": {
+      "candidate_hybrid": {
+        "false_positive_rate": 0.042,
+        "fn": 0,
+        "fp": 21,
+        "recall": 1.0,
+        "tn": 479,
+        "tp": 400
+      },
+      "candidate_if_with_policy": {
+        "false_positive_rate": 0.042,
+        "fn": 100,
+        "fp": 21,
+        "recall": 0.75,
+        "tn": 479,
+        "tp": 300
+      },
+      "original_hybrid": {
+        "false_positive_rate": 0.138,
+        "fn": 34,
+        "fp": 69,
+        "recall": 0.915,
+        "tn": 431,
+        "tp": 366
+      },
+      "original_if": {
+        "false_positive_rate": 0.138,
+        "fn": 196,
+        "fp": 69,
+        "recall": 0.51,
+        "tn": 431,
+        "tp": 204
+      },
+      "original_rules": {
+        "false_positive_rate": 0.0,
+        "fn": 100,
+        "fp": 0,
+        "recall": 0.75,
+        "tn": 500,
+        "tp": 300
+      },
+      "simple_long_rule": {
+        "false_positive_rate": 0.0,
+        "fn": 0,
+        "fp": 0,
+        "recall": 1.0,
+        "tn": 500,
+        "tp": 400
+      }
+    },
+    "normal_scenarios": 500,
+    "suspicious_scenarios": 400
+  },
+  "historical_test_descriptive_only": {
+    "flagged_by_scenario_type": {
+      "mixed_auth_denial": {
+        "candidate_hybrid": 8,
+        "candidate_if_with_policy": 8,
+        "original_hybrid": 8,
+        "original_if": 3,
+        "original_rules": 8,
+        "scenarios": 8,
+        "simple_long_rule": 8
+      },
+      "normal_busy": {
+        "candidate_hybrid": 2,
+        "candidate_if_with_policy": 2,
+        "original_hybrid": 1,
+        "original_if": 1,
+        "original_rules": 0,
+        "scenarios": 6,
+        "simple_long_rule": 0
+      },
+      "normal_maintenance": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 0,
+        "original_if": 0,
+        "original_rules": 0,
+        "scenarios": 7,
+        "simple_long_rule": 0
+      },
+      "normal_quiet": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 0,
+        "original_if": 0,
+        "original_rules": 0,
+        "scenarios": 7,
+        "simple_long_rule": 0
+      },
+      "normal_spaced": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 0,
+        "original_if": 0,
+        "original_rules": 0,
+        "scenarios": 6,
+        "simple_long_rule": 0
+      },
+      "normal_typo": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 3,
+        "original_if": 3,
+        "original_rules": 0,
+        "scenarios": 6,
+        "simple_long_rule": 0
+      },
+      "slow_auth_failure": {
+        "candidate_hybrid": 8,
+        "candidate_if_with_policy": 8,
+        "original_hybrid": 4,
+        "original_if": 4,
+        "original_rules": 0,
+        "scenarios": 8,
+        "simple_long_rule": 8
+      },
+      "sudo_auth_burst": {
+        "candidate_hybrid": 8,
+        "candidate_if_with_policy": 8,
+        "original_hybrid": 8,
+        "original_if": 5,
+        "original_rules": 8,
+        "scenarios": 8,
+        "simple_long_rule": 8
+      },
+      "sudoers_denial": {
+        "candidate_hybrid": 8,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 8,
+        "original_if": 0,
+        "original_rules": 8,
+        "scenarios": 8,
+        "simple_long_rule": 8
+      }
+    },
+    "metrics": {
+      "candidate_hybrid": {
+        "false_positive_rate": 0.0625,
+        "fn": 0,
+        "fp": 2,
+        "recall": 1.0,
+        "tn": 30,
+        "tp": 32
+      },
+      "candidate_if_with_policy": {
+        "false_positive_rate": 0.0625,
+        "fn": 8,
+        "fp": 2,
+        "recall": 0.75,
+        "tn": 30,
+        "tp": 24
+      },
+      "original_hybrid": {
+        "false_positive_rate": 0.125,
+        "fn": 4,
+        "fp": 4,
+        "recall": 0.875,
+        "tn": 28,
+        "tp": 28
+      },
+      "original_if": {
+        "false_positive_rate": 0.125,
+        "fn": 20,
+        "fp": 4,
+        "recall": 0.375,
+        "tn": 28,
+        "tp": 12
+      },
+      "original_rules": {
+        "false_positive_rate": 0.0,
+        "fn": 8,
+        "fp": 0,
+        "recall": 0.75,
+        "tn": 32,
+        "tp": 24
+      },
+      "simple_long_rule": {
+        "false_positive_rate": 0.0,
+        "fn": 0,
+        "fp": 0,
+        "recall": 1.0,
+        "tn": 32,
+        "tp": 32
+      }
+    },
+    "normal_scenarios": 32,
+    "suspicious_scenarios": 32
+  },
+  "historical_test_is_development_only": true,
+  "kind": "sudo_if_v2_synthetic_research",
+  "production_changes": false,
+  "protocol": {
+    "confirmation_seconds": 900,
+    "consecutive_anomalies": [
+      1,
+      2
+    ],
+    "exploratory_notice": "Feature, sampling and confirmation ideas were explored on development data.",
+    "features": [
+      "original_clock",
+      "counts_300",
+      "counts_300_900",
+      "counts_300_900_gap"
+    ],
+    "forest": {
+      "max_samples": 256,
+      "n_estimators": 128,
+      "random_state": 42
+    },
+    "fresh_holdout": {
+      "normal_count": 500,
+      "normal_seed_start": 70000,
+      "per_suspicious_type": 100,
+      "suspicious_seed_start": 80000
+    },
+    "limitations": "New seeds reuse the original synthetic generator, not unseen attack families.",
+    "stress": "50 benign corrected-double-typo and 50 benign successful-automation cases",
+    "threshold_selection": "validation score breakpoints, maximum recall under FPR budget",
+    "tie_break": "fewer FP, fewer features, fewer required observations, higher threshold",
+    "training": "original 180 normal scenarios, seeds 10000..10179",
+    "validation": "original development validation; old test excluded from selection",
+    "validation_fpr_budget": 0.05
+  },
+  "protocol_sha256": "61cab64ad3a5ffc303ab426a895dc1a6bc504edd356198b8ad33674436d92f88",
+  "real_journal_rows_read": 0,
+  "selection": {
+    "feature_count": 5,
+    "required_consecutive": 2,
+    "threshold": 0.6347562256248873,
+    "thresholds_examined": 20,
+    "validation": {
+      "false_positive_rate": 0.0,
+      "fn": 8,
+      "fp": 0,
+      "recall": 0.75,
+      "tn": 32,
+      "tp": 24
+    },
+    "variant": "counts_300"
+  },
+  "selection_sha256": "ce232864d8557d6afb19d9319b527640e3169b5e1765a6098509f61043a10b4f",
+  "synthetic_only": true,
+  "training_normal_only": true,
+  "validation": {
+    "flagged_by_scenario_type": {
+      "mixed_auth_denial": {
+        "candidate_hybrid": 8,
+        "candidate_if_with_policy": 8,
+        "original_hybrid": 8,
+        "original_if": 4,
+        "original_rules": 8,
+        "scenarios": 8,
+        "simple_long_rule": 8
+      },
+      "normal_busy": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 0,
+        "original_if": 0,
+        "original_rules": 0,
+        "scenarios": 6,
+        "simple_long_rule": 0
+      },
+      "normal_maintenance": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 0,
+        "original_if": 0,
+        "original_rules": 0,
+        "scenarios": 7,
+        "simple_long_rule": 0
+      },
+      "normal_quiet": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 0,
+        "original_if": 0,
+        "original_rules": 0,
+        "scenarios": 7,
+        "simple_long_rule": 0
+      },
+      "normal_spaced": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 0,
+        "original_if": 0,
+        "original_rules": 0,
+        "scenarios": 6,
+        "simple_long_rule": 0
+      },
+      "normal_typo": {
+        "candidate_hybrid": 0,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 5,
+        "original_if": 5,
+        "original_rules": 0,
+        "scenarios": 6,
+        "simple_long_rule": 0
+      },
+      "slow_auth_failure": {
+        "candidate_hybrid": 8,
+        "candidate_if_with_policy": 8,
+        "original_hybrid": 7,
+        "original_if": 7,
+        "original_rules": 0,
+        "scenarios": 8,
+        "simple_long_rule": 8
+      },
+      "sudo_auth_burst": {
+        "candidate_hybrid": 8,
+        "candidate_if_with_policy": 8,
+        "original_hybrid": 8,
+        "original_if": 4,
+        "original_rules": 8,
+        "scenarios": 8,
+        "simple_long_rule": 8
+      },
+      "sudoers_denial": {
+        "candidate_hybrid": 8,
+        "candidate_if_with_policy": 0,
+        "original_hybrid": 8,
+        "original_if": 0,
+        "original_rules": 8,
+        "scenarios": 8,
+        "simple_long_rule": 8
+      }
+    },
+    "metrics": {
+      "candidate_hybrid": {
+        "false_positive_rate": 0.0,
+        "fn": 0,
+        "fp": 0,
+        "recall": 1.0,
+        "tn": 32,
+        "tp": 32
+      },
+      "candidate_if_with_policy": {
+        "false_positive_rate": 0.0,
+        "fn": 8,
+        "fp": 0,
+        "recall": 0.75,
+        "tn": 32,
+        "tp": 24
+      },
+      "original_hybrid": {
+        "false_positive_rate": 0.15625,
+        "fn": 1,
+        "fp": 5,
+        "recall": 0.96875,
+        "tn": 27,
+        "tp": 31
+      },
+      "original_if": {
+        "false_positive_rate": 0.15625,
+        "fn": 17,
+        "fp": 5,
+        "recall": 0.46875,
+        "tn": 27,
+        "tp": 15
+      },
+      "original_rules": {
+        "false_positive_rate": 0.0,
+        "fn": 8,
+        "fp": 0,
+        "recall": 0.75,
+        "tn": 32,
+        "tp": 24
+      },
+      "simple_long_rule": {
+        "false_positive_rate": 0.0,
+        "fn": 0,
+        "fp": 0,
+        "recall": 1.0,
+        "tn": 32,
+        "tp": 32
+      }
+    },
+    "normal_scenarios": 32,
+    "suspicious_scenarios": 32
+  },
+  "versions": {
+    "numpy": "2.3.5",
+    "python": "3.12.14",
+    "sklearn": "1.8.0"
+  }
+}
