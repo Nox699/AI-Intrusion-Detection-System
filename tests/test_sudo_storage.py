@@ -210,6 +210,7 @@ def test_explicit_store_reopen_preserves_dedup(private_store):
     assert not another.append(original)
     assert another.summary()["persisted_log_rows"] == 1
 
+
 def test_checkpoint_starts_unset_and_tracks_only_committed_max_timestamp(private_store):
     assert private_store.resume_since(300) is None
     later = signal(5, stamp=STAMP + 1000)
@@ -294,8 +295,6 @@ def test_singleton_checkpoint_is_not_raw_journal_cursor(private_store):
     item = signal(cursor="PRIVATE-RAW-CURSOR-AND-COMMAND")
     private_store.append(item)
     with sqlite3.connect(private_store.path) as db:
-        column_names = {
-            row[1] for row in db.execute("PRAGMA table_info(sudo_checkpoint)")
-        }
+        column_names = {row[1] for row in db.execute("PRAGMA table_info(sudo_checkpoint)")}
         assert "cursor" not in column_names
     assert b"PRIVATE-RAW-CURSOR-AND-COMMAND" not in private_store.path.read_bytes()
