@@ -1,7 +1,7 @@
 # Sprint 5 – Sudo-overvågning: faglig afslutning før eksamen
 
 **Dato:** 3. november 2026 (Europe/Copenhagen)  
-**Status:** **Afsluttet som isoleret regelbaseret sudo-shadow-sensor** på
+**Status:** **Regelbaseret sudo-shadow-del afsluttet; sudo-Isolation-Forest-del under udvikling** på
 Yggdrasil, Debian 13 på Raspberry Pi 5. Denne status omfatter **ikke**
 automatisk sudo→Discord-alarm i produktion.  
 **Kilde:** Udviklingsgren `integration/sprint5-sudo-clean`;
@@ -67,8 +67,12 @@ normaldatasæt, eller fuldstændig tabsløs journald-recovery.
 var et eksplicit mærket, syntetisk testevent i en separat outbox.
 
 Isolation Forest på SSH forbliver eksperimentel i shadow-mode.
-Sudo er **regelbaseret** i denne sprint; en sudo-Isolation Forest
-er ikke trænet eller evalueret og må ikke beskrives som implementeret.
+Den fungerende sudo-sensor i produktion er **regelbaseret**.
+En særskilt **sudo-Isolation-Forest-prototype er tilføjet til
+udviklingsbranchen**, men den er endnu ikke kørt og evalueret på Pi,
+er ikke installeret som produktionsmodel og giver ingen alarmer.
+Først efter en adskilt hold-out-evaluering må den beskrives
+som testet.
 
 ## Relevante screenshot-kandidater
 
@@ -85,10 +89,13 @@ ikke kom med, men verificér aldrig billeddetaljer uden at se filen.
 
 ## Stopbeslutning og fremtidigt arbejde
 
-**Eksamensstop:** Ingen flere IDS-sensorkilder inden eksamen.
-Brug tiden på systemforståelse, unit tests, regler kontra
-Isolation Forest, false positives, metodekritik, diagram,
-udvalgte bilag og skriftlig rapport.
+**Eksamensafgrænsning opdateret:** Færdiggør det allerede
+planlagte **sudo-Isolation-Forest-eksperiment** og sammenlign
+det med sudo-reglerne før projektfrysning.
+Ingen yderligere sensorkilder (fx filintegritet) inden eksamen.
+Brug derefter tiden på systemforståelse, unit tests,
+regler kontra Isolation Forest, false positives,
+metodekritik, diagram, udvalgte bilag og rapport.
 Efter eksamen: undersøg filintegritetsovervågning (FIM)
 og eventuelt en ny ML-model, hvis datamængde,
 featurerepræsentation og uafhængig evaluering kan
