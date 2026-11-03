@@ -60,7 +60,6 @@ def test_timestamp_only_does_not_emit_raw_record(lab):
 
 
 def test_replay_real_journal_simulation_deduplicates_and_suppresses_repeat_alarm(lab, monkeypatch):
-    monkeypatch.setattr(lab.os, "geteuid", lambda: 999)
     monkeypatch.setattr(lab.time, "time", lambda: NOW + 5)
     all_rows = records()
     calls = []
@@ -99,7 +98,6 @@ def test_replay_real_journal_simulation_deduplicates_and_suppresses_repeat_alarm
 
 
 def test_insufficient_history_does_not_touch_sqlite(lab, monkeypatch):
-    monkeypatch.setattr(lab.os, "geteuid", lambda: 999)
     monkeypatch.setattr(lab.time, "time", lambda: NOW + 5)
 
     def fake_journal(since, until, *, timestamps_only=False):
