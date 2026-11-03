@@ -40,10 +40,10 @@ def run(
     sender: Callable[[str, str], str] | None = None,
 ) -> dict[str, Any]:
     """Send at most one explicitly labeled lab message from a private test DB."""
-    if real and pwd.getpwuid(os.geteuid()).pw_name != SERVICE_ACCOUNT:
-        raise PermissionError("Real test requires the restricted notifier service account")
     if real and sender is not None:
         raise ValueError("Real delivery must use the real, existing notifier transport")
+    if real and pwd.getpwuid(os.geteuid()).pw_name != SERVICE_ACCOUNT:
+        raise PermissionError("Real test requires the restricted notifier service account")
 
     acknowledgements: list[str] = []
 
