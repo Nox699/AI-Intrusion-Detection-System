@@ -208,15 +208,21 @@ class SudoIsolationForest:
         timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
         return cls(rows, provenance, timestamp)
 
+    def score_many(self, rows: Sequence[Sequence[float]]) -> list[dict[str, Any]]:
+        """Score a complete bounded scenario in one batch, with no side effects."""
+        clean = _validated_rows(rows)
+        return [
+            {
+                "score": float(score),
+                "threshold": self.threshold,
+                "is_anomaly": float(score) > self.threshold,
+                "version": self.version,
+            }
+            for score in -self.model.score_samples(clean)
+        ]
+
     def score(self, row: Sequence[float]) -> dict[str, Any]:
-        clean = _validated_rows([row])
-        value = float(-self.model.score_samples(clean)[0])
-        return {
-            "score": value,
-            "threshold": self.threshold,
-            "is_anomaly": value > self.threshold,
-            "version": self.version,
-        }
+        return self.score_many([row])[0]
 
     def save(self, path: Path | str) -> None:
         target = Path(path)
