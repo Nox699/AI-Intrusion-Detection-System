@@ -92,7 +92,10 @@ def test_replay_real_journal_simulation_deduplicates_and_suppresses_repeat_alarm
     assert result["raw_private_data_exposed"] is False
     assert len(calls) == 4
     assert calls[0][2] is True
-    assert all(call[1] == NOW for call in calls)
+    assert calls[0][1] == NOW
+    assert calls[1][1] == BASE + 40
+    assert calls[2][1] == NOW
+    assert calls[3][1] == NOW
     assert "private-journald-cursor" not in json.dumps(result)
     assert "logname=private" not in json.dumps(result)
 
