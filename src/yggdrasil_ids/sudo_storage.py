@@ -232,7 +232,9 @@ class SudoStagingStore:
             categories = Counter(
                 {
                     row["kind"]: row["n"]
-                    for row in db.execute("SELECT kind,COUNT(*) AS n FROM sudo_signals GROUP BY kind")
+                    for row in db.execute(
+                        "SELECT kind,COUNT(*) AS n FROM sudo_signals GROUP BY kind"
+                    )
                 }
             )
             matches = Counter(
