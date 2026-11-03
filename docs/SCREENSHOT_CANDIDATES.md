@@ -26,7 +26,7 @@ ikke automatisk uploadet eller vurderet af ChatGPT.
 | S5-09 | Pi baseline: 411 sudo-journalposter med nødvendige metadata, 0 PAM-fejl; tre IDS-tjenester aktive | Terminalresultat verificeret 3. november; screenshotstatus ukendt | Normal journaladgang før installation |
 | **S5-10** | **To separate sudo-shadow-polls på Pi; `second_poll` med `previous_checkpoint_present=true`, `journal_rows_read=3`, `new_normalized_sudo_rows=0`, `overlap_duplicates_skipped=3`** | **Praktisk terminaltest bestået 3. november; screenshot-kandidat, fil endnu ikke gennemgået** | Beviser normal logindlæsning, checkpoint og deduplikering på Pi uden alarm |
 | **S5-11** | **Manuel sudo-shadow systemd-oneshot: `Result=success`, `ExecMainStatus=0`, 54 journalposter, 0 alarmkandidater og `discord_alerts_sent=0`** | **Praktisk test bestået; screenshot-kandidat, fil endnu ikke gennemgået; timer stadig `inactive`** | Dokumenterer rigtig sudo-sensor under systemd uden uønskede alarmer |
-| **S5-12** | **Aktiveret sudo-shadow-timer: `active`/`enabled`, seneste systemd-`success`, 69 private SQLite-rækker, 0 sudo-kandidater og checkpoint 10:51:33 CET** | **Terminalmålinger verificeret 3. november; screenshot-kandidat, billedfil endnu ikke gennemgået** | Dokumenterer periodisk systemd-shadow-overvågning uden sudo→Discord-alarmer |
+| **S5-12** | **Aktiveret sudo-shadow-timer: `active`/`enabled`, seneste systemd-`success`, 69 private SQLite-rækker, 0 sudo-kandidater og checkpoint 10:51:33 CET** | **Terminalmålinger verificeret 3. november; bruger har taget screenshot fra timerstatus til og med checkpoint; billedfil endnu ikke gennemgået** | Dokumenterer periodisk systemd-shadow-overvågning uden sudo→Discord-alarmer |
 
 ## Andre sprint-kandidater
 
