@@ -21,9 +21,11 @@ for unit in yggdrasil-collector.service yggdrasil-web.service yggdrasil-notifier
   systemctl is-active --quiet "$unit" ||
     { echo "STOP: Expected IDS component inactive: $unit" >&2; exit 2; }
 done
-sudo -u yggdrasil-web test -r /var/lib/yggdrasil-sudo-public/sudo-status.json ||
+sudo /usr/bin/setpriv --reuid=yggdrasil-web --regid=yggdrasil-web --groups=yggdrasil-data \
+  /usr/bin/test -r /var/lib/yggdrasil-sudo-public/sudo-status.json ||
   { echo "STOP: Web has no sanitized sudo status" >&2; exit 2; }
-if sudo -u yggdrasil-web test -r /var/lib/yggdrasil-sudo-shadow/sudo-shadow.sqlite3; then
+if sudo /usr/bin/setpriv --reuid=yggdrasil-web --regid=yggdrasil-web --groups=yggdrasil-data \
+  /usr/bin/test -r /var/lib/yggdrasil-sudo-shadow/sudo-shadow.sqlite3; then
   echo "STOP: Web user unexpectedly reads private sudo DB" >&2
   exit 2
 fi
@@ -59,8 +61,8 @@ if ! diff -qr "$tmp/src/yggdrasil_ids" "$base/src/yggdrasil_ids" >/dev/null; the
   exit 2
 fi
 
-sudo -u yggdrasil-web env \
-  PYTHONPATH="$base/src" YGGDRASIL_CONFIG=/etc/yggdrasil-ids/config.toml \
+sudo /usr/bin/setpriv --reuid=yggdrasil-web --regid=yggdrasil-web --groups=yggdrasil-data \
+  /usr/bin/env PYTHONPATH="$base/src" YGGDRASIL_CONFIG=/etc/yggdrasil-ids/config.toml \
   /opt/yggdrasil-ids/venv/bin/python - <<'PY'
 from yggdrasil_ids.config import load_config
 from yggdrasil_ids.sudo_dashboard import read_experiment, read_summary
