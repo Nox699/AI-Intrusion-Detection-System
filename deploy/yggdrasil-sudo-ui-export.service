@@ -1,0 +1,33 @@
+[Unit]
+Description=Yggdrasil IDS isolated anonymized sudo dashboard export
+After=yggdrasil-sudo-shadow.service
+ConditionPathExists=/var/lib/yggdrasil-sudo-shadow/sudo-shadow.sqlite3
+
+[Service]
+Type=oneshot
+User=yggdrasil-worker
+Group=yggdrasil-data
+StateDirectory=yggdrasil-sudo-public
+StateDirectoryMode=0750
+WorkingDirectory=/var/lib/yggdrasil-sudo-public
+ExecStart=/usr/bin/python3 /opt/yggdrasil-sudo-ui/sudo_ui_export.py
+UMask=0027
+TimeoutStartSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadOnlyPaths=/var/lib/yggdrasil-sudo-shadow
+ReadWritePaths=/var/lib/yggdrasil-sudo-public
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+MemoryMax=128M
+TasksMax=8
