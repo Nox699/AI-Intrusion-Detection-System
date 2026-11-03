@@ -1489,3 +1489,20 @@ sudo-shadow-timer. Ved fejl kan timeren stoppes med
 `sudo systemctl disable --now yggdrasil-sudo-shadow.timer`.
 Der sker ingen tilsigtet ændring af produktions-SSH,
 UFW, ML, web eller notifier.
+
+### Pi: sudo-shadow timer enabled (user confirmation, further operation pending)
+
+After a successful manual systemd oneshot (54 normalized sudo rows; no
+candidates; no Discord), the user reported that running the pinned
+`sprint5_sudo_shadow_activate_pi.sh` produced the expected result:
+`sudo shadow timer enabled and active`,
+`Notification state: SHADOW ONLY (no Discord/outbox)`,
+and the original collector, dashboard and notifier remained active.
+**This is user-confirmed summary, not a captured full terminal output.**
+
+Next acceptance gate: independently inspect `systemctl is-enabled/is-active`,
+actual timer schedule and multiple subsequent oneshot executions. Verify
+the worker-owned SQLite checkpoint advances and old sudo journal rows are
+not duplicated. No need to induce sudo authentication failures on the
+production Pi; controlled positive detection is already validated in the
+Ubuntu lab. Record screen evidence only after checking the returned output.
