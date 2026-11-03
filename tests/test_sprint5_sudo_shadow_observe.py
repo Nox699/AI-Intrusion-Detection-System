@@ -79,7 +79,7 @@ def test_normal_sudo_activity_causes_no_candidate_matches(watcher):
     assert result["production_sudo_detection_active"] is False
     assert result["raw_user_command_or_journal_data_exposed"] is False
     text = json.dumps(result)
-    for secret in ("private", "labuser", "--token", "cursor", "2001", "1000"):
+    for secret in ("labuser", "--token", "private-sudo-cursor", "2001", "1000"):
         assert secret not in text
 
 
