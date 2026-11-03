@@ -50,12 +50,12 @@ def row(index: int, epoch: float, kind: str = "fail"):
 
 def snapshot(rows):
     """Simulate journalctl --since/--until, including its time filtering."""
+
     def read(since, until):
         return [
-            rec
-            for rec in rows
-            if since <= int(rec["__REALTIME_TIMESTAMP"]) / 1_000_000 <= until
+            rec for rec in rows if since <= int(rec["__REALTIME_TIMESTAMP"]) / 1_000_000 <= until
         ]
+
     return read
 
 
@@ -97,9 +97,7 @@ def test_normal_sudo_is_stored_without_candidate_and_resumes(shadow, database, m
     assert second["production_database_modified"] is False
 
 
-def test_three_unique_failed_processes_one_candidate_across_restarts(
-    shadow, database, monkeypatch
-):
+def test_three_unique_failed_processes_one_candidate_across_restarts(shadow, database, monkeypatch):
     events = [
         row(1, BASE + 20),
         row(1, BASE + 20.1, "summary"),
@@ -175,9 +173,7 @@ def test_bounded_and_malformed_records_fail_closed(shadow, database, monkeypatch
         shadow.poll_once(database, now=BASE + 50)
 
 
-def test_outage_or_backward_clock_rejected_without_checkpoint_change(
-    shadow, database, monkeypatch
-):
+def test_outage_or_backward_clock_rejected_without_checkpoint_change(shadow, database, monkeypatch):
     monkeypatch.setattr(shadow, "journal_records", lambda _a, _b: [])
     shadow.poll_once(database, now=BASE + 50)
     old = checkpoint(database)
@@ -205,9 +201,7 @@ def test_private_db_has_no_raw_message_command_cursor(shadow, database, monkeypa
     result = shadow.poll_once(database, now=BASE + 60)
     assert result["new_normalized_sudo_rows"] == 1
     with sqlite3.connect(database) as db:
-        item = db.execute(
-            "SELECT * FROM sudo_signals"
-        ).fetchone()
+        item = db.execute("SELECT * FROM sudo_signals").fetchone()
         assert item is not None
         fields = [d[0] for d in db.execute("SELECT * FROM sudo_signals").description]
     assert "message" not in fields and "cursor" not in fields
