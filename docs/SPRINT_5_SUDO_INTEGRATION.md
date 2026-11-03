@@ -117,6 +117,53 @@ an earlier installation. The normal installation needs a brief coordinated
 restart of collector, web and notifier; the private sudo poll/export timers
 continue independently.
 
+## Controlled live alarm probe
+
+After the authenticated dashboard is reviewed, run the pinned
+`deploy/sprint5_sudo_live_probe_pi.sh`. This does not upgrade the installation.
+It expects the verified installed integration release
+`9ced7d60ab7b6776af95a12e83596683e04676ae` and fresh rule/ML exports, all six
+existing production services/timers active, a matching notifier/outbox identity,
+and no authentication-failure rows during the preceding five minutes.
+
+The runner reuses the bounded service-account invocation from the frozen probe:
+three separate `yggdrasil-web` sudo processes, one false-password line each,
+targeting only `/usr/bin/true`. Unexpected success or an invalid failure stops
+remaining attempts. It never invokes the research workflow's 30 normal calls,
+fits a model, changes a threshold or inserts synthetic alerts into production.
+
+A read-only privileged observer waits at most 180 seconds for the existing
+timers and notifier. Three exact boot/PID matches are held only in memory. The
+observer joins their private candidate identities to redacted production
+evidence, checks that alarm/outbox timestamp-and-detector matching is unique,
+and looks for the same reference in the existing notifier receipts with the
+same source identity. It never reads a webhook, bootstraps/polls the notifier,
+forces a service run or sends its own Discord message. The active pipeline can
+send the resulting genuine rule alert to the configured Discord channel.
+
+PASS requires three recognized failed processes in one parser group, one rule
+candidate with three processes and no other failure processes in that rule
+context, one registered alarm, one unambiguous outbox reference, and a recorded
+Discord acknowledgement. Output contains aggregate counts, alarm ID and opaque
+reference, never raw journal, boot IDs, UID/PID or Discord message IDs. Root
+inspection uses SQLite `mode=ro` and `query_only=ON`; probe identities are not
+saved or uploaded. A timeout generates no further attempts.
+
+ML decisions remain independent shadow observations. They are attributed to
+the probe only when all three unique process timestamps match the anonymous
+latest list. Missing/truncated positions are reported as unknown, not zero
+flags. The episode establishes neither population recall/FPR nor success
+against other attack patterns. Confirm the message in Discord and capture the
+alarm detail, matching reference and shadow results for the exam.
+
+The live-probe tooling passes 16 focused tests, including unrelated receipts,
+wrong process manifests, ambiguous outbox mapping, background failures, missing
+ML positions, independent rule delivery during a temporary shadow export failure,
+and stopping after an unexpected command outcome. The reused frozen invocation
+tests also pass. A broad run before that final independent-shadow check passed
+861 tests with the same 14 root-incompatible exclusions; live Pi results remain
+a separate acceptance step.
+
 ## Evidence for the exam
 
 Keep the earlier frozen prospective probe result: mixed model flagged 0/30
