@@ -49,6 +49,7 @@
     <span class="metric-caption">Mulige mønstre, ikke bekræftede angreb eller udsendte alarmer</span>
   </article>
 </div>
+{% endif %}
 <section class="panel" id="sudo-findings" aria-label="Seneste mistænkelige sudo-aktivitet">
   <div class="panel-heading">
     <div>
@@ -127,6 +128,7 @@
   <p class="panel-note">Kun tidspunkt og grov hændelsestype offentliggøres til webvisningen. Ingen brugernavne, UID/PID, kommandoer, journalcursors eller adgangskoder. Processammenkobling via boot/UID/PID er en afgrænset tilnærmelse.</p>
 </section>
 
+{% if sudo.state != 'unavailable' %}
 <div class="detail-grid">
   <section class="panel details-panel">
     <div class="panel-heading"><h2>Sensorstatus</h2><span class="status-pill {{ 'good' if sudo.state == 'ready' else 'warning' }}">{{ 'Aktuel eksport' if sudo.state == 'ready' else 'Forældet eksport' }}</span></div>
