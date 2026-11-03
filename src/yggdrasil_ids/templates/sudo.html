@@ -1,0 +1,105 @@
+{% extends 'base.html' %}{% from '_macros.html' import icon, empty with context %}
+{% block title %}Sudo-overvågning{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div>
+    <span class="eyebrow">LINUX / PRIVILEGIER</span>
+    <h1>Sudo-overvågning</h1>
+    <p>Lokale privilegiehandlinger og afvigelser fra en separat, privat sensor.</p>
+  </div>
+  <button class="button button-quiet refresh-page" type="button">{{ icon('refresh',17) }} Opdatér</button>
+</section>
+<div class="notice info">
+  {{ icon('shield',20) }}
+  <div><strong>Shadow-mode · Ingen automatiske sudo-alarmer</strong>
+  <span>Sudo analyseres uafhængigt af SSH og UFW. Denne visning viser kun anonymiserede tællinger. Regelkandidater i shadow-databasen sendes ikke til Discord eller den almindelige alarmoversigt.</span></div>
+</div>
+
+{% if sudo.state == 'unavailable' %}
+<div class="notice warning">{{ icon('info',20) }}<div>
+  <strong>Sudo-status kan ikke indlæses</strong>
+  <span>{{ sudo.message }} Kontroller den separate eksportør. Manglende data betyder ikke nul hændelser.</span>
+</div></div>
+{% else %}
+{% if sudo.state == 'stale' %}
+<div class="notice warning">{{ icon('info',20) }}<div>
+  <strong>Sudo-overvågningens seneste opdatering er forældet</strong>
+  <span>{{ sudo.message }} Tallene nedenfor er fra den seneste gyldige eksport, ikke nødvendigvis fra dette øjeblik.</span>
+</div></div>
+{% endif %}
+<div class="metrics-grid">
+  <article class="metric">
+    <div class="metric-top"><span>Normaliserede logposter</span><span class="metric-icon teal">{{ icon('activity',19) }}</span></div>
+    <strong>{{ sudo.recent_signals|number }}</strong>
+    <span class="metric-caption">Sidste 24 timer · flere logposter kan høre til samme sudo-proces</span>
+  </article>
+  <article class="metric">
+    <div class="metric-top"><span>Sudo-kommandoer</span><span class="metric-icon green">{{ icon('check',19) }}</span></div>
+    <strong>{{ sudo.categories.command_invoked|number }}</strong>
+    <span class="metric-caption">Registrerede kommandoindkaldelser · sidste 24 timer</span>
+  </article>
+  <article class="metric">
+    <div class="metric-top"><span>Fejl-logposter</span><span class="metric-icon amber">{{ icon('close',19) }}</span></div>
+    <strong>{{ (sudo.categories.pam_auth_failure + sudo.categories.incorrect_password)|number }}</strong>
+    <span class="metric-caption">PAM og forkert adgangskode · kan beskrive samme forsøg</span>
+  </article>
+  <article class="metric">
+    <div class="metric-top"><span>Regelkandidater</span><span class="metric-icon violet">{{ icon('shield',19) }}</span></div>
+    <strong>{{ sudo.recent_candidates|number }}</strong>
+    <span class="metric-caption">Mulige mønstre, ikke bekræftede angreb eller udsendte alarmer</span>
+  </article>
+</div>
+<div class="detail-grid">
+  <section class="panel details-panel">
+    <div class="panel-heading"><h2>Sensorstatus</h2><span class="status-pill {{ 'good' if sudo.state == 'ready' else 'warning' }}">{{ 'Aktuel eksport' if sudo.state == 'ready' else 'Forældet eksport' }}</span></div>
+    <dl class="key-values">
+      <div><dt>Tilstand</dt><dd>Regelbaseret shadow</dd></div>
+      <div><dt>Seneste checkpoint</dt><dd>{{ sudo.checkpoint_at|localtime }}</dd></div>
+      <div><dt>Opsummering dannet</dt><dd>{{ sudo.generated_at|localtime }}</dd></div>
+      <div><dt>Gemte logposter i alt</dt><dd>{{ sudo.total_signals|number }}</dd></div>
+      <div><dt>Regelkandidater i alt</dt><dd>{{ sudo.total_candidates|number }}</dd></div>
+    </dl>
+    <p class="panel-note">Tællingerne kommer fra en særskilt, anonymiseret eksportfil. Webserveren har ikke direkte adgang til sudo-journalen eller den private sudo-SQLite.</p>
+  </section>
+  <section class="panel details-panel">
+    <div class="panel-heading"><h2>Sudo-regler</h2>{{ icon('shield',22) }}</div>
+    <dl class="key-values">
+      <div><dt>Gentagne autentificeringsfejl</dt><dd>{{ sudo.candidate_detectors['sudo.repeated_auth_failure']|number }}</dd></div>
+      <div><dt>Manglende sudoers-rettighed</dt><dd>{{ sudo.candidate_detectors['sudo.permission_denied']|number }}</dd></div>
+      <div><dt>Afviste sudoers-logposter</dt><dd>{{ sudo.categories.not_in_sudoers|number }}</dd></div>
+    </dl>
+    <p class="panel-note">Regelmotoren tæller gentagne fejl på tværs af forskellige sudo-processer. Tallene er for de seneste 24 timer og er ikke en måling af angreb eller falske positiver.</p>
+  </section>
+</div>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-heading">
+    <div><h2>Isolation Forest mod sudo-regler</h2><p>Offline evaluering på adskilte, syntetiske scenarier</p></div>
+    <span class="badge severity-medium">Eksperiment · Ikke live</span>
+  </div>
+  {% if benchmark.unavailable %}
+    {{ empty('Ingen verificeret sudo-ML-benchmark', 'Den tidligere syntetiske sammenligning kunne ikke indlæses. Den aktive sudo-sensor bruger fortsat kun regler.') }}
+  {% else %}
+  <p class="panel-note">Træning: <strong>{{ benchmark.training_process_rows|number }} procesobservationer</strong> fra {{ benchmark.training_scenarios|number }} uafhængige normale scenarier. Model: <span class="mono">{{ benchmark.model_version }}</span>. Modelscoren er ikke en sandsynlighed for et angreb.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Datasæt</th><th>Metode</th><th>TP</th><th>FP</th><th>TN</th><th>FN</th><th>Recall</th><th>FP-rate</th></tr></thead>
+    <tbody>
+    {% for split, name in [('validation','Validering'),('test','Sluttest')] %}
+      {% for method, label in [('rules','Regler'),('ml','Isolation Forest')] %}
+      {% set score = benchmark[split][method] %}
+      <tr>
+        <td>{{ name }}</td><td><strong>{{ label }}</strong></td>
+        <td>{{ score.tp }}</td><td>{{ score.fp }}</td><td>{{ score.tn }}</td><td>{{ score.fn }}</td>
+        <td>{{ ((score.tp * 100 / (score.tp + score.fn))|round(1)) }} %</td>
+        <td>{{ ((score.fp * 100 / (score.fp + score.tn))|round(1)) }} %</td>
+      </tr>
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p class="panel-note"><strong>Konklusion for det syntetiske sluttestsæt:</strong> Reglerne fandt 24 af 32 mærkede mistænkelige scenarier uden falske positiver i de 32 normale. Isolation Forest fandt 12 og gav 4 falske positiver. Resultaterne siger ikke noget sikkert om faktisk detektionsgrad på Yggdrasil.</p>
+  {% endif %}
+</section>
+<p class="hint">Sudo-Isolation-Forest er endnu ikke en del af den automatiske sensor. Produktionsalarmer, SSH-score og Discord er uændrede.</p>
+{% endblock %}
