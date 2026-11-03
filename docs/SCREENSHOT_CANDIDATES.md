@@ -24,7 +24,7 @@ ikke automatisk uploadet eller vurderet af ChatGPT.
 | **S5-07** | **En rigtig Discord-besked mærket SUDO LABTEST fra Yggdrasil** | **Levering og systemd SUCCESS bekræftet af bruger; screenshot ikke taget ved første forsøg** | Reelt Discord-ack af *syntetisk* sudo-alarm i privat test-outbox – ikke automatisk registreret sudo-angreb |
 | S5-08 | Isoleret sudo SQLite-checkpoint/replay: 402 unikke poster og 0 ekstra ved tredje replay | Terminalresultat verificeret; screenshotstatus ukendt | Deduplikering/genoptagelse på historiske journaldata |
 | S5-09 | Pi baseline: 411 sudo-journalposter med nødvendige metadata, 0 PAM-fejl; tre IDS-tjenester aktive | Terminalresultat verificeret 3. november; screenshotstatus ukendt | Normal journaladgang før installation |
-| S5-10 | To separate sudo-shadow-polls på Pi med privat temp-SQLite og genoptaget checkpoint | Kode og tests forberedt, endnu ikke kørt på Pi | Dokumentation for idempotent shadow-behandling |
+| **S5-10** | **To separate sudo-shadow-polls på Pi; `second_poll` med `previous_checkpoint_present=true`, `journal_rows_read=3`, `new_normalized_sudo_rows=0`, `overlap_duplicates_skipped=3`** | **Praktisk terminaltest bestået 3. november; screenshot-kandidat, fil endnu ikke gennemgået** | Beviser normal logindlæsning, checkpoint og deduplikering på Pi uden alarm |
 | S5-11 | Tidstyret `yggdrasil-sudo-shadow.timer` og tjenestelog efter eksplicit aktivering | Endnu ikke installeret | Vedvarende sudo-observation uden Discord |
 
 ## Andre sprint-kandidater
