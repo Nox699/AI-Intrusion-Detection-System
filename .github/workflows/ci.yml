@@ -70,6 +70,9 @@ jobs:
       - name: Validate gated Sprint 5 Pi Discord LABTEST runner
         run: bash -n deploy/sprint5_sudo_discord_pi_lab_send.sh deploy/sprint5_sudo_shadow_probe_pi.sh
 
+      - name: Validate sudo shadow systemd install activation and rollback syntax
+        run: bash -n deploy/sprint5_sudo_shadow_install_pi.sh deploy/sprint5_sudo_shadow_activate_pi.sh deploy/sprint5_sudo_shadow_rollback_pi.sh
+
       - name: Lint
         run: python -m ruff check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py deploy/sprint4_real_ml_export.py deploy/sprint4_hybrid_ml_preview.py deploy/sprint4_preauth_signal_audit.py deploy/sprint4_preauth_ml_lab.py deploy/sprint4_preauth_hybrid_diagnostics.py deploy/sprint4_preauth_clock_sensitivity.py deploy/sprint4_preauth_robustness_audit.py deploy/sprint5_sudo_journal_audit.py deploy/sprint5_sudo_journal_metadata_diagnostic.py deploy/sprint5_sudo_trusted_exe_audit.py deploy/sprint5_sudo_rule_preview.py deploy/sprint5_sudo_denial_reason_probe.py deploy/sprint5_sudo_shadow_observe.py deploy/sprint5_sudo_recovery_lab.py deploy/sprint5_sudo_journal_restart_accept.py deploy/sprint5_sudo_discord_preview.py deploy/sprint5_sudo_outbox_lab.py deploy/sprint5_sudo_discord_delivery_smoketest.py deploy/sprint5_sudo_shadow_poll.py
 
