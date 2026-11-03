@@ -30,10 +30,7 @@ def lab():
 
 def sudo_row(index: int, second: int, *, kind: str = "failure"):
     if kind == "failure":
-        message = (
-            "pam_unix(sudo:auth): authentication failure; "
-            "logname=private-lab-secret"
-        )
+        message = "pam_unix(sudo:auth): authentication failure; logname=private-lab-secret"
     else:
         message = "pam_unix(sudo:session): session opened for user root(uid=0) by private-user"
     return {
@@ -105,9 +102,7 @@ def test_bounded_input_aborts_instead_of_sending_or_reporting_partial_success(la
         lab.run_lab([sudo_row(1, 10), sudo_row(2, 20)])
 
 
-def test_cli_with_mocked_local_journal_only_prints_sanitised_report(
-    lab, monkeypatch, capsys
-):
+def test_cli_with_mocked_local_journal_only_prints_sanitised_report(lab, monkeypatch, capsys):
     monkeypatch.setattr(
         lab,
         "read_sudo",
