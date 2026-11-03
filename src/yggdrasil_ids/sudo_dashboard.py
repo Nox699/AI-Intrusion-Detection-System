@@ -59,9 +59,7 @@ def _read_json(path: Path, size: int, *, secure: bool) -> Any:
         info = os.fstat(descriptor)
         if not stat.S_ISREG(info.st_mode) or info.st_size > size:
             raise ValueError("Unexpected sudo dashboard input")
-        if secure and (
-            stat.S_IMODE(info.st_mode) & 0o137 or info.st_nlink != 1
-        ):
+        if secure and (stat.S_IMODE(info.st_mode) & 0o137 or info.st_nlink != 1):
             raise ValueError("Unsafe public sudo summary permissions")
         with os.fdopen(os.dup(descriptor), "rb") as handle:
             encoded = handle.read(size + 1)
@@ -79,11 +77,7 @@ def _number(value: Any) -> int:
 
 
 def _timestamp(value: Any, now: float) -> float:
-    if (
-        type(value) not in (int, float)
-        or not math.isfinite(value)
-        or not 1 <= value <= now + 60
-    ):
+    if type(value) not in (int, float) or not math.isfinite(value) or not 1 <= value <= now + 60:
         raise ValueError("Invalid sudo summary timestamp")
     return float(value)
 
@@ -119,9 +113,16 @@ def validate_summary(value: Any, *, now: float) -> dict[str, Any]:
         raise ValueError("Unknown sudo detector categories")
     normalized_categories = {key: _number(categories[key]) for key in sorted(CATEGORIES)}
     normalized_detectors = {key: _number(detectors[key]) for key in sorted(DETECTORS)}
-    if sum(normalized_categories.values()) != recent or sum(normalized_detectors.values()) > candidates:
+    if (
+        sum(normalized_categories.values()) != recent
+        or sum(normalized_detectors.values()) > candidates
+    ):
         raise ValueError("Inconsistent sudo public summary counts")
-    state = "ready" if now - max(exported_at, checkpoint) <= MAX_AGE and now - checkpoint <= MAX_AGE else "stale"
+    state = (
+        "ready"
+        if now - exported_at <= MAX_AGE and now - checkpoint <= MAX_AGE
+        else "stale"
+    )
     return {
         "state": state,
         "generated_at": exported_at,
@@ -137,9 +138,7 @@ def validate_summary(value: Any, *, now: float) -> dict[str, Any]:
     }
 
 
-def read_summary(
-    path: Path = PUBLIC_STATUS, *, now: float | None = None
-) -> dict[str, Any]:
+def read_summary(path: Path = PUBLIC_STATUS, *, now: float | None = None) -> dict[str, Any]:
     """Only a sanitized file; never a direct SQLite fallback if it is missing."""
     clock = time.time() if now is None else now
     if not math.isfinite(clock) or clock < 1:
@@ -166,8 +165,14 @@ def read_experiment() -> dict[str, Any]:
             raise ValueError("Benchmark is oversized")
         report = json.loads(encoded)
         if not isinstance(report, dict) or set(report) != {
-            "format", "synthetic_only", "model_version", "threshold",
-            "training_scenarios", "training_process_rows", "validation", "test",
+            "format",
+            "synthetic_only",
+            "model_version",
+            "threshold",
+            "training_scenarios",
+            "training_process_rows",
+            "validation",
+            "test",
             "source_run_commit",
         }:
             raise ValueError("Unexpected sudo experiment schema")
@@ -188,7 +193,10 @@ def read_experiment() -> dict[str, Any]:
         for split in ("validation", "test"):
             record = report[split]
             if not isinstance(record, dict) or set(record) != {
-                "normal_scenarios", "suspicious_scenarios", "ml", "rules"
+                "normal_scenarios",
+                "suspicious_scenarios",
+                "ml",
+                "rules",
             }:
                 raise ValueError("Invalid sudo benchmark split")
             normal = _number(record["normal_scenarios"])
