@@ -1547,3 +1547,26 @@ i shadow-mode**, og ny featureudvikling udsættes til efter eksamen.
 En senere live sudo-alarm kræver særskilt integreret
 alarm-/outbox-deployment og positiv driftsaccept; de to
 eksisterende realtidsdetektioner er fra isoleret Ubuntu-VM.
+
+### Afsluttet: privat SQLite-integritet, permissions og eksamensscope (3. november 2026)
+
+Efter periodisk drift bestod den sidste read-only Pi-kontrol med
+**alle fire relevante enheder active**
+(`yggdrasil-collector.service`, `yggdrasil-web.service`,
+`yggdrasil-notifier.service`, `yggdrasil-sudo-shadow.timer`).
+Den worker-ejede sudo-shadow-mappe var `0700`, SQLite-filen `0600`,
+`PRAGMA integrity_check=ok`, **75** lagrede normaliserede sudo-poster
+og **0** alarmkandidater. Kommandoen sluttede med `RESULTAT: PASS`.
+Der blev ikke gennemført nye sudo-fejlforsøg, sendt Discord-alarmer
+eller ændret den eksisterende produktionsdatabase.
+
+**Sprint 5 erklæres afsluttet i den aftalte eksamensafgrænsning:**
+regelbaseret sudo-observation med separat, aktiv systemd-timer
+**i shadow-mode**. En automatisk sudo→`alerts`→Discord-pipeline
+er **ikke** aktiveret og må ikke præsenteres som gennemført;
+den tidligere rigtige Discord-levering var en mærket simuleret LABTEST.
+Der er ikke målt en produktions-FPR eller langtidsoppetid.
+Fremtidig FIM/filintegritet og sudo-ML udsættes til efter eksamen.
+
+En kort samlet resultattabel, begrænsninger og screenshot-kandidater
+findes i [Sprint 5-afslutningen](SPRINT_5_CLOSEOUT.md).
