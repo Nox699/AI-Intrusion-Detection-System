@@ -147,3 +147,103 @@ def test_record_size_and_count_are_bounded(watcher, monkeypatch):
     monkeypatch.setattr(watcher, "MAX_RECORDS", 1)
     with pytest.raises(ValueError, match="record limit"):
         observer.ingest(b"something")
+
+def test_opt_in_private_staging_persists_only_normalized_events(watcher, tmp_path):
+    from yggdrasil_ids.sudo_storage import SudoStagingStore
+
+    folder = tmp_path / "sudo-stage"
+    folder.mkdir(mode=0o700)
+    store = SudoStagingStore(folder / "sudo.sqlite3")
+    store.initialize()
+    observer = watcher.AggregateObserver(store)
+
+    feed(
+        observer,
+        1,
+        " labuser : TTY=pts/0 ; PWD=/private ; USER=root ; COMMAND=/usr/bin/id --token=private",
+    )
+    first = json.dumps(
+        record(2, "pam_unix(sudo:auth): authentication failure; logname=private")
+    ).encode()
+    observer.ingest(first)
+    observer.ingest(first)  # Exact journal cursor replay must be deduplicated on disk.
+    feed(observer, 3, "pam_unix(sudo:auth): authentication failure; logname=private")
+    feed(observer, 4, "pam_unix(sudo:auth): authentication failure; logname=private")
+    feed(observer, 5, "private is not in the sudoers file. This incident will be reported.")
+
+    report = observer.report(15)
+    assert report["database_writes"] is True
+    assert report["production_database_writes"] is False
+    assert report["discord_alerts_sent"] is False
+    assert report["private_staging_enabled"] is True
+    assert report["journal_rows_seen"] == 6
+    assert report["staged_unique_rows"] == 5
+    assert report["staged_duplicate_rows"] == 1
+    assert report["private_staging_summary"]["persisted_log_rows"] == 5
+    assert report["private_staging_summary"]["candidate_rule_matches"] == {
+        "sudo.permission_denied": 1,
+        "sudo.repeated_auth_failure": 1,
+    }
+    assert report["candidate_rule_matches"] == report["private_staging_summary"][
+        "candidate_rule_matches"
+    ]
+
+    rows = (folder / "sudo.sqlite3").read_bytes()
+    for private in (b"--token", b"labuser", b"private-journal-cursor", b"logname=private"):
+        assert private not in rows
+    assert "private" not in json.dumps(report)
+
+
+def test_temp_stage_is_deleted_after_cli_and_never_runs_journal_reader(
+    watcher, monkeypatch, capsys
+):
+    from yggdrasil_ids.sudo_rules import SudoSignal
+
+    created_files = []
+
+    def offline_observe(seconds, *, store=None):
+        assert seconds == 5
+        assert store is not None
+        created_files.append(store.path)
+        assert store.path.exists()
+        store.append(
+            SudoSignal(
+                cursor="offline-test-cursor",
+                timestamp=1793500000.0,
+                boot_id="b" * 32,
+                uid="1000",
+                pid=4500,
+                kind="command_invoked",
+            )
+        )
+        return watcher.AggregateObserver(store).report(seconds)
+
+    def unexpected_popen(*args, **kwargs):
+        pytest.fail("The temporary CLI lifecycle test must not open journald")
+
+    monkeypatch.setattr(watcher, "observe", offline_observe)
+    monkeypatch.setattr(watcher.subprocess, "Popen", unexpected_popen)
+    assert watcher.main(["--seconds", "5", "--stage-temporary"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["temporary_staging_database_deleted"] is True
+    assert result["private_staging_summary"]["persisted_log_rows"] == 1
+    assert result["production_database_writes"] is False
+    assert result["discord_alerts_sent"] is False
+    assert len(created_files) == 1
+    assert not created_files[0].exists()
+    assert not created_files[0].parent.exists()
+
+
+def test_default_cli_stays_read_only(watcher, monkeypatch, capsys):
+    def offline_observe(seconds, *, store=None):
+        assert seconds == 5
+        assert store is None
+        return watcher.AggregateObserver().report(seconds)
+
+    monkeypatch.setattr(watcher, "observe", offline_observe)
+    assert watcher.main(["--seconds", "5"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["database_writes"] is False
+    assert result["private_staging_enabled"] is False
+    assert result["private_staging_summary"] is None
+    assert "temporary_staging_database_deleted" not in result
