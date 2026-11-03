@@ -924,3 +924,56 @@ Næste gate er en **kortvarig live shadow-kørsel på VM'en**
 med en ny, autoriseret tre-forsøgsserie for
 at måle realtidsdetektionen, før man overvejer
 persistent driftsintegration eller Discord.
+
+### Ubuntu-VM liveaccept: autentisk sudo-auth-burst opdaget under observation (3. november 2026)
+
+Den eksisterende `sudo_rules.py`, `sudo_storage.py` og
+`sprint5_sudo_shadow_observe.py` blev overført til den
+isolerede VM via den særskilte SSH-nøgle, uden at ændre
+Yggdrasil-produktionens tjenester eller åbne netværksadgang.
+`labadmin` verificerede sin sudo-adgang, startede en
+**25-sekunders** shadow-observation med
+`--stage-temporary` og udførte tre nye kontrollerede,
+fejlede sudo-forsøg under `ids-sudo-lab`-testkontoen.
+
+| Verificeret måling | Faktisk resultat |
+| --- | ---: |
+| `journal_rows_seen` / `parsed_sudo_rows` | **21 / 21** |
+| `pam_auth_failure` | **3** |
+| `incorrect_password` | **3** |
+| `command_invoked` | 3 |
+| `pam_session_opened` / `pam_session_closed` | 3 / 3 |
+| `other_sudo` (genkendt som øvrig sudo) | 6 |
+| `not_in_sudoers` | 0 |
+| `sudo.repeated_auth_failure` | **1 kandidat** |
+| `sudo.permission_denied` | 0 |
+| Private unikke SQLite-rækker | **21** |
+| Private dubletter | 0 |
+| Parser- og replaykvalitetsfejl | **0** |
+| Midlertidig SQLite slettet | `true` |
+| Produktionens SQLite / Discord berørt | `false` / `false` |
+
+**Faglig konklusion:** En **rigtig live-dataflow-test**
+har verificeret `journalctl --follow` → betroet sudo-`_EXE`
+→ Python-parser → regelmotor → privat SQLite. Tre separat
+fejlede sudo-processer udløste **præcis én**
+`sudo.repeated_auth_failure`-kandidat under
+observationen, mens både PAM- og password-summary-linjer
+blev fortolket uden at fordoble procesantallet.
+`other_sudo=6` betyder kendt kilde med uklassificeret
+tekstformat, **ikke** seks parsefejl.
+
+**Dette er ikke** en verificeret Discord-meddelelse,
+alvorlighedsgrad-validering mod en større angriberdatabase,
+måling af præcis alarm-latens, eller dokumentation af
+falsk-positiv-rate for produktionen. Kontrollen
+demonstrerer én positiv, kontrolleret lab-sekvens.
+Der blev ikke delt rå sudo-journaltekst eller credentials.
+
+**Næste fase:** etabler en særskilt, gated alarmkæde
+fra sudo-kandidater til rapportering, der kan testes
+med en lokal/falsk notifikationsafsender og en privat
+DB-kopi. Først derefter vurderes, om en
+produktionsnotifikation skal aktiveres. Eksisterende
+SSH/UFW-collector, Isolation Forest og Discord-secret
+må ikke flyttes eller ændres ved et labforsøg.
