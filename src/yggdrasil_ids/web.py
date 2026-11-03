@@ -40,7 +40,13 @@ from werkzeug.security import check_password_hash
 from . import __version__
 from .config import AppConfig, load_config
 from .storage import Repository
-from .sudo_dashboard import PUBLIC_STATUS, read_experiment, read_summary
+from .sudo_dashboard import (
+    PUBLIC_ACTIVITY,
+    PUBLIC_STATUS,
+    read_activity,
+    read_experiment,
+    read_summary,
+)
 
 DETECTORS = {
     "ssh.failed_burst": "Mange fejlede forsøg",
@@ -152,6 +158,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
     repo = Repository(cfg.database_path, readonly=True)
     app.extensions["ids_repository"] = repo
     app.config["SUDO_PUBLIC_STATUS_PATH"] = PUBLIC_STATUS
+    app.config["SUDO_PUBLIC_ACTIVITY_PATH"] = PUBLIC_ACTIVITY
     app.extensions["ids_config"] = cfg
     throttle = LoginThrottle()
     app.extensions["ids_login_throttle"] = throttle
@@ -483,6 +490,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
         return render_template(
             "sudo.html",
             sudo=read_summary(Path(app.config["SUDO_PUBLIC_STATUS_PATH"])),
+            activity=read_activity(Path(app.config["SUDO_PUBLIC_ACTIVITY_PATH"])),
             benchmark=read_experiment(),
         )
 
@@ -531,6 +539,14 @@ def create_app(config: AppConfig | None = None) -> Flask:
             server_time=time.time(),
             timezone=cfg.timezone,
             source_kind=raw.get("source_kind"),
+        )
+
+    @app.get("/api/nav-alerts")
+    def api_nav_alerts() -> Any:
+        return jsonify(
+            period_hours=24,
+            meaning="registered_alert_cases_in_last_24_hours_not_unread",
+            counts=call("nav_alert_counts", hours=24),
         )
 
     @app.get("/api/status")
