@@ -707,6 +707,7 @@ def test_network_page_displays_data_quality_error_without_exposing_raw_journal(c
     assert "Netværkshistorikken er for stor" in html
     assert "SRC=" not in html
 
+
 @pytest.mark.parametrize(
     ("path", "section"),
     [
