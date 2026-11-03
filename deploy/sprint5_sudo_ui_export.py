@@ -135,9 +135,128 @@ def build_summary(database: Path, *, now: float | None = None) -> dict:
     }
 
 
+ACTIVITY_FORMAT = "sudo-shadow-activity-v1"
+ACTIVITY_FILE = Path("/var/lib/yggdrasil-sudo-public/sudo-activity.json")
+MAX_LATEST = 15
+MAX_CANDIDATES = 8
+
+
+def build_activity(database: Path, *, now: float | None = None) -> dict:
+    """One anonymous row per (boot, UID, PID) and recent rule candidates.
+
+    SQL grouping is internal: no PID, UID, boot ID, command, message, cursor,
+    source address or raw event identity escapes into the JSON output.
+    """
+    _private_db(database)
+    now = time.time() if now is None else now
+    if not math.isfinite(now) or not 1 <= now < 4_102_444_800:
+        raise ValueError("Invalid activity export time")
+    start = now - 86400
+    with sqlite3.connect("file:" + str(database) + "?mode=ro", uri=True, timeout=5) as db:
+        db.execute("PRAGMA query_only=ON")
+        if db.execute("PRAGMA user_version").fetchone()[0] != 2:
+            raise ValueError("Unexpected private sudo database schema")
+
+        checkpoint_row = db.execute(
+            "SELECT last_completed_until FROM shadow_poll_checkpoint WHERE id=1"
+        ).fetchone()
+        if checkpoint_row is None:
+            raise ValueError("Missing completed sudo poll checkpoint")
+        checkpoint = float(checkpoint_row[0])
+        if not math.isfinite(checkpoint) or not 0 < checkpoint <= now + 60:
+            raise ValueError("Invalid sudo activity checkpoint")
+
+        # LEFT JOIN is used only to mark processes with real stored rule matches.
+        processes = db.execute(
+            "SELECT MAX(s.timestamp) AS timestamp, "
+            "MAX(CASE WHEN s.kind='not_in_sudoers' THEN 1 ELSE 0 END) AS denied, "
+            "MAX(CASE WHEN s.kind IN ('pam_auth_failure','incorrect_password') "
+            "THEN 1 ELSE 0 END) AS failed, "
+            "MAX(CASE WHEN s.kind='command_invoked' THEN 1 ELSE 0 END) AS command, "
+            "MAX(CASE WHEN s.kind='pam_session_opened' THEN 1 ELSE 0 END) AS opened, "
+            "MAX(CASE WHEN c.detector_id='sudo.permission_denied' THEN 1 ELSE 0 END) "
+            "AS denied_match, "
+            "MAX(CASE WHEN c.detector_id='sudo.repeated_auth_failure' "
+            "THEN 1 ELSE 0 END) AS auth_match "
+            "FROM sudo_signals AS s "
+            "LEFT JOIN sudo_candidates AS c ON c.event_id=s.event_id "
+            "WHERE s.timestamp>? AND s.timestamp<=? "
+            "GROUP BY s.boot_id,s.uid,s.pid "
+            "ORDER BY timestamp DESC LIMIT ?",
+            (start, now, MAX_LATEST),
+        ).fetchall()
+
+        candidates = db.execute(
+            "SELECT detector_id,timestamp,process_count FROM sudo_candidates "
+            "WHERE timestamp>? AND timestamp<=? "
+            "ORDER BY timestamp DESC,detector_id LIMIT ?",
+            (start, now, MAX_CANDIDATES),
+        ).fetchall()
+
+    latest = []
+    for stamp, denied, failed, command, opened, denied_match, auth_match in processes:
+        if denied:
+            category = "permission_denied"
+        elif failed:
+            category = "authentication_failed"
+        elif opened:
+            category = "session_opened"
+        elif command:
+            category = "command_logged"
+        else:
+            category = "other"
+        if denied_match:
+            detector = "sudo.permission_denied"
+        elif auth_match:
+            detector = "sudo.repeated_auth_failure"
+        else:
+            detector = None
+        latest.append(
+            {
+                "timestamp": float(stamp),
+                "category": category,
+                "attention": (
+                    "rule_candidate"
+                    if detector is not None
+                    else "review"
+                    if denied or failed
+                    else "normal"
+                ),
+                "detector_id": detector,
+            }
+        )
+
+    recent_candidates = []
+    for detector, timestamp, count in candidates:
+        if detector not in DETECTORS:
+            raise ValueError("Unexpected sudo rule candidate ID")
+        recent_candidates.append(
+            {
+                "timestamp": float(timestamp),
+                "detector_id": detector,
+                "process_count": _count(count),
+            }
+        )
+
+    return {
+        "format": ACTIVITY_FORMAT,
+        "mode": "shadow",
+        "generated_at": now,
+        "checkpoint_at": checkpoint,
+        "period_seconds": 86400,
+        "latest_limit": MAX_LATEST,
+        "latest": latest,
+        "candidate_limit": MAX_CANDIDATES,
+        "candidates": recent_candidates,
+        "source": "worker_owned_private_sudo_staging",
+        "sends_alerts": False,
+        "shares_production_database": False,
+    }
+
+
 def publish(summary: dict, target: Path) -> None:
     _public_dir(target.parent)
-    if target.name != "sudo-status.json" or target.is_symlink():
+    if target.name not in {"sudo-status.json", "sudo-activity.json"} or target.is_symlink():
         raise PermissionError("Only the dedicated sudo-status.json can be published")
     if target.exists():
         existing = target.stat()
@@ -183,6 +302,10 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("Never export sudo signals as root")
     os.umask(0o027)
     summary = build_summary(args.database)
+    activity = build_activity(args.database, now=summary["generated_at"])
+    # Validate both snapshots in memory before publishing either; status.json
+    # retains its original schema, so existing dashboard previews keep working.
+    publish(activity, args.destination.with_name("sudo-activity.json"))
     publish(summary, args.destination)
     print(
         json.dumps(
@@ -192,6 +315,8 @@ def main(argv: list[str] | None = None) -> int:
                 "checkpoint_at": summary["checkpoint_at"],
                 "recent_signals": summary["recent_signals"],
                 "recent_candidates": sum(summary["candidate_detectors"].values()),
+                "recent_processes_shown": len(activity["latest"]),
+                "recent_rule_candidates_shown": len(activity["candidates"]),
                 "anonymous_public_summary": True,
                 "production_database_modified": False,
                 "discord_alerts_sent": 0,
