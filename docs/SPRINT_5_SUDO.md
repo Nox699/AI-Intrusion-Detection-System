@@ -676,3 +676,48 @@ falsk-positiv-rate. Sprint 5's næste udviklingstrin er
 en privat, adskilt, testbar hændelseslagring med
 deduplikering og retention, inden en eventuel
 produktionstjeneste og notifierintegration overvejes.
+
+### Opt-in integrationstest: sudo-shadow + privat midlertidig SQLite
+
+Den allerede beståede manuelle Pi-test verificerede den separate
+sudo-shadow-monitor med **5 sudo-poster på 15 sekunder, 0
+regel-kandidater og ingen produktionseffekter**. En anden,
+separat Pi-test verificerede `SudoStagingStore` med syntetiske
+events: oprettelse, unikhed, atomisk kandidatlagring, retention og
+adskillelse fra produktionsdatabasen.
+
+Næste trin forbinder **kun disse to testkomponenter**:
+`deploy/sprint5_sudo_shadow_observe.py --stage-temporary`.
+
+- Standardtilstand (uden flag) er **fortsat read-only og
+  uden SQLite-skrivninger**.
+- Med `--stage-temporary` oprettes en **ny,
+  worker-ejet privat 0700-mappe** og en **0600-SQLite-fil**
+  gennem `TemporaryDirectory` og `SudoStagingStore`.
+  Den slettes automatisk ved afslutning, også ved fejl.
+- Journalen udvælges kun på trusted `_EXE=/usr/bin/sudo`
+  fra workerens tilgængelige journaler. Der er et kort
+  5–60 sekunders målevindue og højst 2.000 poster.
+- Kun et hash af journalcursor, tidspunkt, boot-ID,
+  numerisk UID og PID, grov hændelseskategori samt
+  eventuelle regelkandidater gemmes i **testdatabasen**.
+  Ingen rå `MESSAGE`, `COMMAND`, usernames,
+  rå journalcursors, adgangskoder eller SQLite-data
+  udsendes fra scriptet.
+- Rapporten viser både observerede journalrækker og
+  antallet af **unikt gemte** rækker; dubletter
+  registreres særskilt. `private_staging_summary`
+  er kun aggregeret statistik.
+- Vedvarende lagring under `/var/lib/yggdrasil-ids`,
+  systemd-service, produktions-SQLite, dashboard,
+  Discord-outbox, sudoers, SSH/UFW-collector og
+  Isolation Forest berøres **ikke**.
+
+**Bemærk:** Denne første prøve gemmer kun data i
+målevinduet; den er ikke en driftsklar persistent
+sudo-detektor. Hvis der senere ønskes permanent
+sudo-lagring, skal det designes særskilt med
+adgangskontrol, opstarts-checkpoints, diskbudget,
+retention, backup/rollback og privat dashboardadgang.
+Den nuværende regelmotor genskaber ikke automatisk
+sine tidsvinduer efter en genstart.
