@@ -209,3 +209,93 @@ def test_explicit_store_reopen_preserves_dedup(private_store):
     another.initialize()
     assert not another.append(original)
     assert another.summary()["persisted_log_rows"] == 1
+
+def test_checkpoint_starts_unset_and_tracks_only_committed_max_timestamp(private_store):
+    assert private_store.resume_since(300) is None
+    later = signal(5, stamp=STAMP + 1000)
+    earlier = signal(6, stamp=STAMP + 900)
+    assert private_store.append(later)
+    assert private_store.append(earlier)
+    assert private_store.resume_since(300) == pytest.approx(STAMP + 699)
+    # Repeated input must not change the timestamp-only checkpoint.
+    assert not private_store.append(later)
+    assert private_store.resume_since(300) == pytest.approx(STAMP + 699)
+
+    with sqlite3.connect(private_store.path) as db:
+        columns = {row[1] for row in db.execute("PRAGMA table_info(sudo_checkpoint)")}
+        assert columns == {"id", "last_committed_timestamp"}
+        row = db.execute("SELECT last_committed_timestamp FROM sudo_checkpoint").fetchone()
+    assert row == (STAMP + 1000,)
+
+
+def test_checkpoint_survives_retention_and_reopen(private_store):
+    initial = signal(1, stamp=STAMP)
+    private_store.append(initial)
+    assert private_store.prune(STAMP + 1) == 1
+    assert private_store.summary()["persisted_log_rows"] == 0
+    again = SudoStagingStore(private_store.path)
+    again.initialize()
+    assert again.resume_since(300) == pytest.approx(STAMP - 301)
+
+
+def test_rejected_candidate_does_not_advance_checkpoint(private_store):
+    initial = signal(1, stamp=STAMP)
+    assert private_store.append(initial)
+    with sqlite3.connect(private_store.path) as db:
+        db.executescript(
+            """
+            CREATE TRIGGER deny_test_candidate BEFORE INSERT ON sudo_candidates
+            BEGIN SELECT RAISE(ABORT, 'offline injected failure'); END;
+            """
+        )
+
+    later = signal(3, kind="not_in_sudoers", stamp=STAMP + 100)
+    finding = SudoRuleMatch("sudo.permission_denied", "medium", 1, later.timestamp)
+    with pytest.raises(sqlite3.IntegrityError):
+        private_store.append(later, finding)
+    assert private_store.summary()["persisted_log_rows"] == 1
+    assert private_store.resume_since(300) == pytest.approx(STAMP - 301)
+
+
+@pytest.mark.parametrize("overlap", [59, 7201, True, -1, 1.5, float("nan")])
+def test_restart_overlap_must_be_explicitly_bounded(private_store, overlap):
+    with pytest.raises(ValueError, match="overlap"):
+        private_store.resume_since(overlap)
+
+
+def test_schema_v1_is_migrated_in_place_with_reconstructed_checkpoint(tmp_path):
+    directory = tmp_path / "private"
+    directory.mkdir(mode=0o700)
+    path = directory / "sudo.sqlite3"
+    old = signal(1, stamp=STAMP + 10)
+    with sqlite3.connect(path) as db:
+        db.execute(
+            "CREATE TABLE sudo_signals ("
+            "event_id TEXT PRIMARY KEY,timestamp REAL NOT NULL,kind TEXT NOT NULL,"
+            "boot_id TEXT NOT NULL,uid TEXT NOT NULL,pid INTEGER NOT NULL)"
+        )
+        db.execute(
+            "INSERT INTO sudo_signals VALUES(?,?,?,?,?,?)",
+            (event_id(old), old.timestamp, old.kind, old.boot_id, old.uid, old.pid),
+        )
+        db.execute("PRAGMA user_version=1")
+    path.chmod(0o600)
+
+    migrated = SudoStagingStore(path)
+    migrated.initialize()
+    assert migrated.resume_since(300) == pytest.approx(STAMP + 10 - 301)
+    assert migrated.summary()["persisted_log_rows"] == 1
+    with sqlite3.connect(path) as db:
+        assert db.execute("PRAGMA user_version").fetchone() == (SCHEMA_VERSION,)
+        assert db.execute("SELECT kind FROM sudo_signals").fetchone() == ("command_invoked",)
+
+
+def test_singleton_checkpoint_is_not_raw_journal_cursor(private_store):
+    item = signal(cursor="PRIVATE-RAW-CURSOR-AND-COMMAND")
+    private_store.append(item)
+    with sqlite3.connect(private_store.path) as db:
+        column_names = {
+            row[1] for row in db.execute("PRAGMA table_info(sudo_checkpoint)")
+        }
+        assert "cursor" not in column_names
+    assert b"PRIVATE-RAW-CURSOR-AND-COMMAND" not in private_store.path.read_bytes()
