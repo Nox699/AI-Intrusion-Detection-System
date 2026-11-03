@@ -257,6 +257,9 @@ def calibrate(model, validation_rows, validation_cases):
     )
     return {
         "threshold": threshold,
+        "status": "no_usable_operating_point"
+        if synthetic["tp"] == 0
+        else "candidate_for_evaluation",
         "real_validation": real,
         "synthetic_validation": synthetic,
         "thresholds_examined": len(candidates),
@@ -458,6 +461,7 @@ def main():
         print(split, values)
     for name, result in report["results"].items():
         print(f"\n=== {name.upper()} TRAINING ===")
+        print("Calibration status:", result["calibration"]["status"])
         print("Training:", result["training"])
         real = result["real_test"]
         print(

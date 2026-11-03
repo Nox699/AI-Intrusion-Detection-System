@@ -150,6 +150,17 @@ def test_single_anomaly_is_visible_raw_but_requires_another_process_to_confirm(l
     assert lab.synthetic_evidence(model, [case]) == [None]
 
 
+def test_zero_detection_calibration_is_explicitly_unusable(lab):
+    from types import SimpleNamespace
+
+    model = SimpleNamespace(offset_=-0.5, score_samples=lambda rows: np.full(len(rows), -0.5))
+    validation = lab.split_real(fixture_rows(lab))[0]["validation"]
+    _, cases, _ = lab.create_splits()
+    result = lab.calibrate(model, validation, cases)
+    assert result["synthetic_validation"]["tp"] == 0
+    assert result["status"] == "no_usable_operating_point"
+
+
 def test_full_private_comparison_input_unchanged_and_recipes_not_deployable(lab, tmp_path):
     rows = fixture_rows(lab)
     path = tmp_path / "input.json"

@@ -60,6 +60,10 @@ Unsupervised fitting uses only normal candidates; labeled synthetic validation
 is used for threshold calibration. This should not be described as completely
 label-free model selection.
 
+A threshold that meets the false-positive budget but finds zero suspicious
+validation scenarios is explicitly marked `no_usable_operating_point`. Zero
+flags must not be presented as a successful low-noise detector.
+
 ## Evaluation units and limitations
 
 - Real provisional false positives count **process positions**. A confirmation
