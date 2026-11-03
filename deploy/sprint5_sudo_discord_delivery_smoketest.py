@@ -96,9 +96,7 @@ def run(
                     time.time(),
                     time.time(),
                     3,
-                    json.dumps(
-                        {"kind": "manual_test_only", "token": secrets.token_hex(8)}
-                    ),
+                    json.dumps({"kind": "manual_test_only", "token": secrets.token_hex(8)}),
                 ),
             )
         with repo.reader() as db:
@@ -152,7 +150,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         result = run(real=args.send_real)
     except (OSError, ValueError, RuntimeError, PermissionError, sqlite3.Error):
-        print("STOP: Isolated sudo Discord lab delivery failed; no production state changed", file=sys.stderr)
+        print(
+            "STOP: Isolated sudo Discord lab delivery failed; no production state changed",
+            file=sys.stderr,
+        )
         return 1
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
     return 0
