@@ -26,8 +26,8 @@ with socket.socket() as s:
 PY
 echo "=== Preview accessible ONLY via SSH tunnel: localhost:8766 ==="
 echo "=== Foreground process; press Ctrl-C to stop. Production dashboard stays at 8765. ==="
-exec sudo -u yggdrasil-web env \
-  PYTHONPATH=/opt/yggdrasil-sudo-ui-web/src \
+exec sudo /usr/bin/setpriv --reuid=yggdrasil-web --regid=yggdrasil-web --groups=yggdrasil-data \
+  /usr/bin/env PYTHONPATH=/opt/yggdrasil-sudo-ui-web/src \
   YGGDRASIL_CONFIG=/etc/yggdrasil-ids/config.toml \
   PYTHONUNBUFFERED=1 \
   OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
