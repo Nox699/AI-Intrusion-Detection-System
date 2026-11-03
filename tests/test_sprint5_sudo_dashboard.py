@@ -129,22 +129,22 @@ def test_recent_sudo_processes_and_rule_candidates_are_anonymous(exporter, stagi
     payload = json.loads(activity_file.read_text(encoding="utf-8"))
     for field in ("uid", "pid", "boot_id", "event_id", "cursor", "MESSAGE", "COMMAND"):
         assert field not in json.dumps(payload)
-    assert set(payload["latest"][0]) == {
-        "timestamp", "category", "attention", "detector_id"
-    }
+    assert set(payload["latest"][0]) == {"timestamp", "category", "attention", "detector_id"}
 
 
-def test_candidate_remains_visible_when_later_normal_activity_fills_latest(
-    exporter, staging
-):
+def test_candidate_remains_visible_when_later_normal_activity_fills_latest(exporter, staging):
     database, published, now = staging
     with sqlite3.connect(database) as db:
         for idx in range(18):
             db.execute(
                 "INSERT INTO sudo_signals VALUES(?,?,?,?,?,?)",
                 (
-                    f"normal-{idx}", now - 12 + idx / 3,
-                    "command_invoked", "a" * 32, "1000", 2000 + idx,
+                    f"normal-{idx}",
+                    now - 12 + idx / 3,
+                    "command_invoked",
+                    "a" * 32,
+                    "1000",
+                    2000 + idx,
                 ),
             )
     activity = exporter.build_activity(database, now=now)
