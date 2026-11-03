@@ -824,8 +824,17 @@ def test_nav_warnings_are_authenticated_real_alert_cases_not_shadow(client, conf
                 "first_seen,last_seen,count,score,model_version,details) "
                 "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                 (
-                    detector, "Kontrolleret laboratoriealarm", "medium", "Test",
-                    "192.0.2.8", stamp - age, stamp - age, 1, None, None, "{}",
+                    detector,
+                    "Kontrolleret laboratoriealarm",
+                    "medium",
+                    "Test",
+                    "192.0.2.8",
+                    stamp - age,
+                    stamp - age,
+                    1,
+                    None,
+                    None,
+                    "{}",
                 ),
             )
     result = client.get("/api/nav-alerts").get_json()
@@ -837,9 +846,7 @@ def test_nav_warnings_are_authenticated_real_alert_cases_not_shadow(client, conf
     assert 'class="nav-warning"' in html
 
 
-def test_sudo_page_prefers_recent_activity_above_synthetic_benchmark(
-    app, client, tmp_path
-):
+def test_sudo_page_prefers_recent_activity_above_synthetic_benchmark(app, client, tmp_path):
     now = time.time()
     activity_file = tmp_path / "sudo-activity.json"
     activity_file.write_text(
@@ -889,9 +896,11 @@ def test_sudo_page_prefers_recent_activity_above_synthetic_benchmark(
     assert "Autentificering mislykkedes" in html
     assert "Seneste 15 sudo-forløb" in html
     assert "Regelkandidat" in html
-    assert html.index("Seneste mistænkelige sudo-aktivitet") < html.index(
-        "Seneste 15 sudo-forløb"
-    ) < html.index("Isolation Forest mod sudo-regler")
+    assert (
+        html.index("Seneste mistænkelige sudo-aktivitet")
+        < html.index("Seneste 15 sudo-forløb")
+        < html.index("Isolation Forest mod sudo-regler")
+    )
     assert "/usr/bin/" not in html
     assert "sudo.if.fake_live_alert" not in html
 
