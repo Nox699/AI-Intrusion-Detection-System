@@ -62,7 +62,7 @@ cleanup() {
       "$code/src/yggdrasil_ids/__init__.py" \
       "$code/src/yggdrasil_ids/sudo_rules.py" \
       "$code/src/yggdrasil_ids/sudo_storage.py" \
-      "$code/deploy/sprint5_sudo_shadow_poll.py"
+      "$code/deploy/sprint5_sudo_shadow_poll.py" "$code/COMMIT"
     sudo rmdir -- \
       "$code/src/yggdrasil_ids" "$code/src" "$code/deploy" "$code" 2>/dev/null || :
     sudo systemctl daemon-reload || :
@@ -97,6 +97,8 @@ sudo install -o root -g root -m 0644 \
   "$tmp/deploy/yggdrasil-sudo-shadow.service" "$service"
 sudo install -o root -g root -m 0644 \
   "$tmp/deploy/yggdrasil-sudo-shadow.timer" "$timer"
+printf '%s\n' "$sha" > "$tmp/COMMIT"
+sudo install -o root -g root -m 0644 "$tmp/COMMIT" "$code/COMMIT"
 
 sudo systemd-analyze verify "$service" "$timer"
 sudo systemctl daemon-reload
