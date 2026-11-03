@@ -49,6 +49,84 @@
     <span class="metric-caption">Mulige mønstre, ikke bekræftede angreb eller udsendte alarmer</span>
   </article>
 </div>
+<section class="panel" id="sudo-findings" aria-label="Seneste mistænkelige sudo-aktivitet">
+  <div class="panel-heading">
+    <div>
+      <h2>Seneste mistænkelige sudo-aktivitet</h2>
+      <p>Regelkandidater fremhæves før den almindelige hændelsesliste · seneste 24 timer</p>
+    </div>
+    <span class="badge severity-medium">Shadow · Ikke udsendte alarmer</span>
+  </div>
+  {% if activity.state == 'unavailable' %}
+    <div class="notice warning">{{ icon('info',18) }}<div>
+      <strong>Hændelsesoversigten er ikke tilgængelig</strong>
+      <span>{{ activity.message }} Sudo-sensoren kan stadig køre, men listen må ikke vise opfundne tal.</span>
+    </div></div>
+  {% else %}
+    {% if activity.state == 'stale' %}
+      <div class="notice warning">{{ icon('info',18) }}<div>
+        <strong>Hændelseslisten er forældet</strong><span>{{ activity.message }}</span>
+      </div></div>
+    {% endif %}
+    {% if activity.candidates %}
+      <div class="table-scroll"><table>
+        <thead><tr><th>Tidspunkt</th><th>Regel</th><th>Antal processer</th><th>Vurdering</th></tr></thead>
+        <tbody>{% for finding in activity.candidates %}
+          <tr>
+            <td class="nowrap muted">{{ finding.timestamp|localtime }}</td>
+            <td><strong>{{ 'Gentagne autentificeringsfejl' if finding.detector_id == 'sudo.repeated_auth_failure' else 'Manglende sudoers-rettighed' }}</strong></td>
+            <td>{{ finding.process_count|number }}</td>
+            <td><span class="badge severity-medium">Kræver vurdering</span></td>
+          </tr>
+        {% endfor %}</tbody>
+      </table></div>
+    {% else %}
+      {{ empty('Ingen regelkandidater i perioden', 'Der er ingen lagrede sudo-regelfund i de seneste 24 timer. Det er ikke bevis for, at serveren ikke har været udsat for angreb.') }}
+    {% endif %}
+  {% endif %}
+</section>
+
+<section class="panel" id="sudo-latest" aria-label="De seneste registrerede sudo-processer">
+  <div class="panel-heading"><div>
+    <h2>Seneste 15 sudo-forløb</h2>
+    <p>Én række pr. proces, ikke pr. journallinje · seneste 24 timer</p>
+  </div></div>
+  {% if activity.state == 'unavailable' %}
+    {{ empty('Ingen verificeret sudo-hændelsesliste', 'Den anonymiserede eksport er endnu ikke tilgængelig. Dette er ikke det samme som nul hændelser.') }}
+  {% elif activity.latest %}
+    <div class="table-scroll"><table>
+      <thead><tr><th>Tidspunkt</th><th>Hændelse</th><th>Vurdering</th></tr></thead>
+      <tbody>
+      {% set sudo_labels = {
+        'permission_denied':'Sudoers-afvisning',
+        'authentication_failed':'Autentificering mislykkedes',
+        'session_opened':'Sudo-session åbnet',
+        'command_logged':'Sudo-kommando registreret',
+        'other':'Anden sudo-logpost'
+      } %}
+      {% for item in activity.latest %}
+      <tr>
+        <td class="nowrap muted">{{ item.timestamp|localtime }}</td>
+        <td><strong>{{ sudo_labels[item.category] }}</strong></td>
+        <td>
+          {% if item.attention == 'rule_candidate' %}
+          <span class="badge severity-medium">Regelkandidat</span>
+          {% elif item.attention == 'review' %}
+          <span class="badge severity-medium">Fejl – gennemgå</span>
+          {% else %}
+          <span class="badge severity-info">Registreret</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  {% else %}
+    {{ empty('Ingen sudo-forløb i perioden', 'Eksporten er ajour, men ingen sudo-processer er registreret i de seneste 24 timer.') }}
+  {% endif %}
+  <p class="panel-note">Kun tidspunkt og grov hændelsestype offentliggøres til webvisningen. Ingen brugernavne, UID/PID, kommandoer, journalcursors eller adgangskoder. Processammenkobling via boot/UID/PID er en afgrænset tilnærmelse.</p>
+</section>
+
 <div class="detail-grid">
   <section class="panel details-panel">
     <div class="panel-heading"><h2>Sensorstatus</h2><span class="status-pill {{ 'good' if sudo.state == 'ready' else 'warning' }}">{{ 'Aktuel eksport' if sudo.state == 'ready' else 'Forældet eksport' }}</span></div>
