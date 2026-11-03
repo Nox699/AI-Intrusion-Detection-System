@@ -776,9 +776,7 @@ def test_sudo_page_displays_only_anonymized_worker_export(app, client, tmp_path)
                     }.get(name, 0)
                     for name in CATEGORIES
                 },
-                "candidate_detectors": {
-                    name: 0 for name in DETECTORS
-                },
+                "candidate_detectors": {name: 0 for name in DETECTORS},
                 "source": "worker_owned_private_sudo_staging",
                 "sends_alerts": False,
                 "shares_production_database": False,
