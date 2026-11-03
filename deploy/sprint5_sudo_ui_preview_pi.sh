@@ -24,6 +24,10 @@ with socket.socket() as s:
     except OSError as exc:
         raise SystemExit(f"STOP: Port 8766 is already in use: {type(exc).__name__}")
 PY
+# Gunicorn uses the current working directory for its chdir setting.
+# yggdrasil-web cannot traverse /home/vidar; use the existing service cwd.
+cd /opt/yggdrasil-ids
+
 echo "=== Preview accessible ONLY via SSH tunnel: localhost:8766 ==="
 echo "=== Foreground process; press Ctrl-C to stop. Production dashboard stays at 8765. ==="
 exec sudo /usr/bin/setpriv --reuid=yggdrasil-web --regid=yggdrasil-web --groups=yggdrasil-data \
