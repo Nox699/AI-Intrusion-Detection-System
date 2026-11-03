@@ -206,13 +206,14 @@ def validate_activity(value: Any, *, now: float) -> dict[str, Any]:
     processed = []
     for item in latest:
         if not isinstance(item, dict) or set(item) != {
-            "timestamp", "category", "attention", "detector_id"
+            "timestamp",
+            "category",
+            "attention",
+            "detector_id",
         }:
             raise ValueError("Unknown sudo activity row")
         stamp = _timestamp(item["timestamp"], now)
-        category, attention, detector = (
-            item["category"], item["attention"], item["detector_id"]
-        )
+        category, attention, detector = (item["category"], item["attention"], item["detector_id"])
         if (
             stamp <= generated - 86400
             or stamp > last_ts
@@ -220,33 +221,33 @@ def validate_activity(value: Any, *, now: float) -> dict[str, Any]:
             or attention not in ACTIVITY_ATTENTION
             or (detector is not None and detector not in DETECTORS)
             or (attention == "rule_candidate") != (detector is not None)
-            or (attention == "review"
-                and category not in {"permission_denied", "authentication_failed"})
-            or (attention == "normal"
-                and category in {"permission_denied", "authentication_failed"})
+            or (
+                attention == "review"
+                and category not in {"permission_denied", "authentication_failed"}
+            )
+            or (
+                attention == "normal" and category in {"permission_denied", "authentication_failed"}
+            )
         ):
             raise ValueError("Invalid sudo activity categorization or ordering")
         last_ts = stamp
         processed.append(
-            {"timestamp": stamp, "category": category, "attention": attention,
-             "detector_id": detector}
+            {
+                "timestamp": stamp,
+                "category": category,
+                "attention": attention,
+                "detector_id": detector,
+            }
         )
     prior_ts = float("inf")
     validated_candidates = []
     for item in candidates:
-        if not isinstance(item, dict) or set(item) != {
-            "timestamp", "detector_id", "process_count"
-        }:
+        if not isinstance(item, dict) or set(item) != {"timestamp", "detector_id", "process_count"}:
             raise ValueError("Unknown sudo candidate row")
         stamp = _timestamp(item["timestamp"], now)
         detector = item["detector_id"]
         count = _number(item["process_count"])
-        if (
-            stamp <= generated - 86400
-            or stamp > prior_ts
-            or detector not in DETECTORS
-            or count < 1
-        ):
+        if stamp <= generated - 86400 or stamp > prior_ts or detector not in DETECTORS or count < 1:
             raise ValueError("Invalid sudo candidate timestamp or type")
         prior_ts = stamp
         validated_candidates.append(
