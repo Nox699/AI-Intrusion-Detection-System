@@ -21,7 +21,7 @@
     {% endfor %}
     </nav>
     <div class="sidebar-bottom">
-      <div class="server-label">{{ icon('server', 17) }}<div><strong>{{ app_cfg.host_label }}</strong><span>SSH · {{ 'Demo' if app_cfg.mode == 'demo' else 'Privat server' }}</span></div></div>
+      <div class="server-label">{{ icon('server', 17) }}<div><strong>{{ app_cfg.host_label }}</strong><span>IDS · {{ 'Demo' if app_cfg.mode == 'demo' else 'Privat server' }}</span></div></div>
       <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="logout-button" type="submit">{{ icon('logout', 18) }} Log ud</button></form>
       <span class="build-label">Yggdrasil IDS · {{ app_version }}</span>
     </div>
@@ -30,7 +30,7 @@
   <div class="workspace">
     <header class="topbar">
       <button class="icon-button mobile-nav" id="nav-toggle" type="button" aria-label="Åbn navigation" aria-controls="sidebar" aria-expanded="false">{{ icon('menu') }}</button>
-      <div class="breadcrumb">Dit sikkerhedsoverblik <span>/</span> <strong>SSH</strong></div>
+      <div class="breadcrumb">Dit sikkerhedsoverblik <span>/</span> <strong>{{ page_section }}</strong></div>
       <div class="topbar-right"><span class="status-pill {{ view_status.collector_tone }}" id="collector-badge"><span class="status-dot"></span><span id="collector-label">{{ view_status.collector_label }}</span></span><span class="avatar" aria-label="Privat administrator">N</span></div>
     </header>
     <main id="main">
