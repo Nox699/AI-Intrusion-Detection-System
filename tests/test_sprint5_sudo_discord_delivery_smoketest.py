@@ -10,9 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 SCRIPT = (
-    Path(__file__).resolve().parents[1]
-    / "deploy"
-    / "sprint5_sudo_discord_delivery_smoketest.py"
+    Path(__file__).resolve().parents[1] / "deploy" / "sprint5_sudo_discord_delivery_smoketest.py"
 )
 
 
@@ -65,9 +63,7 @@ def test_real_mode_requires_notifier_user(smoke, monkeypatch):
         smoke.run(real=True)
 
 
-def test_real_mode_uses_only_systemd_credential_and_does_not_leak_it(
-    smoke, tmp_path, monkeypatch
-):
+def test_real_mode_uses_only_systemd_credential_and_does_not_leak_it(smoke, tmp_path, monkeypatch):
     url = "https://discord.com/api/webhooks/" + "2" * 18 + "/" + "VERYPRIVATE" * 6
     private_dir = tmp_path / "credential"
     private_dir.mkdir(mode=0o700)
@@ -102,9 +98,7 @@ def test_real_mode_uses_only_systemd_credential_and_does_not_leak_it(
     assert url not in serialized
 
 
-def test_webhook_missing_fails_closed_with_no_notifier_state(
-    smoke, monkeypatch
-):
+def test_webhook_missing_fails_closed_with_no_notifier_state(smoke, monkeypatch):
     monkeypatch.setattr(smoke.os, "geteuid", lambda: 999)
     monkeypatch.setattr(
         smoke.pwd,
