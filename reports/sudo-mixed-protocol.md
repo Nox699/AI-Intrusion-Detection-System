@@ -42,6 +42,19 @@ identity features in this comparison. Every forest uses 128 trees, random seed
 earlier feature-variant search; it is not a comparison against the original
 seven-feature, full-size synthetic benchmark.
 
+Compatibility checks cover all 308 original training/validation/historical
+synthetic scenarios. Replaying equivalent raw journal records through the real
+export produces the same ordered five-feature vectors as synthetic scoring.
+The research scorer excludes session-close-only timestamps, matching the real
+export. A regression case checks a mixed-outcome event on the 300-second boundary.
+This timestamp alignment leaves the original 308 scenarios' features unchanged.
+
+Frozen-recipe reconstruction checks the recipe format, feature names/order,
+confirmation policy, matrix fingerprint, library version and forest parameters.
+The legacy `SudoIsolationForest` wrapper remains a separate seven-feature format;
+these non-deployable five-feature research recipes are not loaded by that wrapper
+or the production dashboard. Application integration remains a separate step.
+
 Raw scores and confirmed flags are reported separately. A confirmation requires
 two consecutive anomalous processes in the same pseudonymous group less than
 900 seconds apart. A normal-scored process breaks the run. Confirmation is an

@@ -102,6 +102,12 @@ def operating_profiles(
 
 
 def reconstruct(recipe, expected_matrix_sha):
+    if recipe.get("format") != "sudo-mixed-research-recipe-v1":
+        raise ValueError("Unexpected recipe format")
+    if recipe.get("features") != list(FEATURE_NAMES[:5]):
+        raise ValueError("Recipe feature names/order differ from the scoring schema")
+    if recipe.get("confirmation_seconds") != 900 or recipe.get("required_consecutive") != 2:
+        raise ValueError("Recipe confirmation policy differs from the scoring policy")
     if recipe.get("deployable") is not False:
         raise ValueError("Expected a non-deployable research recipe")
     if recipe.get("sklearn_version") != sklearn.__version__:

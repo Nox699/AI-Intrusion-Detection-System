@@ -158,7 +158,11 @@ def confirmation_values(attempts, scores):
 
 
 def scenario_bundle(item):
-    attempts = attempts_from_signals(item.signals)
+    # Match the real export's causal event time. A later session-close record
+    # must not shift the outcome or a 300-second window boundary.
+    attempts = attempts_from_signals(
+        signal for signal in item.signals if signal.kind != "pam_session_closed"
+    )
     return attempts, [row[:5] for row in feature_rows(attempts)]
 
 

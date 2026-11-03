@@ -34,6 +34,10 @@ def frozen_synthetic(modules):
     fingerprint = lab.sha256(rows)
     assert fingerprint == "02af99371e15ca5c0d8db60e0d7187f51963293c902c613cd2975748c121b5d7"
     recipe = {
+        "format": "sudo-mixed-research-recipe-v1",
+        "features": list(lab.FEATURE_NAMES[:5]),
+        "confirmation_seconds": 900,
+        "required_consecutive": 2,
         "deployable": False,
         "normal_training_rows": rows,
         "sklearn_version": diagnostic.sklearn.__version__,
@@ -56,6 +60,10 @@ def test_reconstruction_checks_matrix_and_version(modules, frozen_synthetic):
         diagnostic.reconstruct(recipe, "0" * 64)
     with pytest.raises(ValueError, match="version"):
         diagnostic.reconstruct({**recipe, "sklearn_version": "invalid"}, "0" * 64)
+    with pytest.raises(ValueError, match="feature names/order"):
+        diagnostic.reconstruct({**recipe, "features": recipe["features"][::-1]}, "0" * 64)
+    with pytest.raises(ValueError, match="confirmation policy"):
+        diagnostic.reconstruct({**recipe, "required_consecutive": 1}, "0" * 64)
 
 
 def test_181_row_synthetic_false_positive_budget_cliff_is_reproduced(modules, frozen_synthetic):
