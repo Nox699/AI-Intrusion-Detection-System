@@ -18,7 +18,13 @@ from pathlib import Path
 from typing import Any
 
 PUBLIC_STATUS = Path("/var/lib/yggdrasil-sudo-public/sudo-status.json")
+PUBLIC_ACTIVITY = Path("/var/lib/yggdrasil-sudo-public/sudo-activity.json")
 SUMMARY_FORMAT = "sudo-shadow-summary-v1"
+ACTIVITY_FORMAT = "sudo-shadow-activity-v1"
+ACTIVITY_CATEGORIES = frozenset(
+    {"permission_denied", "authentication_failed", "session_opened", "command_logged", "other"}
+)
+ACTIVITY_ATTENTION = frozenset({"rule_candidate", "review", "normal"})
 CATEGORIES = frozenset(
     {
         "command_invoked",
@@ -148,6 +154,129 @@ def read_summary(path: Path = PUBLIC_STATUS, *, now: float | None = None) -> dic
         }
     if status["state"] == "stale":
         status["message"] = "Sudo-opsummeringen eller sensorens checkpoint er forældet."
+    return status
+
+
+def validate_activity(value: Any, *, now: float) -> dict[str, Any]:
+    """Validate fixed-schema, bounded, already-anonymized process-level data."""
+    keys = {
+        "format",
+        "mode",
+        "generated_at",
+        "checkpoint_at",
+        "period_seconds",
+        "latest_limit",
+        "latest",
+        "candidate_limit",
+        "candidates",
+        "source",
+        "sends_alerts",
+        "shares_production_database",
+    }
+    if not isinstance(value, dict) or set(value) != keys:
+        raise ValueError("Unknown sudo activity schema")
+    if (
+        value["format"] != ACTIVITY_FORMAT
+        or value["mode"] != "shadow"
+        or type(value["period_seconds"]) is not int
+        or value["period_seconds"] != 86400
+        or type(value["latest_limit"]) is not int
+        or value["latest_limit"] != 15
+        or type(value["candidate_limit"]) is not int
+        or value["candidate_limit"] != 8
+        or value["source"] != "worker_owned_private_sudo_staging"
+        or value["sends_alerts"] is not False
+        or value["shares_production_database"] is not False
+    ):
+        raise ValueError("Invalid sudo activity source or time-window provenance")
+    generated = _timestamp(value["generated_at"], now)
+    checkpoint = _timestamp(value["checkpoint_at"], now)
+    if checkpoint > generated + 60:
+        raise ValueError("Sudo activity checkpoint is from the future")
+    latest = value["latest"]
+    candidates = value["candidates"]
+    if (
+        not isinstance(latest, list)
+        or len(latest) > 15
+        or not isinstance(candidates, list)
+        or len(candidates) > 8
+    ):
+        raise ValueError("Unbounded sudo activity list")
+    last_ts = float("inf")
+    processed = []
+    for item in latest:
+        if not isinstance(item, dict) or set(item) != {
+            "timestamp", "category", "attention", "detector_id"
+        }:
+            raise ValueError("Unknown sudo activity row")
+        stamp = _timestamp(item["timestamp"], now)
+        category, attention, detector = (
+            item["category"], item["attention"], item["detector_id"]
+        )
+        if (
+            stamp <= generated - 86400
+            or stamp > last_ts
+            or category not in ACTIVITY_CATEGORIES
+            or attention not in ACTIVITY_ATTENTION
+            or (detector is not None and detector not in DETECTORS)
+            or (attention == "rule_candidate") != (detector is not None)
+            or (attention == "review"
+                and category not in {"permission_denied", "authentication_failed"})
+            or (attention == "normal"
+                and category in {"permission_denied", "authentication_failed"})
+        ):
+            raise ValueError("Invalid sudo activity categorization or ordering")
+        last_ts = stamp
+        processed.append(
+            {"timestamp": stamp, "category": category, "attention": attention,
+             "detector_id": detector}
+        )
+    prior_ts = float("inf")
+    validated_candidates = []
+    for item in candidates:
+        if not isinstance(item, dict) or set(item) != {
+            "timestamp", "detector_id", "process_count"
+        }:
+            raise ValueError("Unknown sudo candidate row")
+        stamp = _timestamp(item["timestamp"], now)
+        detector = item["detector_id"]
+        count = _number(item["process_count"])
+        if (
+            stamp <= generated - 86400
+            or stamp > prior_ts
+            or detector not in DETECTORS
+            or count < 1
+        ):
+            raise ValueError("Invalid sudo candidate timestamp or type")
+        prior_ts = stamp
+        validated_candidates.append(
+            {"timestamp": stamp, "detector_id": detector, "process_count": count}
+        )
+    state = "ready" if now - generated <= MAX_AGE and now - checkpoint <= MAX_AGE else "stale"
+    return {
+        "state": state,
+        "generated_at": generated,
+        "checkpoint_at": checkpoint,
+        "latest": processed,
+        "candidates": validated_candidates,
+        "mode": "shadow",
+    }
+
+
+def read_activity(path: Path = PUBLIC_ACTIVITY, *, now: float | None = None) -> dict[str, Any]:
+    """No fallback to private SQLite on stale/missing or malformed activity."""
+    clock = time.time() if now is None else now
+    if not math.isfinite(clock) or clock < 1:
+        raise ValueError("Invalid dashboard time")
+    try:
+        status = validate_activity(_read_json(path, MAX_SIZE, secure=True), now=clock)
+    except (OSError, ValueError, TypeError, OverflowError, RecursionError):
+        return {
+            "state": "unavailable",
+            "message": "Ingen gyldig anonymiseret sudo-hændelsesoversigt er tilgængelig.",
+        }
+    if status["state"] == "stale":
+        status["message"] = "Listen er forældet. Kontroller sudo-eksportørens timer."
     return status
 
 
