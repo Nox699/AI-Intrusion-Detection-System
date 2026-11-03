@@ -1167,3 +1167,48 @@ Discord-besked med `SUDO LABTEST` og terminalens
 webhook-URL og andre hemmeligheder. Der kan
 gemmes flere kandidater; kun de stærkeste skal
 udvælges til selve eksamensrapporten.
+
+### Pi-accept: rigtigt sudo-LABTEST Discord-ack (3. november 2026)
+
+En manuel test på Yggdrasil anvendte den eksisterende
+systemd-beskyttede notifierkonto via
+`deploy/sprint5_sudo_discord_pi_lab_send.sh`
+fra commit `e5a6947c21dcc7b7010cb9f64cc9c56706fea3d8`.
+Først bestod scriptets **offline fake-sender-test**
+med én midlertidig test-outbox-hændelse, hvor
+`real_discord_send_attempted=false`.
+Brugeren indtastede derefter eksplicit `SEND`, og
+den kortvarige systemd-enhed afsluttede med
+`result=success`, `status=0/SUCCESS`.
+
+**Faktisk verificeret:** `mode=real_discord`,
+`real_discord_send_attempted=true`,
+`real_discord_acknowledged=true`,
+`notifier_acknowledged=1`,
+`notifier_pending=0`,
+`temporary_outbox_events=1`,
+`temporary_databases_deleted=true`,
+`production_database_modified=false`,
+`production_notifier_state_modified=false`,
+`ubuntu_gateway_contacted=false`,
+`webhook_value_exposed=false`. Brugeren
+bekræftede også, at Discord-beskeden faktisk kom frem.
+
+Dette er en **rigtig leveringsprøve af en
+syntetisk, tydeligt mærket `SUDO LABTEST`-alarm**.
+Det er **ikke** en automatisk notifikation, som
+blev udløst af et faktisk sudo-logevent. Den aktive
+produktions-IDS registrerer endnu ikke sudo-fund
+i den delte `alerts`-tabel. Normal sudo-brug
+skal heller ikke skabe alarmsignal, hvis der
+ikke er et mistænkeligt mønster.
+
+**Screenshots:** Brugeren nåede ikke at tage
+screenshot ved første levering, men kan tage et
+af den eksisterende Discord-kanalbesked, hvis
+den stadig findes. En gentagen manuel test
+kan sende en ny besked: hver kørsel har sin egen
+midlertidige outbox/notifier-state og **ingen
+delt test-cooldown**. Undgå unødvendige
+dubletbeskeder. Registrér screenshot som S5-07
+først efter faktisk modtagelse og gennemgang.
