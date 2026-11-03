@@ -721,3 +721,35 @@ adgangskontrol, opstarts-checkpoints, diskbudget,
 retention, backup/rollback og privat dashboardadgang.
 Den nuværende regelmotor genskaber ikke automatisk
 sine tidsvinduer efter en genstart.
+
+### Pi-test: 15 sekunders sudo-shadow med privat SQLite bestået (3. november 2026)
+
+Brugeren har kørt den isolerede `--stage-temporary`-test
+på Yggdrasil som `yggdrasil-worker`, med en legitim
+`sudo /usr/bin/true`. Følgende JSON-resultat blev
+kontrolleret uden rå logmeddelelser:
+
+| Kontrol | Observeret |
+| --- | ---: |
+| Journalposter læst / parset | **5 / 5** |
+| Unikke rækker gemt privat | **5** |
+| Dubletter | 0 |
+| `command_invoked` | 2 |
+| PAM åbnet / lukket | 2 / 1 |
+| Parsefejl / replayfejl | 0 / 0 |
+| Sudo regelkandidater | **0** |
+| Produktionsdatabaseskrivning / Discord | **false / false** |
+| Testdatabase slettet ved afslutning | **true** |
+
+Dette verificerer kæden
+`journald → _EXE-filter → parser → regelmotor → privat SQLite`
+i 15 sekunder på den faktiske Raspberry Pi. Testen
+dokumenterer ikke en ægte sudo-angrebsdetektion og
+må ikke forveksles med en uafhængig falsk-positiv-rate.
+
+**Næste sikkerhedsgate:** et *offline* syntetisk
+genstarts-/replayforsøg med privat checkpoint,
+deduplikering, fortsættelse efter afbrydelse,
+atomisk kandidatlagring og begrænsning af
+overlapstid. Ingen ny systemd-service eller
+permanent database aktiveres som led i denne test.
