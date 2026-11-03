@@ -69,3 +69,48 @@ i brugerens browser.
 det eksisterende dashboard og **må ikke** beskrives
 som screenshot af sudo, før der faktisk er
 implementeret en sikker sudo-side og en ny web-release.
+
+## Visuel gennemgang af de fire modtagne skærmbilleder (3. november 2026)
+
+Brugeren viste de **faktisk installerede** sider Overblik, Netværk,
+Alarmer og Machine learning. Browseren var zoomet langt ud.
+Derfor er meget lille tekst og store tomme arealer på
+skærmbillederne **ikke i sig selv tegn på et CSS-problem**.
+Sammenhængende mørkt tema, grønne accenter, sidebar, kort,
+datatabeller og ML-scorelister fremstår konsistente.
+Skærmbillederne er set i samtalen, men **ikke uploadet
+til den offentlige GitHub-repo**.
+
+Konkrete observationer:
+
+- Topbaren viser `/ SSH` også på Netværk, Alarmer og
+  Machine learning. Dette bekræfter **gammel installeret webversion**:
+  breadcrumb-fixet er kun på udviklingsbranchen.
+- Netværk viser mange registrerede **UFW-blokerede UDP-pakker**
+  i tabellen, men graferne er specifikt for **blokerede
+  TCP SYN-pakker**. Derfor kan graferne legitimt være tomme,
+  uden at tabellens trafik mangler. Tom Plotly-datoakse
+  viste misvisende **år 2000**. Dette er rettet
+  **kun på udviklingsbranchen**: akserne skjules,
+  når den filtrerede dataserie er tom. Et funktionelt
+  regressionstest-tjek kontrollerer den tilsigtede
+  tomvisningsopsætning i JS-koden.
+- Overblik viser SSH-statistik og indlæst model;
+  Machine learning viser SSH-modellen som
+  eksperimentel skyggemodel og observationer.
+  Ingen sudo-resultater i web endnu.
+- Alarmer viser 0 for valgte periode.
+  Et tomt alarmpanel viser ikke nødvendigvis, at
+  tidligere laboratoriealarmer aldrig har eksisteret;
+  den valgte periode og det faktiske datagrundlag
+  skal undersøges særskilt.
+
+**Konklusion:** Dashboardet er allerede brugbart som
+SSH/UFW/ML-overblik. Næste udvikling bør være en
+sikker, tydeligt **shadow-markeret sudo-visning**,
+men ingen databasepermissions må svækkes.
+Før en ny webrelease kræves eksplicit deploy/rollback
+med backup af installeret kode og relevante data.
+Brugeren bør gennemgå de samme sider ved browserzoom
+omkring **100 %** for at bedømme faktiske
+tekststørrelser og pladsforbrug.
