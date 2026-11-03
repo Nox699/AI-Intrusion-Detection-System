@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Short, read-only sudo shadow observation; never installs a running service.
+"""Short, isolated sudo shadow observation; never installs a running service.
 
-Runs as yggdrasil-worker and reads only the worker-accessible journal records
-whose trusted _EXE is /usr/bin/sudo. No --system: real sudo messages are in a
-journal scope omitted by that option on Yggdrasil. No database or Discord writes.
-Output contains aggregate counts only, never user IDs, commands or raw messages.
+Runs as yggdrasil-worker and reads only its accessible sudo journal records.
+No --system: it would miss the relevant journal scope on Yggdrasil.
+Default behavior is read-only. --stage-temporary explicitly enables a private
+ephemeral SQLite database, destroyed when the process exits. Neither mode
+writes to the production IDS database, dashboard, or Discord outbox.
+Output contains only aggregate counts, never IDs, commands or raw messages.
 """
 
 from __future__ import annotations
@@ -18,9 +20,12 @@ import subprocess
 import sys
 import time
 from collections import Counter
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from yggdrasil_ids.sudo_rules import KINDS, SudoRuleDetector, parse_sudo
+from yggdrasil_ids.sudo_storage import SudoStagingStore
 
 MAX_SECONDS = 60
 MAX_RECORDS = 2000
@@ -48,10 +53,11 @@ def journal_command(start_epoch: float) -> list[str]:
 
 
 class AggregateObserver:
-    """In-memory only; independent of any persistent production IDS state."""
+    """Short-lived rule state, optionally with separate private staging."""
 
-    def __init__(self) -> None:
+    def __init__(self, store: SudoStagingStore | None = None) -> None:
         self.detector = SudoRuleDetector()
+        self.store = store
         self.counters: Counter[str] = Counter()
         self.categories: Counter[str] = Counter()
         self.matches: Counter[str] = Counter()
@@ -80,6 +86,13 @@ class AggregateObserver:
             # Clock changes and reordered records must not cause an alarm.
             self.counters["replay_quality_errors"] += 1
             return
+        if self.store is not None:
+            # No journal JSON, command line or username is sent to storage.
+            # A storage error is fatal: never quietly lose candidate evidence.
+            if self.store.append(parsed.signal, finding):
+                self.counters["stored_unique"] += 1
+            else:
+                self.counters["stored_duplicates"] += 1
         if finding:
             self.matches[finding.detector_id] += 1
 
@@ -101,7 +114,12 @@ class AggregateObserver:
             "sudo_categories": {name: self.categories[name] for name in KINDS},
             "candidate_rule_matches": {name: self.matches[name] for name in RULE_IDS},
             "production_sudo_detection_active": False,
-            "database_writes": False,
+            "database_writes": self.store is not None,
+            "production_database_writes": False,
+            "private_staging_enabled": self.store is not None,
+            "staged_unique_rows": self.counters["stored_unique"],
+            "staged_duplicate_rows": self.counters["stored_duplicates"],
+            "private_staging_summary": self.store.summary() if self.store is not None else None,
             "discord_alerts_sent": False,
             "raw_user_command_or_journal_data_exposed": False,
             "interpretation": (
@@ -112,7 +130,7 @@ class AggregateObserver:
         }
 
 
-def observe(seconds: int) -> dict[str, Any]:
+def observe(seconds: int, *, store: SudoStagingStore | None = None) -> dict[str, Any]:
     if type(seconds) is not int or not 5 <= seconds <= MAX_SECONDS:
         raise ValueError("Observation duration must be 5-60 seconds")
     if os.geteuid() == 0:
@@ -127,7 +145,7 @@ def observe(seconds: int) -> dict[str, Any]:
         bufsize=0,
         env={**os.environ, "LC_ALL": "C", "SYSTEMD_COLORS": "0"},
     )
-    observer = AggregateObserver()
+    observer = AggregateObserver(store)
     select = selectors.DefaultSelector()
     buffer = b""
     discard = False
@@ -172,9 +190,24 @@ def observe(seconds: int) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seconds", type=int, default=15)
+    parser.add_argument(
+        "--stage-temporary",
+        action="store_true",
+        help="Store normalized events in a worker-owned private SQLite DB; delete it on exit",
+    )
     args = parser.parse_args(argv)
     try:
-        report = observe(args.seconds)
+        if args.stage_temporary:
+            if os.geteuid() == 0:
+                raise PermissionError("Do not run the sudo staging test as root")
+            with TemporaryDirectory(prefix="yggdrasil-sudo-shadow-") as folder:
+                store = SudoStagingStore(Path(folder) / "sudo.sqlite3")
+                store.initialize()
+                report = observe(args.seconds, store=store)
+            # This is emitted only after TemporaryDirectory has been removed.
+            report["temporary_staging_database_deleted"] = True
+        else:
+            report = observe(args.seconds)
     except (OSError, RuntimeError, ValueError, PermissionError, subprocess.SubprocessError):
         print("STOP: Isolated sudo shadow observation failed safely", file=sys.stderr)
         return 1
