@@ -50,15 +50,18 @@ echo "=== First export from private sudo SQLite as worker ==="
 sudo systemctl start yggdrasil-sudo-ui-export.service
 [[ "$(systemctl show yggdrasil-sudo-ui-export.service -p Result --value)" == "success" ]] ||
   { echo "STOP: Export service failed" >&2; exit 1; }
-if ! sudo -u yggdrasil-web test -r /var/lib/yggdrasil-sudo-public/sudo-status.json; then
+if ! sudo /usr/bin/setpriv --reuid=yggdrasil-web --regid=yggdrasil-web --groups=yggdrasil-data \
+  /usr/bin/test -r /var/lib/yggdrasil-sudo-public/sudo-status.json; then
   echo "STOP: Web user cannot read the anonymous snapshot" >&2
   exit 1
 fi
-if sudo -u yggdrasil-web test -r /var/lib/yggdrasil-sudo-shadow/sudo-shadow.sqlite3; then
+if sudo /usr/bin/setpriv --reuid=yggdrasil-web --regid=yggdrasil-web --groups=yggdrasil-data \
+  /usr/bin/test -r /var/lib/yggdrasil-sudo-shadow/sudo-shadow.sqlite3; then
   echo "STOP: Web user unexpectedly accesses private sudo SQLite" >&2
   exit 1
 fi
-sudo -u yggdrasil-web /usr/bin/python3 - <<'PY'
+sudo /usr/bin/setpriv --reuid=yggdrasil-web --regid=yggdrasil-web --groups=yggdrasil-data \
+  /usr/bin/python3 - <<'PY'
 import json
 from pathlib import Path
 file = Path("/var/lib/yggdrasil-sudo-public/sudo-status.json")
