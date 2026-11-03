@@ -115,9 +115,7 @@ def test_spoofed_sudo_tag_and_password_prompt_not_an_attack(watcher):
 
 def test_duplicates_do_not_inflate_shadow_candidates(watcher):
     observer = watcher.AggregateObserver()
-    first = json.dumps(
-        record(1, "pam_unix(sudo:auth): authentication failure; logname=x")
-    ).encode()
+    first = json.dumps(record(1, "pam_unix(sudo:auth): authentication failure; logname=x")).encode()
     observer.ingest(first)
     observer.ingest(first)
     feed(observer, 2, "pam_unix(sudo:auth): authentication failure")
