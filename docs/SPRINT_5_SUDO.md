@@ -1289,3 +1289,51 @@ Kun derefter udarbejdes og gennemgås en
 eksplicit installation/rollback. Produktionens
 collector, web, notifier, SQLite og Discord
 forbliver uændret indtil videre.
+
+### Pi-shadow baseline: tomt 15-minuttersvindue (3. november 2026)
+
+Brugeren kørte den CI-verificerede to-poll-test
+`deploy/sprint5_sudo_shadow_probe_pi.sh` som
+`vidar` på Yggdrasil fra commit
+`10bc6c4f8f17b2e228bd3f1459e45403273faa2d`.
+Begge kørselers JSON viste
+`mode=shadow`, `journal_rows_read=0`,
+`new_normalized_sudo_rows=0`,
+`new_candidate_rule_matches=0`,
+`discord_alerts_sent=0` og
+`production_database_modified=false`.
+Den anden kørsel rapporterede
+`previous_checkpoint_present=true`;
+`temporary_staging_deleted=true` og
+alle tre produktions-IDS-tjenester var fortsat aktive.
+
+**Konklusion:** Ingen fejlagtige alarmer eller
+produktionsændringer, og initialisering/genoptagelse
+af checkpoint er demonstreret i et tomt tidsvindue.
+Testen kan **ikke** påvise korrekt
+logindlæsning eller dubletfjernelse på Pi,
+fordi der var **nul** sudo-hændelser i de første
+15 minutter af sensorens søgevindue. De tidligere
+411 sudo-journalposter stammer fra et helt døgn
+og modsiger ikke et tomt kvartersvindue.
+
+Derfor er testwrapperen i udviklingsbranchen
+ændret til at **afvise positiv accept**, hvis
+`first_poll.journal_rows_read=0` eller
+`second_poll.overlap_duplicates_skipped=0`.
+En sikker opfølgende test skal fremkalde
+**én almindelig vellykket** `sudo /usr/bin/true`
+(ingen fejl eller rettighedsændringer),
+lade journald registrere posten og gennemføre
+to worker-ejede polls igen. Først med
+faktiske poster i begge polls kan vi erklære
+deduplikering af rigtig Pi-journal bestået.
+
+**Eksamensscope:** Efter afsluttet regelbaseret
+sudo-sensor og nødvendig validering fryses
+nye IDS-features for denne eksamen.
+Filintegritetsovervågning/FIM og eventuel
+yderligere ML for sudo er udsat til efter eksamen.
+Eksisterende Isolation Forest på SSH forbliver
+i shadow-mode; netværksscanning forbliver
+regelbaseret.
