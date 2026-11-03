@@ -55,7 +55,9 @@ def command(since: float, until: float, *, timestamps_only: bool = False) -> lis
     ]
 
 
-def read_snapshot(since: float, until: float, *, timestamps_only: bool = False) -> Iterable[dict[str, Any]]:
+def read_snapshot(
+    since: float, until: float, *, timestamps_only: bool = False
+) -> Iterable[dict[str, Any]]:
     """Read at most MAX_ROWS_PER_PASS; fail closed if journald cannot be read.
 
     No stderr from journalctl or malformed source data is printed to the user.
