@@ -1038,3 +1038,50 @@ migrations-/rollbackplan. Lab-VM'en får **aldrig**
 produktions-Discord-webhook; en virkelig
 notifikation må kun leveres fra den adskilte
 notifier på den betroede server.
+
+### Bilag S5-A – Screenshot af to `sudo.repeated_auth_failure`-fund
+
+**Status: Screenshot optaget ifølge ejeren, men selve billedet er
+endnu ikke modtaget, visuelt gennemgået eller uploadet til
+GitHub.** Bevar den originale billedfil lokalt som
+eksamensbilag. Skel mellem billedets indhold og
+terminalmålingerne, som allerede er verificeret.
+
+**Verificeret terminalgrundlag (3. november 2026):**
+Den historiske sudo-Discord-preview og den efterfølgende
+isolerede outbox-test fandt hver **2**
+`sudo.repeated_auth_failure`-kandidater i de samme
+**72** journald-poster fra `ubuntu-gateway`.
+Outbox-testen gav **2 midlertidige `alerts`**,
+**2 outbox-poster**, **2 leveringer til en falsk
+afsender**, **0 afventende** og **0 rigtige
+Discord-beskeder**. Brugeren oplyser at have taget
+et screenshot af de to sudo-fund; billedet
+supplerer terminalresultaterne, men må ikke beskrives
+som dokumenteret visuel evidens, før det er kontrolleret.
+
+**Foreslået billedtekst i eksamensrapporten:**
+
+> Bilag S5-A – To detekterede forløb med gentagne
+> sudo-autentificeringsfejl i isoleret Ubuntu-laboratorium.
+> Yggdrasil IDS' regelmotor identificerede to
+> `sudo.repeated_auth_failure`-kandidater ved replay
+> af virkelige, kontrollerede journald-hændelser.
+> Test af SQLite-outbox og notifier anvendte en falsk
+> Discord-afsender; ingen meddelelser blev sendt til Discord.
+
+**Før rapportbrug:** Kontroller at billedet rent faktisk viser
+begge fund, og at læseren kan se testens kontekst.
+Slør eventuelle brugernavne, hjemmemapper, IP-adresser,
+terminalhistorik, SSH-nøgler, adgangskoder, tokens og
+webhook-URL'er. Bevar gerne tidspunkt, detektor-ID og
+det samlede antal fund. Undlad at lade et billede
+af dry-run-output fremstå som et screenshot af en
+reelt leveret Discord-besked.
+
+**Bilag S5-B (supplerende):** Den aggregerede JSON
+fra den isolerede outbox-test dokumenterer
+`temporary_alert_rows=2`, `temporary_outbox_rows=2`,
+`fake_notifier_deliveries=2`,
+`discord_messages_sent=0` og
+`temporary_databases_deleted=true`.
