@@ -103,6 +103,7 @@ class SudoStagingStore:
 
     def __init__(self, database: Path | str):
         self.path = Path(database)
+        self._initialized = False
         if self.path.name in ("", ".", ".."):
             raise ValueError("A concrete private database path is required")
 
@@ -143,8 +144,14 @@ class SudoStagingStore:
             db.executescript(
                 "BEGIN IMMEDIATE;\n" + SCHEMA + f"\nPRAGMA user_version={SCHEMA_VERSION};\nCOMMIT;"
             )
+        self._initialized = True
+
+    def _require_ready(self) -> None:
+        if not self._initialized:
+            raise RuntimeError("Private sudo staging store must be explicitly initialized")
 
     def append(self, signal: SudoSignal, candidate: SudoRuleMatch | None = None) -> bool:
+        self._require_ready()
         validate_signal(signal)
         validate_candidate(candidate, signal)
         identity = event_id(signal)
@@ -186,6 +193,7 @@ class SudoStagingStore:
         return True
 
     def prune(self, before_timestamp: float) -> int:
+        self._require_ready()
         if (
             type(before_timestamp) not in (float, int)
             or not math.isfinite(before_timestamp)
@@ -201,6 +209,7 @@ class SudoStagingStore:
             return result.rowcount
 
     def summary(self) -> dict:
+        self._require_ready()
         with self._connect() as db:
             categories = Counter(
                 {row["kind"]: row["n"] for row in db.execute(
