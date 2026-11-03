@@ -49,6 +49,17 @@ DETECTORS = {
     "ssh.isolation_forest": "Isolation Forest",
     "network.tcp_port_scan": "Mulig TCP-portscanning",
 }
+PAGE_SECTIONS = {
+    "overview": "Overblik",
+    "events": "SSH-hændelser",
+    "preauth": "Før login",
+    "network": "Netværk",
+    "alerts": "Alarmer",
+    "alert_detail": "Alarmdetaljer",
+    "model": "SSH · Machine learning",
+    "system_status": "Systemstatus",
+}
+
 PERIODS = (
     (1, "Seneste time"),
     (6, "Seneste 6 timer"),
@@ -305,6 +316,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
             "csrf_token": csrf_token,
             "periods": PERIODS,
             "detector_names": DETECTORS,
+            "page_section": PAGE_SECTIONS.get(request.endpoint or "", "Overblik"),
             "page_url": page_url,
             "view_status": getattr(g, "ids_status", status_view({})),
             "authenticated": bool(session.get("authenticated")),
