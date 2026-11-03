@@ -103,21 +103,15 @@ def scenario(category: str, seed: int) -> Scenario:
 
 
 def create_splits() -> tuple[list[Scenario], list[Scenario], list[Scenario]]:
-    training = [
-        scenario(NORMAL[i % len(NORMAL)], 10_000 + i) for i in range(TRAIN_SCENARIOS)
-    ]
-    validation = [
-        scenario(NORMAL[i % len(NORMAL)], 20_000 + i) for i in range(VALIDATION_NORMAL)
-    ]
+    training = [scenario(NORMAL[i % len(NORMAL)], 10_000 + i) for i in range(TRAIN_SCENARIOS)]
+    validation = [scenario(NORMAL[i % len(NORMAL)], 20_000 + i) for i in range(VALIDATION_NORMAL)]
     test = [scenario(NORMAL[i % len(NORMAL)], 40_000 + i) for i in range(TEST_NORMAL)]
     for i, category in enumerate(SUSPICIOUS):
         validation.extend(
-            scenario(category, 30_000 + i * 100 + j)
-            for j in range(VALIDATION_SUSPICIOUS_PER_TYPE)
+            scenario(category, 30_000 + i * 100 + j) for j in range(VALIDATION_SUSPICIOUS_PER_TYPE)
         )
         test.extend(
-            scenario(category, 50_000 + i * 100 + j)
-            for j in range(TEST_SUSPICIOUS_PER_TYPE)
+            scenario(category, 50_000 + i * 100 + j) for j in range(TEST_SUSPICIOUS_PER_TYPE)
         )
     seeds = [item.seed for item in training + validation + test]
     if len(set(seeds)) != len(seeds):
@@ -132,9 +126,15 @@ def features_for_scenario(item: Scenario) -> list[list[float]]:
 def _metrics(outcomes: list[tuple[bool, bool]]) -> dict:
     counts: Counter[str] = Counter()
     for is_suspicious, flagged in outcomes:
-        counts["tp" if is_suspicious and flagged else
-               "fn" if is_suspicious else
-               "fp" if flagged else "tn"] += 1
+        counts[
+            "tp"
+            if is_suspicious and flagged
+            else "fn"
+            if is_suspicious
+            else "fp"
+            if flagged
+            else "tn"
+        ] += 1
     tp, fp, tn, fn = (counts[x] for x in ("tp", "fp", "tn", "fn"))
     return {
         "tp": tp,
@@ -156,19 +156,20 @@ def evaluate(model: SudoIsolationForest, cases: list[Scenario]) -> dict:
         flagged_ml = any(row["is_anomaly"] for row in model.score_many(features))
         detector = SudoRuleDetector()
         flagged_rule = any(
-            match is not None
-            for match in (detector.evaluate(signal) for signal in item.signals)
+            match is not None for match in (detector.evaluate(signal) for signal in item.signals)
         )
         ml_decisions.append((item.suspicious, flagged_ml))
         rule_decisions.append((item.suspicious, flagged_rule))
-        scenarios.append({
-            "scenario_type": item.category,
-            "seed": item.seed,
-            "suspicious_label": item.suspicious,
-            "processes": len(features),
-            "ml_detected": flagged_ml,
-            "rules_detected": flagged_rule,
-        })
+        scenarios.append(
+            {
+                "scenario_type": item.category,
+                "seed": item.seed,
+                "suspicious_label": item.suspicious,
+                "processes": len(features),
+                "ml_detected": flagged_ml,
+                "rules_detected": flagged_rule,
+            }
+        )
     return {
         "scenario_count": len(cases),
         "normal_scenarios": sum(not x.suspicious for x in cases),
@@ -192,9 +193,7 @@ def experiment(output: Path) -> dict:
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
     output.chmod(0o700)
     training, validation, test = create_splits()
-    training_rows = [
-        row for item in training for row in features_for_scenario(item)
-    ]
+    training_rows = [row for item in training for row in features_for_scenario(item)]
     model = SudoIsolationForest.train(
         training_rows,
         "Sudo ML v1: synthetic normal-only, grouped by independent scenario. "
