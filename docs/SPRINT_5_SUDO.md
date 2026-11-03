@@ -873,3 +873,54 @@ lab** og eventuelt installere en adskilt shadow-sensor efter
 særskilt sikkerhedsgennemgang. Undgå at forsøge at fremkalde
 mange PAM-fejl på produktionskontoen `vidar` eller
 IDS-servicekontiene.
+
+### Ubuntu-VM-accept: verificeret sudo-auth-burst fra ægte journalposter (3. november 2026)
+
+Et isoleret angrebslaboratorium `ubuntu-gateway` (Ubuntu
+24.04.5 LTS, Python 3.12.3) på labnettet `10.77.77.0/24`
+blev anvendt. `labadmin` oprettede en separat låst
+`ids-sudo-lab`-konto i sudo-gruppen og udførte **tre
+kontrollerede mislykkede sudo-kald**. Ingen rigtige
+adgangskoder eller angreb mod produktionsværten blev brugt.
+
+En første journalaudit af VM'en gav 29 sudo-poster,
+3 `pam_unix(sudo:auth): authentication failure`,
+3 `incorrect password attempts`-opsummeringer og
+0 `not_in_sudoers`.
+
+Den rigtige `src/yggdrasil_ids/sudo_rules.py` fra
+Sprint 5-branchen blev derefter overført via en
+særskilt SSH-nøgle fra `yggdrasil` til VM'en, og
+genafspillet mod eksisterende journald-JSON uden
+ændringer af VM'ens IDS-tjenester eller databaseskema.
+
+**Faktisk replay-resultat:**
+
+| Måling | Verificeret |
+| --- | ---: |
+| Sudo-journalposter læst | **30** |
+| `pam_auth_failure` | **3** |
+| `incorrect_password` | **3** |
+| Forskellige fejlede sudo-processer | **3** |
+| Parsefejl | **0** |
+| `sudo.repeated_auth_failure`-kandidater | **1** |
+| `sudo.permission_denied`-kandidater | **0** |
+| Produktions-IDS ændret | **Nej** |
+| Discord-beskeder sendt | **Ingen** |
+
+**Dette er den første dokumenterede positive
+detektoraccept med rigtige, kontrolleret fremkaldte
+sudo-fejl i VM'en.** Den tæller ikke PAM-failure og
+sudo-password-summary som to uafhængige forsøg,
+da tre forskellige proces-ID'er udløser præcis
+én `sudo.repeated_auth_failure`-kandidat.
+De 30 er journalposter og ikke 30 angrebsforsøg.
+
+**Afgrænsning:** Dette er *historisk replay*, ikke en
+live-alert, måling af detektionslatens eller
+produktions-FPR. Den offentlige GitHub-repo rummer
+ingen private rå journalposter eller passwords.
+Næste gate er en **kortvarig live shadow-kørsel på VM'en**
+med en ny, autoriseret tre-forsøgsserie for
+at måle realtidsdetektionen, før man overvejer
+persistent driftsintegration eller Discord.
