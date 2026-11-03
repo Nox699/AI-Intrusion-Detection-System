@@ -57,15 +57,16 @@ def sample_records():
 
 
 def test_query_profiles_are_bounded_and_do_not_filter_uid(diag):
-    base = ["journalctl", "--system", "--quiet", "--no-pager", "--output=json"]
+    base = ["journalctl", "--quiet", "--no-pager", "--output=json"]
     for probe in diag.PROBES:
         args = diag.journal_command("2026-10-22 00:00:00", probe)
         assert args[: len(base)] == base
+        assert "--system" not in args
         assert "--since=2026-10-22 00:00:00" in args
         assert not any(value.startswith("_UID=") for value in args)
     assert "_COMM=sudo" in diag.journal_command("2026-10-22 00:00:00", "comm_sudo")
     assert "SYSLOG_IDENTIFIER=sudo" in diag.journal_command("2026-10-22 00:00:00", "tag_sudo")
-    assert "--lines=1" in diag.journal_command("2026-10-22 00:00:00", "recent_system")
+    assert "--lines=1" in diag.journal_command("2026-10-22 00:00:00", "recent_accessible")
     with pytest.raises(ValueError):
         diag.journal_command("2026-10-22 00:00:00", "all_records")
 
@@ -91,7 +92,7 @@ def test_metadata_does_not_expose_message_or_untrusted_source(diag):
 def test_aggregate_report_uses_three_probes_and_hides_private_messages(diag, monkeypatch):
     def fake_read(since, probe):
         assert since == "2026-10-22 00:00:00"
-        if probe == "recent_system":
+        if probe == "recent_accessible":
             yield {"MESSAGE": "sensitive entry", "_COMM": "systemd"}
         elif probe == "comm_sudo":
             yield sample_records()[0]
@@ -100,7 +101,7 @@ def test_aggregate_report_uses_three_probes_and_hides_private_messages(diag, mon
 
     monkeypatch.setattr(diag, "read_journal", fake_read)
     report = diag.audit("2026-10-22 00:00:00")
-    assert report["recent_system_entry_visible"] is True
+    assert report["recent_accessible_entry_visible"] is True
     assert report["comm_sudo_query"]["rows"] == 1
     assert report["tag_sudo_query"]["rows"] == 3
     assert report["tag_sudo_query"]["matches_original_strict_filter"] == 1
