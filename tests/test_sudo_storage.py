@@ -78,9 +78,7 @@ def test_persist_normalized_events_without_raw_journal_or_names(private_store):
     assert "4001" not in serialized
 
     with sqlite3.connect(private_store.path) as db:
-        columns = {
-            row[1] for row in db.execute("PRAGMA table_info(sudo_signals)")
-        }
+        columns = {row[1] for row in db.execute("PRAGMA table_info(sudo_signals)")}
         row = db.execute("SELECT event_id FROM sudo_signals ORDER BY timestamp LIMIT 1").fetchone()
         assert row[0] == event_id(item)
         assert not {"MESSAGE", "COMMAND", "raw_json", "cursor", "username"} & columns
