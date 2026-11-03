@@ -706,3 +706,24 @@ def test_network_page_displays_data_quality_error_without_exposing_raw_journal(c
     assert "Netværksanalysen kræver opmærksomhed" in html
     assert "Netværkshistorikken er for stor" in html
     assert "SRC=" not in html
+
+@pytest.mark.parametrize(
+    ("path", "section"),
+    [
+        ("/", "Overblik"),
+        ("/events", "SSH-hændelser"),
+        ("/preauth", "Før login"),
+        ("/network", "Netværk"),
+        ("/alerts", "Alarmer"),
+        ("/alerts/1", "Alarmdetaljer"),
+        ("/model", "SSH · Machine learning"),
+        ("/status", "Systemstatus"),
+    ],
+)
+def test_dashboard_breadcrumb_matches_the_actual_section(client, path, section):
+    login(client)
+    response = client.get(path)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert f"<strong>{section}</strong></div>" in html
+    assert "IDS · Privat server" in html
