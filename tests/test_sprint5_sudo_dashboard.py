@@ -19,9 +19,7 @@ from yggdrasil_ids.sudo_dashboard import (
     validate_summary,
 )
 
-EXPORT = (
-    Path(__file__).resolve().parents[1] / "deploy" / "sprint5_sudo_ui_export.py"
-)
+EXPORT = Path(__file__).resolve().parents[1] / "deploy" / "sprint5_sudo_ui_export.py"
 
 
 @pytest.fixture(scope="module")
@@ -57,8 +55,13 @@ def staging(tmp_path):
             """
         )
         for idx, kind in enumerate(
-            ("command_invoked", "pam_session_opened", "pam_session_closed",
-             "pam_auth_failure", "incorrect_password")
+            (
+                "command_invoked",
+                "pam_session_opened",
+                "pam_session_closed",
+                "pam_auth_failure",
+                "incorrect_password",
+            )
         ):
             db.execute(
                 "INSERT INTO sudo_signals VALUES(?,?,?,?,?,?)",
