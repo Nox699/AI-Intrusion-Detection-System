@@ -106,3 +106,63 @@ på validation og låst test; tydelig markering af
 `synthetic_only=true` og de faktiske TP/FP/TN/FN.
 Dette er bedst som dokumentation for **kritisk modelvalg**,
 ikke som bevis på beskyttelse mod ukendte angreb.
+
+## Praktisk Pi-benchmark – 3. november 2026
+
+**Kørt af ejer på Yggdrasil** som et isoleret syntetisk forsøg
+fra kildecommit `0cd25bdc666a68625513e2f6b5bcc2d40e84ef5f`.
+Træning: **180 separate normale syntetiske scenarier**,
+**681 procesbaserede træningsobservationer**.
+Model `sudo-if-4f95328112e7423b`,
+tærskel `0.6480873096476828`.
+
+**Validering: 64 scenarier (32 normale / 32 syntetisk mistænkelige)**
+
+| Metode | TP | FP | TN | FN | Precision | Recall | FP-rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Regler | **24** | **0** | 32 | 8 | 100 % | **75 %** | **0 %** |
+| Isolation Forest | 15 | 5 | 27 | 17 | 75 % | 46,88 % | 15,62 % |
+
+**Låst sluttest: 64 helt nye scenarier (32 normale / 32 syntetisk mistænkelige)**
+
+| Metode | TP | FP | TN | FN | Precision | Recall | FP-rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Regler | **24** | **0** | 32 | 8 | 100 % | **75 %** | **0 %** |
+| Isolation Forest | 12 | 4 | 28 | 20 | 75 % | 37,5 % | 12,5 % |
+
+**Teknisk accept:** De to metoder blev faktisk evalueret på
+de samme **syntetiske** scenarier, men reglerne vandt i
+begge split på recall og på falsk-positiv-rate.
+En regelfri sudo-Isolation-Forest må derfor **ikke**
+erstatte regeldetektionen eller udløse aktive
+produktionsalarmer på baggrund af denne test.
+`synthetic_only=true`,
+`real_journald_records_read=0`,
+`production_sudo_shadow_modified=false`,
+`production_ml_model_modified=false`,
+`production_database_modified=false` og
+`discord_messages_sent=0`.
+
+**Fagligt forbehold:** Tallet `FP-rate=0` for regler
+betyder **0 ud af kun 32** mærkede normale,
+kunstigt konstruerede scenarier; det er *ikke*
+Yggdrasils faktiske false-positive-rate.
+Nogle features er nært koblet til de allerede
+kendte regelsignaler, og "mistænkelig" er et
+scenarielabel – ikke dokumentation for kompromittering.
+En mulig forbedring af modellen skal bestemmes
+fra trænings- og valideringsdata og siden
+efterprøves på **et nyt** sluttestsæt, ikke
+optimeres mod denne allerede anvendte sluttest.
+
+**Privat forsøgsmappe (kun ejeren):**
+`~/yggdrasil-sudo-ml-private/sudo-if-20261103T101759-143223`.
+Her ligger `sudo-model.json` og `report.json`.
+Ingen model fra denne mappe er aktiveret i
+produktions-sudo-shadow. Laboutput omfatter ingen
+rå journalposter.
+
+**Screenshot S5-14:** Fang begge metoder med TP/FP/TN/FN
+for sluttesten, og at data er mærket `synthetic_only`.
+Dette er egnet som evidens for **kritisk
+modelvurdering**, ikke "AI er bedst".
