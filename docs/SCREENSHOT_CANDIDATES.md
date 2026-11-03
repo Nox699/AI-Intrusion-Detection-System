@@ -21,7 +21,7 @@ ikke automatisk uploadet eller vurderet af ChatGPT.
 | **S5-04** | **To `sudo.repeated_auth_failure`-fund i VM'ens historiske preview** | **Bruger oplyser screenshot taget – fil/billedindhold ikke gennemgået** | To separate kontrollerede testserier |
 | S5-05 | SQLite-outbox med `temporary_alert_rows=2`, `fake_notifier_deliveries=2` og `discord_messages_sent=0` | Terminalresultat verificeret; screenshotstatus ukendt | Automatisk outbox/notifier-test med falsk afsender |
 | S5-06 | Dansk sudo-besked som redacted dry-run, `webhook_read=false` | Terminalresultat verificeret; screenshotstatus ukendt | Notifikationsformat, ikke Discord-levering |
-| S5-07 | Rigtig Discord-notifikation fra sudo-relateret *mærket labtest* på Yggdrasil | Ikke gennemført endnu | Test af reel meddelelseslevering uden webhook i angrebs-VM |
+| **S5-07** | **En rigtig Discord-besked mærket SUDO LABTEST fra Yggdrasil** | **Levering og systemd SUCCESS bekræftet af bruger; screenshot ikke taget ved første forsøg** | Reelt Discord-ack af *syntetisk* sudo-alarm i privat test-outbox – ikke automatisk registreret sudo-angreb |
 | S5-08 | Isoleret sudo SQLite-checkpoint/replay: 402 unikke poster og 0 ekstra ved tredje replay | Terminalresultat verificeret; screenshotstatus ukendt | Deduplikering/genoptagelse på historiske journaldata |
 
 ## Andre sprint-kandidater
