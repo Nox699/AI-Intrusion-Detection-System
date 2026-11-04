@@ -6,10 +6,13 @@ timezone = "Europe/Copenhagen"
 database = "/var/lib/yggdrasil-ids/events.sqlite3"
 model = "/var/lib/yggdrasil-ids/model.json"
 credentials = "/etc/yggdrasil-ids/web-secrets.json"
+sudo_database = "/var/lib/yggdrasil-sudo/sudo.sqlite3"
+sudo_public_directory = "/var/lib/yggdrasil-sudo-public"
 [rules]
 window_seconds = 300
 failure_threshold = 5
 username_threshold = 4
+preauth_threshold = 5
 cooldown_seconds = 300
 expected_sources = []
 expected_users = []
@@ -32,3 +35,14 @@ trusted_hosts = ["localhost", "127.0.0.1", "[::1]"]
 [storage]
 retention_days = 30
 max_database_mb = 512
+
+[network]
+enabled = true
+window_seconds = 60
+distinct_ports_threshold = 5
+
+[sudo]
+enabled = true
+window_seconds = 300
+failure_process_threshold = 3
+cooldown_seconds = 300

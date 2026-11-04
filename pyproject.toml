@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yggdrasil-ids"
-version = "0.1.0"
-description = "Private Linux SSH monitoring with rules, Isolation Forest and a Danish dashboard"
+version = "0.2.0"
+description = "Private Linux IDS with SSH rules and Isolation Forest, sudo and portscan rules, and a Danish dashboard"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"

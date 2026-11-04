@@ -1,16 +1,18 @@
 [Unit]
-Description=Yggdrasil IDS SSH collector
+Description=Yggdrasil IDS SSH and portscan collector
 After=systemd-journald.service
 StartLimitIntervalSec=60
 StartLimitBurst=5
 
 [Service]
+Environment=PYTHONPATH=/opt/yggdrasil-ids/current/src
+Environment=PYTHONDONTWRITEBYTECODE=1
 Type=simple
 User=yggdrasil-worker
 Group=yggdrasil-data
 SupplementaryGroups=systemd-journal
 WorkingDirectory=/var/lib/yggdrasil-ids
-ExecStart=/opt/yggdrasil-ids/venv/bin/yggdrasil-ids collect --config /etc/yggdrasil-ids/config.toml
+ExecStart=/opt/yggdrasil-ids/venv/bin/python -m yggdrasil_ids collect --config /etc/yggdrasil-ids/config.toml
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=15

@@ -39,7 +39,15 @@ from werkzeug.security import check_password_hash
 
 from . import __version__
 from .config import AppConfig, load_config
+from .nav_alerts import snapshot as nav_alert_snapshot
 from .storage import Repository
+from .sudo_dashboard import (
+    PUBLIC_ACTIVITY,
+    PUBLIC_STATUS,
+    read_activity,
+    read_summary,
+)
+from .sudo_integration_dashboard import PUBLIC_INTEGRATION, read_integration
 
 DETECTORS = {
     "ssh.failed_burst": "Mange fejlede forsøg",
@@ -48,7 +56,21 @@ DETECTORS = {
     "ssh.unexpected_success": "Uventet login",
     "ssh.isolation_forest": "Isolation Forest",
     "network.tcp_port_scan": "Mulig TCP-portscanning",
+    "sudo.repeated_auth_failure": "Sudo · Gentagne autentificeringsfejl",
+    "sudo.permission_denied": "Sudo · Manglende sudoers-rettighed",
 }
+PAGE_SECTIONS = {
+    "overview": "Overblik",
+    "events": "SSH-hændelser",
+    "preauth": "Før login",
+    "network": "Netværk",
+    "sudo_dashboard": "Sudo",
+    "alerts": "Alarmer",
+    "alert_detail": "Alarmdetaljer",
+    "model": "SSH · Machine learning",
+    "system_status": "Systemstatus",
+}
+
 PERIODS = (
     (1, "Seneste time"),
     (6, "Seneste 6 timer"),
@@ -118,6 +140,8 @@ def _credentials(path: Path) -> dict[str, str]:
 
 def create_app(config: AppConfig | None = None) -> Flask:
     cfg = config or load_config()
+    if cfg.mode != "live":
+        raise ValueError("Dashboardet kræver app.mode=live")
     credentials = _credentials(Path(cfg.credentials_path))
     app = Flask(__name__)
     app.config.update(
@@ -138,6 +162,9 @@ def create_app(config: AppConfig | None = None) -> Flask:
     )
     repo = Repository(cfg.database_path, readonly=True)
     app.extensions["ids_repository"] = repo
+    app.config["SUDO_PUBLIC_STATUS_PATH"] = cfg.sudo_public_directory / PUBLIC_STATUS.name
+    app.config["SUDO_PUBLIC_ACTIVITY_PATH"] = cfg.sudo_public_directory / PUBLIC_ACTIVITY.name
+    app.config["SUDO_PUBLIC_INTEGRATION_PATH"] = cfg.sudo_public_directory / PUBLIC_INTEGRATION.name
     app.extensions["ids_config"] = cfg
     throttle = LoginThrottle()
     app.extensions["ids_login_throttle"] = throttle
@@ -221,7 +248,6 @@ def create_app(config: AppConfig | None = None) -> Flask:
             state = "stale"
         labels = {
             "running": ("Collector aktiv", "good"),
-            "replay": ("Genafspillede data", "info"),
             "starting": ("Collector starter", "warning"),
             "stopped": ("Collector stoppet", "warning"),
             "error": ("Collector har en fejl", "danger"),
@@ -255,7 +281,20 @@ def create_app(config: AppConfig | None = None) -> Flask:
         if raw.get("mode") is not None and raw["mode"] != cfg.mode:
             raise DataUnavailable("Database and dashboard belong to different environments")
         g.ids_status = status_view(raw)
+        if request.endpoint in PAGE_SECTIONS and not hasattr(g, "nav_alert_snapshot"):
+            try:
+                read_nav_alerts()
+            except DataUnavailable:
+                g.nav_alert_snapshot = None
         return raw
+
+    def read_nav_alerts() -> dict:
+        if not hasattr(g, "nav_alert_snapshot"):
+            try:
+                g.nav_alert_snapshot = nav_alert_snapshot(repo)
+            except (OSError, ValueError, TypeError, sqlite3.Error) as exc:
+                raise DataUnavailable("Alarmmarkeringerne kan ikke indlæses.") from exc
+        return g.nav_alert_snapshot
 
     @app.template_filter("localtime")
     def localtime(value: Any, short: bool = False) -> str:
@@ -299,15 +338,37 @@ def create_app(config: AppConfig | None = None) -> Flask:
             args["page"] = str(page)
             return url_for(request.endpoint or "overview", **args)
 
+        nav_view = None
+        scope = {
+            "events": "ssh",
+            "preauth": "preauth",
+            "network": "network",
+            "sudo_dashboard": "sudo",
+            "alerts": "alerts",
+            "alert_detail": "detail",
+        }.get(request.endpoint, "")
+        if getattr(g, "nav_read_disabled", False):
+            scope = ""
+        if session.get("authenticated"):
+            try:
+                nav_view = {
+                    "snapshot": read_nav_alerts(),
+                    "scope": scope,
+                    "alert_id": (request.view_args or {}).get("alert_id"),
+                }
+            except DataUnavailable:
+                pass
         return {
             "app_cfg": cfg,
             "app_version": __version__,
             "csrf_token": csrf_token,
             "periods": PERIODS,
             "detector_names": DETECTORS,
+            "page_section": PAGE_SECTIONS.get(request.endpoint or "", "Overblik"),
             "page_url": page_url,
             "view_status": getattr(g, "ids_status", status_view({})),
             "authenticated": bool(session.get("authenticated")),
+            "nav_alert_view": nav_view,
         }
 
     @app.before_request
@@ -462,6 +523,33 @@ def create_app(config: AppConfig | None = None) -> Flask:
         result = call("list_preauth", hours=period, **paging())
         return render_template("preauth.html", result=result, hours=period)
 
+    @app.get("/sudo")
+    def sudo_dashboard() -> Any:
+        read_status()
+        integration = (
+            read_integration(Path(app.config["SUDO_PUBLIC_INTEGRATION_PATH"]))
+            if cfg.sudo.enabled
+            else {"state": "disabled", "rules_active": False}
+        )
+        rule_alerts = [
+            call("list_alerts", hours=24, detector=detector, per_page=5)
+            for detector in ("sudo.repeated_auth_failure", "sudo.permission_denied")
+        ]
+        latest_alerts = sorted(
+            [item for result in rule_alerts for item in result["items"]],
+            key=lambda item: (item["last_seen"], item["id"]),
+            reverse=True,
+        )[:5]
+        return render_template(
+            "sudo.html",
+            sudo=read_summary(Path(app.config["SUDO_PUBLIC_STATUS_PATH"])),
+            activity=read_activity(Path(app.config["SUDO_PUBLIC_ACTIVITY_PATH"])),
+            integration=integration,
+            sudo_alerts=latest_alerts,
+            sudo_alert_count=sum(result["total"] for result in rule_alerts),
+            page_section="Sudo",
+        )
+
     @app.get("/alerts")
     def alerts() -> Any:
         period, detector = hours(), query_text("detector", 64)
@@ -493,7 +581,12 @@ def create_app(config: AppConfig | None = None) -> Flask:
     @app.get("/status")
     def system_status() -> Any:
         raw = read_status()
-        return render_template("status.html", raw=raw)
+        sudo_status = (
+            read_integration(Path(app.config["SUDO_PUBLIC_INTEGRATION_PATH"]))
+            if cfg.sudo.enabled
+            else {"state": "disabled", "rules_active": False}
+        )
+        return render_template("status.html", raw=raw, sudo_status=sudo_status)
 
     @app.get("/api/overview")
     def api_overview() -> Any:
@@ -508,6 +601,11 @@ def create_app(config: AppConfig | None = None) -> Flask:
             timezone=cfg.timezone,
             source_kind=raw.get("source_kind"),
         )
+
+    @app.get("/api/nav-alerts")
+    def api_nav_alerts() -> Any:
+        read_status()
+        return jsonify(read_nav_alerts())
 
     @app.get("/api/status")
     def api_status() -> Any:
@@ -531,6 +629,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
 
     @app.errorhandler(DataUnavailable)
     def unavailable(_error: Any) -> Any:
+        g.nav_read_disabled = True
         if request.path.startswith("/api/") or request.path == "/healthz":
             return jsonify(
                 error="data_unavailable",
@@ -548,6 +647,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
     @app.errorhandler(405)
     @app.errorhandler(413)
     def request_error(error: Any) -> Any:
+        g.nav_read_disabled = True
         code = error.code
         message = {
             400: "Forespørgslen indeholder en ugyldig værdi.",
@@ -564,6 +664,7 @@ def create_app(config: AppConfig | None = None) -> Flask:
 
     @app.errorhandler(500)
     def internal_error(_error: Any) -> Any:
+        g.nav_read_disabled = True
         if request.path.startswith("/api/"):
             return jsonify(error="internal_error", message="Der opstod en intern fejl."), 500
         return render_template(

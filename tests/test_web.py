@@ -16,7 +16,7 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 from werkzeug.security import generate_password_hash
 
-from yggdrasil_ids.config import AppConfig
+from yggdrasil_ids.config import AppConfig, SudoConfig
 from yggdrasil_ids.domain import Finding, SSHEvent
 from yggdrasil_ids.storage import Repository
 from yggdrasil_ids.web import create_app
@@ -87,7 +87,9 @@ def configured(tmp_path):
         database_path=tmp_path / "events.sqlite3",
         model_path=tmp_path / "model.json",
         credentials_path=credentials,
+        sudo_public_directory=tmp_path / "sudo-public",
         mode="live",
+        sudo=SudoConfig(enabled=True),
     )
     repo = Repository(cfg.database_path)
     repo.initialize()
@@ -201,7 +203,7 @@ def login(client):
 
 
 @pytest.mark.parametrize(
-    "path", ["/", "/events", "/network", "/alerts", "/alerts/1", "/model", "/status"]
+    "path", ["/", "/events", "/network", "/sudo", "/alerts", "/alerts/1", "/model", "/status"]
 )
 def test_sensitive_pages_require_login(client, path):
     response = client.get(path)
@@ -478,15 +480,12 @@ def test_stale_collector_is_not_green(client, configured):
     assert response.json["status"]["collector_tone"] == "danger"
 
 
-def test_demo_data_is_never_misrepresented_as_live(client, configured):
+def test_nonproduction_data_is_never_served_as_live(client, configured):
     configured[1].set_state("mode", "demo")
     login(client)
     assert client.get("/api/overview").status_code == 503
-    demo = create_app(replace(configured[0], mode="demo")).test_client()
-    login(demo)
-    page = demo.get("/").get_data(as_text=True)
-    assert "Demonstrationsmiljø" in page
-    assert "Denne visning overvåger ikke din Pi" in page
+    with pytest.raises(ValueError, match="app.mode=live"):
+        create_app(replace(configured[0], mode="demo"))
 
 
 def test_log_content_is_escaped(client, configured):
@@ -641,6 +640,11 @@ def test_network_charts_js_limits_visible_ports():
     assert 'labels.push("Øvrige porte")' in script
     assert "/api/network-charts?hours=" in script
     assert "newPlot(ports" in script
+    # An empty TCP SYN filter must not render fabricated year-2000 axis dates,
+    # even when the firewall table has valid UDP or other traffic.
+    assert "visible: rows.length > 0" in script
+    assert "visible: labels.length > 0" in script
+    assert "Ingen loggede blokerede SYN-pakker i perioden" in script
 
 
 def test_authenticated_network_page_displays_firewall_history_and_scan_alert(configured, client):
@@ -706,3 +710,192 @@ def test_network_page_displays_data_quality_error_without_exposing_raw_journal(c
     assert "Netværksanalysen kræver opmærksomhed" in html
     assert "Netværkshistorikken er for stor" in html
     assert "SRC=" not in html
+
+
+@pytest.mark.parametrize(
+    ("path", "section"),
+    [
+        ("/", "Overblik"),
+        ("/events", "SSH-hændelser"),
+        ("/preauth", "Før login"),
+        ("/network", "Netværk"),
+        ("/sudo", "Sudo"),
+        ("/alerts", "Alarmer"),
+        ("/alerts/1", "Alarmdetaljer"),
+        ("/model", "SSH · Machine learning"),
+        ("/status", "Systemstatus"),
+    ],
+)
+def test_dashboard_breadcrumb_matches_the_actual_section(client, path, section):
+    login(client)
+    response = client.get(path)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert f"<strong>{section}</strong></div>" in html
+    assert "IDS · Privat server" in html
+
+
+def test_sudo_page_is_authenticated_and_missing_export_does_not_claim_zero(client):
+    assert client.get("/sudo").status_code == 302
+    login(client)
+    response = client.get("/sudo")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Sudo-status kan ikke indlæses" in html
+    assert "Manglende data betyder ikke nul hændelser" in html
+    assert "sudo-ml-live" not in html
+    assert "sudo-if-" not in html
+    assert "benchmark" not in html.lower()
+    assert "/sudo" in RenderedPage(html).links
+    assert "password_hash" not in html
+    assert "/var/lib/yggdrasil-sudo-shadow/" not in html
+
+
+def test_sudo_page_displays_only_anonymized_worker_export(app, client, tmp_path):
+    from yggdrasil_ids.sudo_dashboard import CATEGORIES, DETECTORS
+
+    now = time.time()
+    shared = tmp_path / "sudo-status.json"
+    shared.write_text(
+        json.dumps(
+            {
+                "format": "sudo-status-v1",
+                "mode": "live",
+                "generated_at": now,
+                "checkpoint_at": now - 2,
+                "period_seconds": 86400,
+                "total_signals": 105,
+                "total_candidates": 2,
+                "recent_signals": 15,
+                "categories": {
+                    name: {
+                        "command_invoked": 5,
+                        "pam_session_opened": 5,
+                        "pam_session_closed": 5,
+                    }.get(name, 0)
+                    for name in CATEGORIES
+                },
+                "candidate_detectors": {name: 0 for name in DETECTORS},
+                "source": "worker_owned_private_sudo",
+                "sends_alerts": False,
+                "shares_production_database": False,
+            }
+        )
+    )
+    shared.chmod(0o640)
+    app.config["SUDO_PUBLIC_STATUS_PATH"] = shared
+    login(client)
+    text = client.get("/sudo").get_data(as_text=True)
+    assert "Sudo-overvågning" in text
+    assert "Aktuel eksport" in text
+    assert "105" in text
+    assert "15" in text
+    assert "Sudo-overvågningen kan ikke bekræftes aktiv" in text
+    assert "Shadow-status" not in text
+    assert "sudo-if-" not in text
+    assert "command_invoked" not in text
+    assert "/var/lib/yggdrasil-sudo-shadow/" not in text
+    assert "sudo-status.json" not in text
+
+
+def test_nav_warnings_are_authenticated_registered_alert_cases(client, configured):
+    assert client.get("/api/nav-alerts").status_code == 401
+    _config, repo = configured
+    login(client)
+    first = client.get("/api/nav-alerts")
+    assert first.status_code == 200
+    data = first.get_json()
+    assert data["meaning"] == "browser_unseen_alert_revisions_v1"
+    assert data["period_hours"] == 24
+    assert data["counts"] == {"ssh": 1, "preauth": 0, "network": 0, "sudo": 0, "alerts": 1}
+
+    stamp = time.time() - 60
+    with repo.transaction() as db:
+        for detector, age in [
+            ("network.tcp_port_scan", 0),
+            ("ssh.preauth_burst", 0),
+            ("ssh.failed_burst", 0),
+            ("network.tcp_port_scan", 90000),
+        ]:
+            db.execute(
+                "INSERT INTO alerts(detector_id,title,severity,reason,source_ip,"
+                "first_seen,last_seen,count,score,model_version,details) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    detector,
+                    "Kontrolleret laboratoriealarm",
+                    "medium",
+                    "Test",
+                    "192.0.2.8",
+                    stamp - age,
+                    stamp - age,
+                    1,
+                    None,
+                    None,
+                    "{}",
+                ),
+            )
+    result = client.get("/api/nav-alerts").get_json()
+    assert result["counts"] == {"ssh": 2, "preauth": 1, "network": 1, "sudo": 0, "alerts": 4}
+    # Only recorded cases can enter browser-local seen/unseen markers.
+    html = client.get("/sudo").get_data(as_text=True)
+    assert 'data-alert-section="network"' in html
+    assert 'data-alert-section="ssh"' in html
+    assert 'class="nav-warning"' in html
+
+
+def test_sudo_page_prioritizes_recent_rule_findings_and_process_activity(app, client, tmp_path):
+    now = time.time()
+    activity_file = tmp_path / "sudo-activity.json"
+    activity_file.write_text(
+        json.dumps(
+            {
+                "format": "sudo-activity-v1",
+                "mode": "live",
+                "generated_at": now,
+                "checkpoint_at": now - 2,
+                "period_seconds": 86400,
+                "latest_limit": 15,
+                "latest": [
+                    {
+                        "timestamp": now - 50,
+                        "category": "authentication_failed",
+                        "attention": "rule_candidate",
+                        "detector_id": "sudo.repeated_auth_failure",
+                    },
+                    {
+                        "timestamp": now - 100,
+                        "category": "session_opened",
+                        "attention": "normal",
+                        "detector_id": None,
+                    },
+                ],
+                "candidate_limit": 8,
+                "candidates": [
+                    {
+                        "timestamp": now - 50,
+                        "detector_id": "sudo.repeated_auth_failure",
+                        "process_count": 3,
+                    }
+                ],
+                "source": "worker_owned_private_sudo",
+                "sends_alerts": False,
+                "shares_production_database": False,
+            }
+        )
+    )
+    activity_file.chmod(0o640)
+    app.config["SUDO_PUBLIC_ACTIVITY_PATH"] = activity_file
+    login(client)
+    result = client.get("/sudo")
+    assert result.status_code == 200
+    html = result.get_data(as_text=True)
+    assert "Seneste mistænkelige sudo-aktivitet" in html
+    assert "Autentificering mislykkedes" in html
+    assert "Seneste 15 sudo-forløb" in html
+    assert "Regelkandidat" in html
+    assert html.index("Seneste mistænkelige sudo-aktivitet") < html.index("Seneste 15 sudo-forløb")
+    assert "/usr/bin/" not in html
+    assert "sudo.if.fake_live_alert" not in html
+    assert "sudo-ml-live" not in html
+    assert "Isolation Forest mod sudo-regler" not in html

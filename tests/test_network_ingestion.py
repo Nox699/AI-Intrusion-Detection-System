@@ -19,7 +19,13 @@ def examples():
     return [json.loads(line) for line in FIXTURES.read_text().splitlines()]
 
 
-def config(tmp_path, *, mode="demo", enabled=True):
+@pytest.fixture(autouse=True)
+def live_clock(monkeypatch):
+    # Exercise production's activation/future-time guards with a fixed clock.
+    monkeypatch.setattr("yggdrasil_ids.engine.time.time", lambda: NOW - 1)
+
+
+def config(tmp_path, *, mode="live", enabled=True):
     return AppConfig(
         database_path=tmp_path / "events.sqlite3",
         model_path=tmp_path / "model.json",
@@ -34,7 +40,7 @@ def count(repo, table):
         return db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
 
 
-def test_schema3_migrates_to4_without_changing_existing_ssh_alert_outbox(tmp_path):
+def test_schema3_migrates_without_changing_existing_ssh_alert_outbox(tmp_path):
     # Reproduce the actual Sprint 2 schema, not a v4 schema with tables removed.
     database = tmp_path / "events.sqlite3"
     with sqlite3.connect(database) as db:
@@ -77,7 +83,7 @@ def test_schema3_migrates_to4_without_changing_existing_ssh_alert_outbox(tmp_pat
     repo.initialize()
     repo.initialize()
     with repo.reader() as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 4
+        assert db.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 5
         assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         assert db.execute("SELECT instance FROM discord_outbox_meta").fetchone()[0] == old_instance
         assert db.execute("SELECT ref FROM discord_outbox").fetchone()[0] == old_ref

@@ -10,12 +10,12 @@ import sqlite3
 import pytest
 from werkzeug.security import check_password_hash
 
+from tests.factories import normal_journal_records, write_normal_journal
 from yggdrasil_ids.cli import main
 from yggdrasil_ids.config import load_config
 from yggdrasil_ids.features import FEATURE_NAMES
-from yggdrasil_ids.lab import generate_lab, prepare_rows
 from yggdrasil_ids.ml import IsolationForestDetector
-from yggdrasil_ids.storage import Repository
+from yggdrasil_ids.training import prepare_rows
 from yggdrasil_ids.web import create_app
 
 
@@ -54,35 +54,6 @@ def first_json(text):
 def db_snapshot(path):
     with sqlite3.connect(path) as database:
         return list(database.iterdump())
-
-
-def test_demo_builds_a_real_isolated_application_and_refuses_overwrite(tmp_path, capsys):
-    directory = tmp_path / "demo"
-    assert main(["demo", "--directory", str(directory)]) == 0
-    output = json.loads(capsys.readouterr().out)
-    cfg = load_config(directory / "config.toml")
-    report = json.loads((directory / "lab" / "report.json").read_text())
-    repo = Repository(cfg.database_path, readonly=True)
-    with repo.reader() as database:
-        assert (
-            database.execute("SELECT count(*) FROM events").fetchone()[0]
-            == report["test"]["event_count"]
-        )
-        assert (
-            database.execute("SELECT count(*) FROM observations WHERE state='scored'").fetchone()[0]
-            == report["test"]["event_count"]
-        )
-    assert repo.get_state("mode") == "demo"
-    assert repo.get_state("collector")["state"] == "replay"
-    assert repo.get_state("model")["state"] == "ready"
-    assert output["password"] == "demo-yggdrasil"
-    assert output["mode"] == "demo"
-    assert "Syntetisk" in output["message"]
-    snapshot = db_snapshot(cfg.database_path)
-    assert main(["demo", "--directory", str(directory)]) == 2
-    assert "ikke tom" in capsys.readouterr().err
-    assert db_snapshot(cfg.database_path) == snapshot
-    assert not (tmp_path / "events.sqlite3").exists()
 
 
 def test_init_and_credentials_enable_real_login_without_plaintext_storage(
@@ -151,13 +122,13 @@ def test_credential_replacement_requires_flag_and_rotates_session_secret(
 def test_prepare_then_train_preserves_schema_provenance_and_existing_model(tmp_path, capsys):
     path = config_file(tmp_path)
     cfg = load_config(path)
-    fixtures = generate_lab(tmp_path / "lab", anchor=1_793_480_000)
+    normal = write_normal_journal(tmp_path / "normal.jsonl")
     prepared = tmp_path / "normal-features.json"
     assert (
         main(
             [
                 "prepare-training",
-                str(fixtures["train_path"]),
+                str(normal),
                 "--config",
                 str(path),
                 "--output",
@@ -169,13 +140,13 @@ def test_prepare_then_train_preserves_schema_provenance_and_existing_model(tmp_p
     data = json.loads(prepared.read_text())
     assert data["feature_names"] == list(FEATURE_NAMES)
     assert data["window_seconds"] == cfg.ml.window_seconds
-    assert data["rows"] == prepare_rows(fixtures["train_path"])
+    assert data["rows"] == prepare_rows(normal)
     original_prepared = prepared.read_bytes()
     assert (
         main(
             [
                 "prepare-training",
-                str(fixtures["train_path"]),
+                str(normal),
                 "--config",
                 str(path),
                 "--output",
@@ -193,6 +164,7 @@ def test_prepare_then_train_preserves_schema_provenance_and_existing_model(tmp_p
         str(path),
         "--provenance",
         "Reviewed synthetic normal training sessions only",
+        "--approve-reviewed-normal",
     ]
     assert main(arguments) == 0
     metadata = first_json(capsys.readouterr().out)
@@ -217,78 +189,22 @@ def test_training_rejects_incompatible_input_without_creating_model(tmp_path, ca
     else:
         data[change] = 600
     source.write_text(json.dumps(data))
-    assert main(["train", str(source), "--config", str(path), "--provenance", "reviewed data"]) == 2
+    assert (
+        main(
+            [
+                "train",
+                str(source),
+                "--config",
+                str(path),
+                "--provenance",
+                "reviewed data",
+                "--approve-reviewed-normal",
+            ]
+        )
+        == 2
+    )
     assert "Fejl:" in capsys.readouterr().err
     assert not load_config(path).model_path.exists()
-
-
-def test_replay_on_fresh_live_configuration_does_not_create_a_poisoned_database(tmp_path, capsys):
-    path = config_file(tmp_path)
-    source = tmp_path / "input.jsonl"
-    source.write_text("")
-    assert main(["replay", str(source), "--config", str(path)]) == 2
-    assert not load_config(path).database_path.exists()
-    assert "demo" in capsys.readouterr().err
-
-
-def test_replay_refusal_preserves_existing_live_data_and_state(tmp_path, capsys):
-    path = config_file(tmp_path)
-    assert main(["init", "--config", str(path)]) == 0
-    cfg = load_config(path)
-    repo = Repository(cfg.database_path)
-    repo.set_state("sentinel", {"important": "preserve me"})
-    before = db_snapshot(cfg.database_path)
-    source = tmp_path / "input.jsonl"
-    source.write_text("")
-    assert main(["replay", str(source), "--config", str(path)]) == 2
-    assert db_snapshot(cfg.database_path) == before
-    assert repo.get_state("namespace") == "live"
-    capsys.readouterr()
-
-
-def test_replay_dedup_export_and_consistent_backup(tmp_path, capsys):
-    path = config_file(tmp_path, mode="demo")
-    fixtures = generate_lab(tmp_path / "lab", anchor=1_793_480_000)
-    arguments = ["replay", str(fixtures["test_path"]), "--config", str(path)]
-    assert main(arguments) == 0
-    first = json.loads(capsys.readouterr().out)
-    assert first["events"] == 41
-    assert main(arguments) == 0
-    repeated = json.loads(capsys.readouterr().out)
-    assert repeated["events"] == first["events"]
-    assert repeated["duplicates"] > 0
-    cfg = load_config(path)
-    repo = Repository(cfg.database_path, readonly=True)
-    with repo.reader() as database:
-        since, last = database.execute(
-            "SELECT min(timestamp),max(timestamp) FROM events"
-        ).fetchone()
-    output = tmp_path / "observations.json"
-    export = [
-        "export-features",
-        "--config",
-        str(path),
-        "--since",
-        str(since),
-        "--until",
-        str(last + 1),
-        "--output",
-        str(output),
-    ]
-    assert main(export) == 0
-    data = json.loads(output.read_text())
-    assert data["rows"] == prepare_rows(fixtures["test_path"])
-    assert data["range"] == [since, last + 1]
-    before_export = output.read_bytes()
-    assert main(export) == 2
-    assert output.read_bytes() == before_export
-    backup = tmp_path / "backup.sqlite3"
-    assert main(["backup", "--config", str(path), "--output", str(backup)]) == 0
-    assert db_snapshot(backup) == db_snapshot(cfg.database_path)
-    before_backup = backup.read_bytes()
-    assert main(["backup", "--config", str(path), "--output", str(backup)]) == 2
-    assert backup.read_bytes() == before_backup
-    capsys.readouterr()
 
 
 @pytest.mark.parametrize(
@@ -362,3 +278,200 @@ def test_doctor_roles_respect_separate_service_access(tmp_path, monkeypatch, cap
     assert "model" not in web["checks"]
     assert "journal" not in web["checks"]
     assert web["checks"]["web"]["ok"] is True
+
+
+@pytest.mark.parametrize("command", ["demo", "lab", "replay"])
+def test_retired_experiment_commands_are_not_available(tmp_path, command):
+    with pytest.raises(SystemExit) as exit:
+        main([command])
+    assert exit.value.code == 2
+    assert not (tmp_path / "events.sqlite3").exists()
+
+
+def test_training_requires_explicit_normal_review_without_writing_model(tmp_path, capsys):
+    path = config_file(tmp_path)
+    normal = write_normal_journal(tmp_path / "normal.jsonl")
+    prepared = tmp_path / "normal-features.json"
+    assert (
+        main(["prepare-training", str(normal), "--config", str(path), "--output", str(prepared)])
+        == 0
+    )
+    assert main(["train", str(prepared), "--config", str(path), "--provenance", "unreviewed"]) == 2
+    assert "approve-reviewed-normal" in capsys.readouterr().err
+    assert not load_config(path).model_path.exists()
+
+
+def test_export_and_backup_preserve_production_history(tmp_path, monkeypatch, capsys):
+    from yggdrasil_ids.engine import AnalysisEngine
+
+    path = config_file(tmp_path)
+    cfg = load_config(path)
+    records = normal_journal_records(count=6)
+    now = int(records[-1]["__REALTIME_TIMESTAMP"]) / 1_000_000 + 1
+    monkeypatch.setattr("yggdrasil_ids.engine.time.time", lambda: now)
+    engine = AnalysisEngine(cfg)
+    for record in records:
+        engine.process(record)
+    before = db_snapshot(cfg.database_path)
+    since = int(records[0]["__REALTIME_TIMESTAMP"]) / 1_000_000
+    until = now
+    output = tmp_path / "observations.json"
+    export = [
+        "export-features",
+        "--config",
+        str(path),
+        "--since",
+        str(since),
+        "--until",
+        str(until),
+        "--output",
+        str(output),
+    ]
+    assert main(export) == 0
+    rows = json.loads(output.read_text())["rows"]
+    source = tmp_path / "source.jsonl"
+    source.write_text("\n".join(json.dumps(item) for item in records))
+    assert rows == prepare_rows(source)
+    assert main(export) == 2
+    assert db_snapshot(cfg.database_path) == before
+    backup = tmp_path / "backup.sqlite3"
+    assert main(["backup", "--config", str(path), "--output", str(backup)]) == 0
+    assert db_snapshot(backup) == before
+    assert main(["backup", "--config", str(path), "--output", str(backup)]) == 2
+    assert db_snapshot(backup) == before
+    capsys.readouterr()
+
+
+def test_doctor_requires_loaded_alerting_model_and_fresh_all_detector_state(
+    tmp_path, monkeypatch, capsys
+):
+    from dataclasses import replace
+
+    from yggdrasil_ids.cli import doctor
+    from yggdrasil_ids.config import NetworkConfig, SudoConfig
+    from yggdrasil_ids.engine import AnalysisEngine
+
+    path = config_file(tmp_path)
+    path.write_text(path.read_text() + "\n[network]\nenabled = true\n[sudo]\nenabled = true\n")
+    cfg = load_config(path)
+    source = write_normal_journal(tmp_path / "reviewed-normal.jsonl")
+    model = IsolationForestDetector.train(
+        prepare_rows(source), cfg.ml, "Synthetic unit-test observations only"
+    )
+    model.save(cfg.model_path)
+    engine = AnalysisEngine(cfg)
+    engine.heartbeat("running")
+    monkeypatch.setattr(
+        "yggdrasil_ids.sudo_integration_dashboard.read_integration",
+        lambda _: {"state": "ready", "rules_active": True},
+    )
+    before = db_snapshot(cfg.database_path)
+    assert main(["doctor", "--config", str(path), "--role", "collector", "--require-ready"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["ready"] is True
+    assert db_snapshot(cfg.database_path) == before
+    assert not doctor(
+        replace(cfg, network=NetworkConfig(enabled=False)), role="collector", require_ready=True
+    )["ready"]
+    assert not doctor(
+        replace(cfg, sudo=SudoConfig(enabled=False)), role="collector", require_ready=True
+    )["ready"]
+    engine.heartbeat("stopped")
+    assert doctor(cfg, role="collector", require_ready=True)["checks"]["production"]["ok"] is False
+    engine.heartbeat("running")
+    current = engine.repository.get_state("model")
+    engine.repository.set_state(
+        "model", {**current, "metadata": {**current["metadata"], "version": "different-model"}}
+    )
+    assert not doctor(cfg, role="collector", require_ready=True)["ready"]
+    engine.repository.set_state("model", current)
+    engine.repository.set_state("collector", {"state": "running", "heartbeat_at": 0})
+    assert not doctor(cfg, role="collector", require_ready=True)["ready"]
+
+
+def test_sudo_commands_use_the_loaded_production_config_and_propagate_failures(
+    tmp_path, monkeypatch, capsys
+):
+    path = config_file(tmp_path)
+    path.write_text(path.read_text() + "\n[sudo]\nenabled = true\n")
+    seen = []
+
+    def arm(config):
+        seen.append(("arm", config))
+        return 1_790_000_000.0
+
+    def poll(config):
+        seen.append(("poll", config))
+        return {"rules": {"state": "active"}}
+
+    monkeypatch.setattr("yggdrasil_ids.sudo_service.arm", arm)
+    monkeypatch.setattr("yggdrasil_ids.sudo_service.run_once", poll)
+    assert main(["sudo-arm", "--config", str(path)]) == 0
+    assert json.loads(capsys.readouterr().out) == 1_790_000_000.0
+    assert main(["sudo-poll", "--config", str(path)]) == 0
+    assert json.loads(capsys.readouterr().out)["rules"]["state"] == "active"
+    assert [name for name, config in seen] == ["arm", "poll"]
+    assert all(config == load_config(path) for _, config in seen)
+
+    def unavailable(config):
+        raise RuntimeError("Sudo source unavailable")
+
+    monkeypatch.setattr("yggdrasil_ids.sudo_service.run_once", unavailable)
+    assert main(["sudo-poll", "--config", str(path)]) == 2
+    assert "Sudo source unavailable" in capsys.readouterr().err
+
+
+def test_notify_has_no_synthetic_test_command(tmp_path):
+    path = config_file(tmp_path)
+    with pytest.raises(SystemExit) as error:
+        main(
+            [
+                "notify",
+                "--config",
+                str(path),
+                "--state-file",
+                str(tmp_path / "delivery.sqlite3"),
+                "--test",
+            ]
+        )
+    assert error.value.code == 2
+    assert not (tmp_path / "delivery.sqlite3").exists()
+
+
+@pytest.mark.parametrize(
+    "key,value",
+    [
+        ("collector", []),
+        ("collector", "corrupt-state"),
+        ("model", 42),
+        ("model", {"state": "ready", "alert_mode": "alert", "metadata": []}),
+    ],
+)
+def test_strict_doctor_reports_corrupt_state_shapes_without_writes(
+    tmp_path, monkeypatch, key, value
+):
+    from yggdrasil_ids.cli import doctor
+    from yggdrasil_ids.engine import AnalysisEngine
+
+    path = config_file(tmp_path)
+    path.write_text(path.read_text() + "\n[network]\nenabled = true\n[sudo]\nenabled = true\n")
+    cfg = load_config(path)
+    normal = write_normal_journal(tmp_path / "normal.jsonl")
+    model = IsolationForestDetector.train(
+        prepare_rows(normal), cfg.ml, "Synthetic unit-test normal observations"
+    )
+    model.save(cfg.model_path)
+    engine = AnalysisEngine(cfg)
+    engine.heartbeat("running")
+    engine.repository.set_state(key, value)
+    monkeypatch.setattr(
+        "yggdrasil_ids.sudo_integration_dashboard.read_integration",
+        lambda _: {"state": "ready", "rules_active": True},
+    )
+    before = db_snapshot(cfg.database_path)
+    model_before = cfg.model_path.read_bytes()
+    report = doctor(cfg, role="collector", require_ready=True)
+    assert report["ok"] is False and report["ready"] is False
+    assert report["checks"]["production"]["ok"] is False
+    assert db_snapshot(cfg.database_path) == before
+    assert cfg.model_path.read_bytes() == model_before

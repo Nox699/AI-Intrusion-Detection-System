@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Yggdrasil sudo rule monitoring every minute
+
+[Timer]
+OnActiveSec=5s
+OnUnitInactiveSec=60s
+AccuracySec=5s
+Unit=yggdrasil-sudo.service
+
+[Install]
+WantedBy=timers.target

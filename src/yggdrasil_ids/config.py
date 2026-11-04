@@ -28,7 +28,7 @@ class MLConfig:
     contamination: float = 0.03
     n_estimators: int = 128
     random_state: int = 42
-    alert_mode: str = "alert"  # shadow = score/store only; no ML findings or Discord
+    alert_mode: str = "alert"
 
 
 @dataclass(frozen=True)
@@ -48,6 +48,14 @@ class NetworkConfig:
 
 
 @dataclass(frozen=True)
+class SudoConfig:
+    enabled: bool = False
+    window_seconds: int = 300
+    failure_process_threshold: int = 3
+    cooldown_seconds: int = 300
+
+
+@dataclass(frozen=True)
 class WebConfig:
     bind: str = "127.0.0.1"
     port: int = 8765
@@ -61,6 +69,8 @@ class AppConfig:
     database_path: Path = Path(".local/events.sqlite3")
     model_path: Path = Path(".local/model.json")
     credentials_path: Path = Path(".local/web-secrets.json")
+    sudo_database_path: Path = Path(".local/sudo-private/sudo.sqlite3")
+    sudo_public_directory: Path = Path(".local/sudo-public")
     mode: str = "live"
     host_label: str = "Yggdrasil"
     timezone: str = "Europe/Copenhagen"
@@ -68,6 +78,7 @@ class AppConfig:
     ml: MLConfig = field(default_factory=MLConfig)
     collector: CollectorConfig = field(default_factory=CollectorConfig)
     network: NetworkConfig = field(default_factory=NetworkConfig)
+    sudo: SudoConfig = field(default_factory=SudoConfig)
     web: WebConfig = field(default_factory=WebConfig)
     retention_days: int = 30
     max_database_mb: int = 512
@@ -93,22 +104,24 @@ def load_config(path: Path | str | None = None) -> AppConfig:
     path = Path(path or os.environ.get("YGGDRASIL_CONFIG", "config.toml")).resolve()
     with path.open("rb") as handle:
         data = tomllib.load(handle)
-    allowed = {"app", "paths", "rules", "ml", "collector", "network", "web", "storage"}
+    allowed = {"app", "paths", "rules", "ml", "collector", "network", "sudo", "web", "storage"}
     if set(data) - allowed:
         raise ValueError("Ukendte konfigurationssektioner: " + ", ".join(set(data) - allowed))
     app = _section(data, "app", {"mode", "host_label", "timezone"})
-    paths = _section(data, "paths", {"database", "model", "credentials"})
+    paths = _section(
+        data,
+        "paths",
+        {"database", "model", "credentials", "sudo_database", "sudo_public_directory"},
+    )
     rules = _section(data, "rules", set(RulesConfig.__dataclass_fields__))
     ml = _section(data, "ml", set(MLConfig.__dataclass_fields__))
     collector = _section(data, "collector", set(CollectorConfig.__dataclass_fields__))
     network = _section(data, "network", set(NetworkConfig.__dataclass_fields__))
+    sudo = _section(data, "sudo", set(SudoConfig.__dataclass_fields__))
     web = _section(data, "web", set(WebConfig.__dataclass_fields__))
     storage = _section(data, "storage", {"retention_days", "max_database_mb"})
-    if not isinstance(app.get("mode", "live"), str) or app.get("mode", "live") not in {
-        "live",
-        "demo",
-    }:
-        raise ValueError("app.mode skal være live eller demo")
+    if app.get("mode", "live") != "live":
+        raise ValueError("Produktionsversionen kræver app.mode='live'")
     for key in ("host_label", "timezone"):
         if key in app and (not isinstance(app[key], str) or not 1 <= len(app[key]) <= 100):
             raise ValueError(f"app.{key} skal være en kort tekst")
@@ -146,11 +159,8 @@ def load_config(path: Path | str | None = None) -> AppConfig:
     if type(contamination) not in {int, float} or not 0 < contamination <= 0.5:
         raise ValueError("ml.contamination skal være større end 0 og højst 0.5")
     ml["contamination"] = float(contamination)
-    if type(ml.get("alert_mode", "alert")) is not str or ml.get("alert_mode", "alert") not in {
-        "alert",
-        "shadow",
-    }:
-        raise ValueError("ml.alert_mode skal være 'alert' eller 'shadow'")
+    if ml.get("alert_mode", "alert") != "alert":
+        raise ValueError("Produktionsversionen kræver ml.alert_mode='alert'")
     ml["alert_mode"] = ml.get("alert_mode", "alert")
     for key, default, low, high in [
         ("initial_history_hours", 24, 1, 168),
@@ -167,6 +177,15 @@ def load_config(path: Path | str | None = None) -> AppConfig:
     network["distinct_ports_threshold"] = _int(
         network.get("distinct_ports_threshold", 6), "network.distinct_ports_threshold", 2, 64
     )
+    if type(sudo.get("enabled", False)) is not bool:
+        raise ValueError("sudo.enabled skal være true eller false")
+    sudo["enabled"] = sudo.get("enabled", False)
+    for key, default, low, high in (
+        ("window_seconds", 300, 60, 3600),
+        ("failure_process_threshold", 3, 2, 20),
+        ("cooldown_seconds", 300, 60, 3600),
+    ):
+        sudo[key] = _int(sudo.get(key, default), f"sudo.{key}", low, high)
     executable = collector.get("executable", "journalctl")
     if not isinstance(executable, str) or not executable or "\x00" in executable:
         raise ValueError("collector.executable skal være en sti eller et programnavn")
@@ -178,7 +197,7 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         web[key] = _int(web.get(key, default), f"web.{key}", low, high)
     bind = web.get("bind", "127.0.0.1")
     if not isinstance(bind, str) or bind not in {"127.0.0.1", "::1"}:
-        raise ValueError("Sprint 1 kræver loopback-adgang: web.bind 127.0.0.1 eller ::1")
+        raise ValueError("Dashboardet kræver loopback-adgang: web.bind 127.0.0.1 eller ::1")
     hosts = web.get("trusted_hosts", ["localhost", "127.0.0.1", "[::1]"])
     if (
         not isinstance(hosts, list)
@@ -203,17 +222,34 @@ def load_config(path: Path | str | None = None) -> AppConfig:
     database_path = local("database", ".local/events.sqlite3")
     model_path = local("model", ".local/model.json")
     credentials_path = local("credentials", ".local/web-secrets.json")
-    if len({database_path, model_path, credentials_path}) != 3:
-        raise ValueError("Database, model og loginoplysninger skal have forskellige stier")
+    sudo_database_path = local("sudo_database", ".local/sudo-private/sudo.sqlite3")
+    sudo_public_directory = local("sudo_public_directory", ".local/sudo-public")
+    private_files = {database_path, model_path, credentials_path, sudo_database_path}
+    if len(private_files) != 4 or sudo_public_directory in private_files:
+        raise ValueError(
+            "Databaser, model, loginoplysninger og offentlig eksport skal have forskellige stier"
+        )
+    if (
+        sudo_database_path.parent == database_path.parent
+        or sudo_database_path.is_relative_to(sudo_public_directory)
+        or sudo_public_directory.is_relative_to(sudo_database_path.parent)
+        or any(p.is_relative_to(sudo_public_directory) for p in private_files)
+    ):
+        raise ValueError(
+            "Privat sudo-database skal ligge adskilt fra produktionsdatabasen og offentlig eksport"
+        )
     return AppConfig(
         database_path=database_path,
         model_path=model_path,
         credentials_path=credentials_path,
+        sudo_database_path=sudo_database_path,
+        sudo_public_directory=sudo_public_directory,
         **app,
         rules=RulesConfig(**rules),
         ml=MLConfig(**ml),
         collector=CollectorConfig(**collector),
         network=NetworkConfig(**network),
+        sudo=SudoConfig(**sudo),
         web=WebConfig(**web),
         retention_days=retention,
         max_database_mb=budget,

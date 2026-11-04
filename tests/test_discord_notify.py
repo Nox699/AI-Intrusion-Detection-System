@@ -371,3 +371,19 @@ def test_network_discord_message_has_plain_label_but_no_raw_network_metadata(tmp
     assert "fake-incident-ref" in message
     assert "192.0.2." not in message
     assert "SRC=" not in message
+
+
+def test_status_does_not_create_missing_delivery_state_or_modify_existing_state(tmp_path):
+    repo = Repository(tmp_path / "events.sqlite3")
+    repo.initialize()
+    private = tmp_path / "private"
+    private.mkdir(mode=0o700)
+    state = private / "delivery.sqlite3"
+    notifier = DiscordNotifier(repo.path, state)
+    with pytest.raises(DeliveryError):
+        notifier.status()
+    assert not state.exists()
+    notifier.bootstrap()
+    before = state.read_bytes()
+    assert notifier.status()["pending"] == 0
+    assert state.read_bytes() == before

@@ -1,193 +1,173 @@
-# Installation på Raspberry Pi
+# Installation og opgradering på Yggdrasil
 
-Denne vejledning gælder **første installation** på en Raspberry Pi med Debian
-13/ARM64. Kildekoden hentes direkte fra projektets repository. Bevar en
-fungerende SSH-session under afprøvningen. Ingen af trinnene ændrer SSH,
-Tailscale eller firewallregler. Hvis disse tjenestenavne eller konfigurationsfiler
-allerede findes, skal den eksisterende installation gennemgås før en opdatering.
+Den samlede installation har SSH-regler og SSH-ML-alarmer, preauth-regler,
+TCP-portscanregler, sudo-regler, dashboard og Discord-notifier. Den bruger
+ingen særskilt demo-server eller sudo-model.
 
-## 1. Python og program
+De pinnede wrappers er målrettet **`vidar` på værten `yggdrasil`** og den kendte
+repo-sti `/home/vidar/AI-Intrusion-Detection-System`. De kræver Debian 13,
+Python 3.13, systemd og sudo-adgang. De ændrer ikke SSH, Tailscale, sudoers eller
+firewallregler. UFW skal allerede logge de relevante blokerede pakker, hvis
+portscanreglen skal kunne se dem.
 
-Kontrollér miljøet, og installer Python-miljøet. `venv` oprettes på Pi'en; kopiér
-ikke en `.venv` fra Windows, WSL eller en anden processorarkitektur.
+Vælg enten **opgradering af den eksisterende installation** eller **første
+installation**. Kør ikke førstegangsinstallationen over en fungerende server.
+
+## Kilde og commit
+
+Brug en gennemgået fuld commit-SHA. Kommandoerne nedenfor indeholder en tydelig
+pladsholder; erstat den med den SHA, der er frigivet til installation. De
+installerer den fastlåste kilde uden at ændre din arbejdskopis checkout.
+
+Wrapperne henter og kontrollerer `main`. Hvis grenens head
+er ændret, stopper en opgradering eller første installation før aktivering.
+En grøn CI-kørsel er softwarekontrol; [accepten på Pi](../docs/ACCEPTANCE.md)
+er et separat trin.
+
+## Opgradering af den kendte installation
+
+Opgraderingen forventer den verificerede schema5-installation med de eksisterende
+collector-, web- og notifierkonti, fungerende journaladgang, aktiv sudo-indsamling
+og en indlæselig SSH-model. Overgangen fra den tidligere installation forventer
+den dokumenterede SSH-model `ssh-if-7cc1f15288d0c73b`.
+
+Den bevarer konfigurationsprofiler, den tilpassede portscangrænse, modelbytes og
+tærskel, aktuel historik, outbox-identitet og notifierens private leveringsstatus.
+Den aktiverer SSH-modellens alarmering og den samlede produktionsopsætning, men
+træner ikke modellen og fremkalder ingen testangreb eller testbeskeder.
+
+Kør som `vidar` på Pi'en:
 
 ```bash
-cat /etc/os-release
-uname -m
-python3 --version
+(
+  set -euo pipefail
+  cd /home/vidar/AI-Intrusion-Detection-System
+  branch="main"
+  sha="INDSAET_GENNEMGAAET_FULD_COMMIT_SHA"
+
+  git fetch --no-tags origin \
+    "refs/heads/$branch:refs/remotes/origin/$branch"
+  test "$(git rev-parse "origin/$branch")" = "$sha"
+
+  bash <(git show "$sha:deploy/upgrade_pi.sh") "$sha"
+)
+```
+
+Forløbet kontrollerer den nye release og de faktiske servicekonti før skiftet.
+Det stopper de tidligere skrivende roller og sudo-timere koordineret, tager en
+konsistent SQLite-backup og kopierer den private sudo-tilstand til den nye
+produktionssti. Den nye kilde, fælles konfiguration og canonical units aktiveres
+derefter samlet. Kun de gennemgåede gamle kildeoverrides fjernes; uventede lokale
+ændringer afvises.
+
+Releaser ligger under `/opt/yggdrasil-ids/releases/<sha>`. Den root-ejede
+`current`-reference og CLI-entrypoint vælger samme kilde til de relevante roller.
+Det eksisterende virtuelle miljø genbruges efter kontrol mod `requirements.lock`.
+Dermed udskiftes afhængigheder ikke tilfældigt under opgraderingen.
+
+Accepten kræver blandt andet frisk collector- og sudo-status, den forventede
+SSH-model med aktiverede alarmer, fungerende loginbeskyttede sider og matchende
+notifier-identitet. En inaktiv oneshot-service er ikke i sig selv en fejl;
+der kontrolleres friskhed af det gemte resultat. Der påstås ingen ny
+Discord-levering, når denne opgradering ikke har genereret en ny alarm.
+
+## Første installation
+
+Førstegangsinstallationen afviser eksisterende konfiguration, database,
+notifier-tilstand, aktiv release og eksisterende produktionsunits. Den kræver
+en **allerede trænet, gennemgået SSH-model** som privat JSON-fil. Repoet
+indeholder ingen privat model og fremstiller ikke automatisk et normalt
+træningsgrundlag for at opnå en grøn modelstatus.
+
+Installer grundværktøjer og klon repoet, hvis de ikke findes:
+
+```bash
 sudo apt update
 sudo apt install git python3-venv
-git clone https://github.com/Nox699/AI-Intrusion-Detection-System.git
-cd AI-Intrusion-Detection-System
-git rev-parse HEAD
-sudo install -d -o root -g root -m 0755 /opt/yggdrasil-ids
-sudo python3 -m venv /opt/yggdrasil-ids/venv
-sudo /opt/yggdrasil-ids/venv/bin/python -m pip install --only-binary=:all: -r requirements.lock
-sudo /opt/yggdrasil-ids/venv/bin/python -m pip install --no-deps .
-sudo /opt/yggdrasil-ids/venv/bin/yggdrasil-ids --version
+git clone https://github.com/Nox699/AI-Intrusion-Detection-System.git \
+  /home/vidar/AI-Intrusion-Detection-System
 ```
 
-Fortsæt de følgende trin fra den klonede projektmappe. Notér commit-ID’et fra
-`git rev-parse HEAD`, så installationens kildekode kan identificeres. Pakken
-bygges fra kilden; en `dist/`-mappe er ikke nødvendig. Runtime-afhængighederne
-er fastlåst i `requirements.lock`. Pips isolerede byggetrin henter desuden
-setuptools og wheel efter `pyproject.toml`, også når `--no-deps` bruges.
-
-De låste afhængigheder er kontrolleret for tilgængelige Python 3.13/ARM64-wheels.
-Det er ikke en gennemført test af din hardware eller dine logs. Python 3.11+
-understøttes af projektet; de gennemførte kontroller står i [verifikationen](../docs/VERIFICATION.md).
-
-## 2. Separate servicekonti
-
-Opret to konti uden interaktivt login. Collector må skrive til dataområdet og
-læse journalen. Webkontoen får læseadgang til data, men ingen journalgruppe.
+Opret først webhookfilen privat. URL'en må ikke stå i en shellkommando,
+et screenshot eller Git:
 
 ```bash
-sudo groupadd --system yggdrasil-data
-sudo groupadd --system yggdrasil-web
-sudo useradd --system --gid yggdrasil-data --groups systemd-journal --home-dir /var/lib/yggdrasil-ids --no-create-home --shell /usr/sbin/nologin yggdrasil-worker
-sudo useradd --system --gid yggdrasil-web --groups yggdrasil-data --home-dir /nonexistent --no-create-home --shell /usr/sbin/nologin yggdrasil-web
-sudo install -d -o yggdrasil-worker -g yggdrasil-data -m 2750 /var/lib/yggdrasil-ids
-sudo install -d -o root -g yggdrasil-data -m 0750 /etc/yggdrasil-ids
-sudo install -o root -g yggdrasil-data -m 0640 deploy/config.pi.toml /etc/yggdrasil-ids/config.toml
-id yggdrasil-worker
-id yggdrasil-web
+sudo install -d -o root -g root -m 0755 /etc/yggdrasil-ids
+sudo touch /etc/yggdrasil-ids/discord-webhook.url
+sudo chown root:root /etc/yggdrasil-ids/discord-webhook.url
+sudo chmod 0600 /etc/yggdrasil-ids/discord-webhook.url
+sudoedit /etc/yggdrasil-ids/discord-webhook.url
 ```
 
-Gruppen `systemd-journal` giver bred journaladgang; SSH-filtreringen i programmet
-er ikke i sig selv en rettighedsbegrænsning. Webkontoen skal ikke tilføjes til
-gruppen. Dataområdets setgid-bit bevarer gruppen på nye filer.
+Indsæt én gennemgået Discord-webhook-URL i editoren, gem og luk. Den leveres
+senere til notifieren som systemd-credential. Installationen viser ikke værdien.
 
-## 3. Normalprofil og dashboardlogin
+Gennemgå `deploy/config.pi.toml` i den valgte commit. Standardopsætningen
+aktiverer netværk og sudo; profilfelterne for forventede SSH-brugere og
+kildeadresser er tomme. En tom profil slår den tilsvarende kontrol af vellykkede
+logins fra. Gennemgå derfor din normale SSH-profil som en del af accepten;
+Tailscale-adgang beviser ikke i sig selv en persons identitet.
+
+Kør derefter med stien til den gennemgåede modelfil. Begge værdier nedenfor er
+pladsholdere og skal erstattes:
 
 ```bash
-sudoedit /etc/yggdrasil-ids/config.toml
+(
+  set -euo pipefail
+  cd /home/vidar/AI-Intrusion-Detection-System
+  branch="main"
+  sha="INDSAET_GENNEMGAAET_FULD_COMMIT_SHA"
+  model="/absolut/sti/til/gennemgaaet-ssh-model.json"
+
+  git fetch --no-tags origin \
+    "refs/heads/$branch:refs/remotes/origin/$branch"
+  test "$(git rev-parse "origin/$branch")" = "$sha"
+
+  bash <(git show "$sha:deploy/install_pi.sh") "$sha" "$model"
+)
 ```
 
-Behold `bind = "127.0.0.1"`. Både `expected_users` og `expected_sources` er
-tomme fra start; hver tom liste slår den tilsvarende kontrol af vellykkede logins
-fra. Angiv de Linux-konti, som forventes at logge ind, og eventuelt kendte
-klienters aktuelle Tailscale-IP med `/32` for IPv4 eller `/128` for IPv6.
-En Tailscale-adresse beviser ikke, hvilken person der bruger enheden.
+Installationen opretter de adskilte servicekonti, et virtuelt miljø med låste
+runtime-afhængigheder, den private modelkopi, database og units. Den spørger
+interaktivt to gange efter en ny dashboardadgangskode. Kun på en helt ny
+installation initialiseres notifierens leveringsidentitet. Sudo-integrationen
+armeres eksplicit, før den samlede drift starter.
 
-Eksempel på syntaks i den eksisterende `[rules]`-sektion:
+SSH-collectorens første historikvindue kan indeholde op til konfigurationens
+24 timer med virkelige journalhændelser. De kan give ægte regel- eller ML-fund
+og Discord-beskeder, selv om installationsscriptet ikke fremkalder testangreb.
+En softwaremæssigt indlæst model er endnu ikke et bevis for ny live SSH-scoring
+eller faktisk ML-til-Discord-levering.
 
-```toml
-expected_users = ["minbruger"]
-expected_sources = ["192.0.2.10/32"]
-```
+## Dashboard og kontrol
 
-`minbruger` og dokumentationsadressen `192.0.2.10` er pladsholdere, som skal
-erstattes med gennemgåede værdier fra installationen. Opret ikke en ekstra
-`[rules]`-sektion. Bevar tomme lister, hvis en profil endnu ikke er besluttet.
+Web lytter på `127.0.0.1:8765`. Opret SSH-tunnelen fra laptoppen som beskrevet
+i [README](../README.md), og brug din nye eller bevarede adgangskode.
+Der åbnes ingen ekstra offentlig webport.
 
-Opret din egen adgangskode interaktivt. CLI gemmer hash og en tilfældig sessionsnøgle:
+Følg [ACCEPTANCE.md](../docs/ACCEPTANCE.md), og gem den installerede commit,
+SSH-modelversion og de konkrete resultater. Service- og journalfejlsøgning
+findes i [OPERATIONS.md](../docs/OPERATIONS.md). Automatiserede kontroller er
+beskrevet i [TESTING.md](../docs/TESTING.md).
+
+## Fejl og rollback ved opgradering
+
+Ved fejl efter runtime-skiftet forsøger opgraderingen at gendanne tidligere
+kildevalg, konfiguration, units og tidligere tjenestetilstande. Den overskriver
+aldrig den aktuelle produktionsdatabase med en gammel backup og nulstiller
+ikke notifierens leveringshistorik. Data, der blev registreret under forsøget,
+skal bevares. Private backups ligger under
+`/var/backups/yggdrasil-ids/production-before-<sha>`.
+
+Ved en senere, bevidst rollback bruges den samme commit som den aktive release
+og dens eksisterende backup:
 
 ```bash
-sudo /opt/yggdrasil-ids/venv/bin/yggdrasil-ids credentials --config /etc/yggdrasil-ids/config.toml
-sudo chown root:yggdrasil-web /etc/yggdrasil-ids/web-secrets.json
-sudo chmod 0640 /etc/yggdrasil-ids/web-secrets.json
-sudo -u yggdrasil-worker /opt/yggdrasil-ids/venv/bin/yggdrasil-ids init --config /etc/yggdrasil-ids/config.toml
-sudo -u yggdrasil-worker /opt/yggdrasil-ids/venv/bin/yggdrasil-ids doctor --config /etc/yggdrasil-ids/config.toml --role collector --journal
-sudo -u yggdrasil-web /opt/yggdrasil-ids/venv/bin/yggdrasil-ids doctor --config /etc/yggdrasil-ids/config.toml --role web
+bash <(git show "$sha:deploy/upgrade_pi.sh") "$sha" rollback
 ```
 
-Fortsæt, når database, web og journaladgang er godkendt for de relevante konti.
-`Ingen model` er forventet under indsamling af normaldata; reglerne kan køre.
-En aktiv heartbeat er først forventet, når tjenesten er startet. Hvis journal-
-kontrollen fejler, undersøg læseadgangen; gør ikke journalen offentligt læsbar.
-
-SQLite bruger rollback-journal (`DELETE`) og korte transaktioner. Det gør, at
-webkontoen kan læse historikken fra et skrivebeskyttet dataområde, også når
-collector er stoppet. Webkontoen skal ikke have skriverettighed til databasen.
-
-## 4. Installer og start tjenester
-
-```bash
-sudo install -o root -g root -m 0644 deploy/yggdrasil-collector.service /etc/systemd/system/yggdrasil-collector.service
-sudo install -o root -g root -m 0644 deploy/yggdrasil-web.service /etc/systemd/system/yggdrasil-web.service
-sudo systemd-analyze verify /etc/systemd/system/yggdrasil-collector.service /etc/systemd/system/yggdrasil-web.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now yggdrasil-collector.service yggdrasil-web.service
-systemctl status yggdrasil-collector.service yggdrasil-web.service --no-pager
-sudo journalctl -u yggdrasil-collector.service -u yggdrasil-web.service -n 50 --no-pager
-sudo ss -lntp 'sport = :8765'
-```
-
-Webserveren skal kun lytte på `127.0.0.1:8765`. Collector læser lokale journalfiler
-og har et privat netværksnavnerum. Webserveren kører via Gunicorn med én worker
-og fire tråde. Dens separate kontrolsocket er deaktiveret. Systemd begrænser
-filsystemadgang, hukommelse og procesantal; en uventet fejl giver genstart, indtil
-systemds startgrænse nås. Gentagne opstartsfejl kræver fejlsøgning.
-
-## 5. Åbn fra din laptop
-
-Luk den lokale demo, hvis den bruger port 8765. Kør på laptoppen i PowerShell
-eller WSL, og bevar tunnelen åben. **Erstat `minbruger` og `min-pi`** med den
-rigtige Linux-konto og serverens Tailscale-navn eller Tailscale-IP:
-
-```bash
-ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:8765:127.0.0.1:8765 minbruger@min-pi
-```
-
-Åbn
-**http://127.0.0.1:8765** og brug din egen dashboardadgangskode. En lokal port
-8766 kan bruges i venstre side af `-L`, hvis 8765 allerede er optaget. Der skal
-ikke åbnes en ny webport i router, UFW eller Tailscale.
-
-Følg derefter [accepttesten](../docs/TEST_ON_PI.md). En normal SSH-autentificering er nødvendig
-for at bekræfte, at netop din OpenSSH-version skriver et understøttet logformat.
-Et grønt journaladgangstjek alene beviser ikke SSH-dækning.
-
-## Vedligeholdelse
-
-### Adgangskodeskift
-
-`credentials --replace` opretter af sikkerhedshensyn en ny fil med mode `0600`.
-Gendan derfor webgruppens læseret efter udskiftningen, og genstart webprocessen:
-
-```bash
-sudo /opt/yggdrasil-ids/venv/bin/yggdrasil-ids credentials --config /etc/yggdrasil-ids/config.toml --replace
-sudo chown root:yggdrasil-web /etc/yggdrasil-ids/web-secrets.json
-sudo chmod 0640 /etc/yggdrasil-ids/web-secrets.json
-sudo systemctl restart yggdrasil-web.service
-```
-
-### Model
-
-Brug gennemgåede normaldata og separate testforløb som beskrevet i README.
-Træn som `yggdrasil-worker`, så modellen bevarer den rigtige ejer. Filer, som
-leveres til workerens træningskommando, skal være læsbare for denne konto.
-Modellen skal ligge på den konfigurerede sti med ejer
-`yggdrasil-worker:yggdrasil-data` og må ikke være skrivbar for webkontoen.
-Genstart collector bevidst efter en godkendt modeludskiftning.
-
-### Backup
-
-Vælg altid et nyt backupnavn. Kommandoen bruger SQLite-backupfunktionen og afviser
-overskrivning. Backupfilen kan indeholde IP-adresser og brugernavne.
-
-```bash
-sudo install -d -o root -g root -m 0700 /var/backups/yggdrasil-ids
-sudo /opt/yggdrasil-ids/venv/bin/yggdrasil-ids backup --config /etc/yggdrasil-ids/config.toml --output /var/backups/yggdrasil-ids/first-verified.sqlite3
-```
-
-Konfiguration, model og loginoplysninger skal sikkerhedskopieres separat med
-tilsvarende begrænset adgang. Afprøv en gendannelse til en separat mappe først.
-En eventuel gendannelse af driftsdatabasen kræver stoppede tjenester og korrekte
-ejere/rettigheder; erstat ikke en database, mens collector skriver til den.
-
-### Opdatering og rollback
-
-Tag backup og noter den installerede version. Gennemgå releaseændringer før
-opdatering; installér ikke blot vilkårlige nyere afhængigheder i driftsmiljøet.
-Stop tjenesterne før udskiftning af program/afhængigheder, bevar konfigurationen,
-og kør rolleopdelte `doctor`-kontroller og accepttest igen. Gem den tidligere
-kildekodeversion og dens `requirements.lock`; en lokalt bygget wheel kan også
-arkiveres som installationsartefakt. Version 0.1.0 har ingen automatisk
-databaseskemamigration; et ukendt skema afvises i stedet for at blive ændret.
-
-Ved fejl: læs `journalctl` og dashboardets systemstatus. `systemctl reset-failed`
-efterfulgt af `start` er relevant, når en gentagen opstartsfejl er rettet. Undgå at
-løse rettighedsfejl ved at køre webserveren som root eller gøre dataområdet
-verdensskrivbart.
+Rollback kræver matchende aktiv release og backup. Det er ikke en generel
+databasegendannelse eller en afinstallation af en ny førstegangsinstallation.
+Hvis scriptet skriver STOP eller RECOVERY, læses den konkrete fejl før flere
+opgraderingsforsøg. Slet ikke backups eller leveringsstatus for at få en
+ny kørsel til at fortsætte.

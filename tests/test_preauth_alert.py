@@ -3,7 +3,7 @@
 from yggdrasil_ids.config import AppConfig, RulesConfig
 from yggdrasil_ids.engine import AnalysisEngine
 from yggdrasil_ids.preauth import parse_preauth
-from yggdrasil_ids.storage import Repository
+from yggdrasil_ids.storage import SCHEMA_VERSION, Repository
 
 
 def record(index, timestamp, message):
@@ -43,7 +43,7 @@ def test_burst_needs_threshold_and_never_scores_as_login(tmp_path, monkeypatch):
         database_path=tmp_path / "events.sqlite3",
         model_path=tmp_path / "model.json",
         credentials_path=tmp_path / "creds.json",
-        mode="demo",
+        mode="live",
         rules=RulesConfig(preauth_threshold=5),
     )
     engine = AnalysisEngine(cfg, "test")
@@ -75,6 +75,6 @@ def test_migration_preserves_existing_events(tmp_path):
         db.execute("PRAGMA user_version=1")
     repo.initialize()
     with repo.reader() as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert db.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     repo.initialize()

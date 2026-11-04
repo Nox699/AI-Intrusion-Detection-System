@@ -174,8 +174,12 @@ class DiscordNotifier:
         return instance, maximum, rows
 
     @contextmanager
-    def _connect(self):
-        db = sqlite3.connect(self.path, timeout=5)
+    def _connect(self, *, readonly: bool = False):
+        if readonly:
+            db = sqlite3.connect(self.path.resolve().as_uri() + "?mode=ro", uri=True, timeout=5)
+            db.execute("PRAGMA query_only=ON")
+        else:
+            db = sqlite3.connect(self.path, timeout=5)
         try:
             db.execute("PRAGMA busy_timeout=5000")
             with db:
@@ -210,12 +214,12 @@ class DiscordNotifier:
 
     def status(self):
         """Read-only operational status without accessing webhook credentials."""
-        with self._connect() as db:
-            try:
+        try:
+            with self._connect(readonly=True) as db:
                 row = db.execute("SELECT instance,last_seq,not_before FROM meta").fetchone()
                 acknowledged = db.execute("SELECT COUNT(*) FROM deliveries").fetchone()[0]
-            except sqlite3.OperationalError as exc:
-                raise DeliveryError("Notifierstatus mangler eller er ikke initialiseret") from exc
+        except sqlite3.Error as exc:
+            raise DeliveryError("Notifierstatus mangler eller er ikke initialiseret") from exc
         if row is None:
             raise DeliveryError("Notifieren er ikke initialiseret")
         instance, maximum, _ = self._source()
@@ -246,16 +250,22 @@ class DiscordNotifier:
             "ssh.unexpected_success": "Uventet SSH-login",
             "ssh.isolation_forest": "Usædvanligt SSH-mønster",
             "network.tcp_port_scan": "Mulig TCP-portscanning (UFW)",
+            "sudo.repeated_auth_failure": "Gentagne sudo-autentificeringsfejl",
+            "sudo.permission_denied": "Afvist sudo-adgang",
         }.get(event["detector_id"], "Sikkerhedsalarm")
         stamp = datetime.fromtimestamp(event["happened_at"], self.zone)
+        guidance = (
+            "Undersøg hændelsen i den autoriserede lokale sudo-journal."
+            if event["detector_id"].startswith("sudo.")
+            else "Se detaljerne via dit private dashboard."
+        )
         return (
             f"🛡️ Yggdrasil IDS — ny alarm\n"
             f"Server: {self.host}\n"
             f"Type: {label}\n"
             f"Niveau: {event['severity']}\n"
             f"Tid: {stamp:%d.%m.%Y %H:%M:%S}\n"
-            f"Reference: {event['ref']}\n"
-            "Se detaljerne via dit private dashboard."
+            f"Reference: {event['ref']}\n" + guidance
         )
 
     def poll(self):
@@ -310,15 +320,6 @@ class DiscordNotifier:
                     raise DeliveryError("Checkpoint blev ændret samtidig")
             cursor = event["seq"]
         return cursor
-
-    def test(self):
-        webhook = self.webhook_file
-        if webhook is None:
-            folder = os.environ.get("CREDENTIALS_DIRECTORY")
-            if not folder:
-                raise InvalidWebhook("Systemd credential mangler")
-            webhook = Path(folder) / "discord-webhook.url"
-        return self.sender(secret_file(webhook), "🧪 Yggdrasil IDS: testbesked, ikke en alarm.")
 
     def run(self, stop: threading.Event):
         with exclusive_notifier(self.path):
