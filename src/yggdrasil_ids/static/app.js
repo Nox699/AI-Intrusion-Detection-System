@@ -93,7 +93,7 @@
     const ticks = Array.from({ length: tickCount }, (_value, index) => start + (end - start) * index / (tickCount - 1));
     const intervalLabel = (timestamp) => `${date(timestamp, dayFormat)} ${date(timestamp, timeFormat)}`;
     // Discrete counts are observations per interval, not a continuous trend.
-    // Plot only positive values: no connecting lines or invented zero samples.
+    // Mark only positive observations; connectors below are visual guides.
     // Separate traces keep login successes, failures and preauth distinct.
     const maxCount = Math.max(0, ...plotRows.flatMap(row => [row.success, row.failure, row.preauth]));
     const dots = (name, field, color, symbol) => {

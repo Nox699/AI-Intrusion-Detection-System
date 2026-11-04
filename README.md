@@ -23,9 +23,8 @@ den er ikke bevis for en gennemført indtrængen.
 
 ## Produktionsversion
 
-Denne version samler driftskode, installation, automatiserede tests og vejledninger.
-Forsøgsprogrammer, separate preview-servere og historiske benchmarkpaneler er
-fjernet fra produktet. Udviklingsforløb og målinger er bevaret på
+Repoet indeholder driftskode, installation, automatiserede tests og vejledninger.
+Tidligere forsøgsprogrammer og målinger er bevaret på
 [eksperimentbranchens fastlåste reference](https://github.com/Nox699/AI-Intrusion-Detection-System/tree/6abbc5d849973a9b15b2565ec7d25d66cc4effd8).
 
 SSH-modellen skal være trænet, kunne indlæses og være aktiveret til alarmer.
@@ -40,6 +39,28 @@ og sudo-regelalarmer i det fælles dashboard. Discord-modtagelse er brugerbekræ
 for SSH-ML-, portscan- og sudo-testene. Resultater og resterende beviskontroller fremgår af
 [ACCEPTANCE.md](docs/ACCEPTANCE.md); de er ikke en måling af generel
 detektionsrate eller falsk-positiv-rate.
+
+## Opbygning
+
+![Yggdrasil IDS: komponenter og dataflow](docs/diagrams/architecture.svg)
+
+Collector og sudo-job behandler journalposter og gemmer alarmer i den fælles
+SQLite-database. Dashboardet læser historik og anonyme sudo-eksporter.
+Notifieren behandler alarmkøen i databasen og sender beskeder til Discord.
+Kun SSH-autentificering vurderes med Isolation Forest; modellen genoplæres
+ikke automatisk under drift.
+
+Figuren viser komponenter og dataflow. Se [arkitekturbeskrivelsen](docs/ARCHITECTURE.md)
+for roller, rettigheder og kodeansvar. Til en rapport findes figuren som
+[SVG](docs/diagrams/architecture.svg) og [PNG](docs/diagrams/architecture.png),
+med redigerbar [Graphviz-kilde](docs/diagrams/architecture.dot).
+
+| Mappe | Indhold |
+| --- | --- |
+| `src/yggdrasil_ids/` | Python-kode, dashboardets skabeloner og lokale webressourcer |
+| `deploy/` | Pi-installation, opgradering og systemd-tjenester |
+| `tests/` | Unit tests, integrationstests og kontrollerede testdata |
+| `docs/` | Arkitektur, drift, sikkerhed, test og dokumenterede liveforløb |
 
 ## Installation og drift
 

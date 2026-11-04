@@ -5,22 +5,61 @@ indsamling, et periodisk sudo-job, et læsende dashboard og en Discord-notifier.
 Rollerne deler konfiguration og alarmdatabase. Browserforespørgsler kan ikke
 træne modeller, udføre systemkommandoer eller skrive kvitteringer i databasen.
 
-```mermaid
-flowchart TD
-    J["Journald"] --> C["SSH- og UFW-collector"]
-    J --> S["Privat sudo-indsamling og regler"]
-    C --> R["SSH/preauth/netværksregler"]
-    C --> M["SSH-features og Isolation Forest"]
-    R --> D["Produktions-SQLite"]
-    M --> D
-    S --> P["Privat normaliseret sudo-lager"]
-    P --> B["Sudo-alarmoverførsel"]
-    B --> D
-    P --> E["Anonym sudo-eksport"]
-    D --> W["Loginbeskyttet dashboard"]
-    E --> W
-    D --> N["Outbox og Discord-notifier"]
+## Komponenter og dataflow
+
+![Komponenter og dataflow i Yggdrasil IDS](diagrams/architecture.svg)
+
+*Figur 1. Journalposter behandles af en løbende collector og et periodisk
+sudo-job. Alarmer samles i produktionsdatabasen og vises i dashboardet eller
+sendes til Discord. Modellen bruges kun til SSH-autentificering.*
+
+Rektangler med blå baggrund er driftsprocesser, cylindre er databaser, og
+dokumentsymboler er journal- eller fildata. Pilene viser dataflow; en dobbeltpil
+angiver læsning og skrivning. Rammen afgrænser komponenterne på Pi'en.
+Browseren og Discord ligger uden for denne ramme. Figuren viser ikke hver
+funktion eller hvert metodekald.
+
+Outboxen er en tabel i produktionsdatabasen. Notifierens separate database
+indeholder leveringsstatus. Webrollen har kun læseadgang og kan ikke åbne den
+private sudo-database. Den viste modelfil indlæses af collector; der er ingen
+automatisk træning fra de indsamlede hændelser. Firewall og Fail2ban er separate
+værktøjer; IDS'en registrerer aktivitet og udsender alarmer.
+
+### Driftsroller
+
+| Proces | Konto | Opgave |
+| --- | --- | --- |
+| Collector | `yggdrasil-worker` | Læse SSH/UFW-journal, analysere og gemme resultater |
+| Sudo-job | `yggdrasil-worker` | Periodisk privat indsamling, regler, alarmoverførsel og anonym eksport |
+| Webserver | `yggdrasil-web` | Læse produktionsdata og sudo-eksporter; vise dashboardet |
+| Notifier | `yggdrasil-notifier` | Læse outbox, levere beskeder og gemme leveringsstatus |
+
+Collector og sudo-job kører som forskellige processer under samme worker-konto.
+Sudo-timeren starter jobbet cirka ét minut efter den forrige kørsel er afsluttet.
+Journalgrupper og filrettigheder er beskrevet i [SECURITY.md](SECURITY.md).
+
+### Figur til rapporten
+
+Figuren findes som [SVG](diagrams/architecture.svg) til skalering og
+[PNG](diagrams/architecture.png) til indsættelse i et dokument. Brug teksten
+under Figur 1 som udgangspunkt for billedteksten. Indsæt figuren i fuld
+sidebredde, eventuelt som et bilag, så labels på pilene er læselige.
+Diagrammet er en
+komponent- og dataflowoversigt, ikke et formelt UML-diagram.
+
+Den redigerbare kilde er [architecture.dot](diagrams/architecture.dot).
+Figuren er lavet med [Graphviz](https://graphviz.org/documentation/), som
+genererer diagrammer fra en tekstbeskrivelse. Med Graphviz installeret kan
+eksporterne genskabes fra repositoryets rod:
+
+```bash
+dot -Tsvg docs/diagrams/architecture.dot -o docs/diagrams/architecture.svg
+dot -Tpng -Gdpi=240 docs/diagrams/architecture.dot -o docs/diagrams/architecture.png
 ```
+
+Graphviz er kun nødvendigt ved redigering af figuren og er ikke en
+afhængighed for applikationen. Ved en ændring i komponenter eller dataflow
+opdateres DOT-kilden og begge eksportfiler sammen.
 
 ## Ansvar og objektorientering
 

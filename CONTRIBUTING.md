@@ -1,6 +1,6 @@
 # Bidrag til Yggdrasil IDS
 
-Projektet udvikles i afgrænsede sprints. Lav en branch til en konkret ændring,
+Lav en branch til en konkret ændring,
 og hold pull requests små nok til, at både adfærd og tests kan gennemgås.
 Beskriv større ændringer i en issue, før implementeringen begynder.
 
@@ -32,13 +32,16 @@ og kontrollér både installation og tests efter en opdatering.
    begrænsninger. Gennemgå resultatet af CI før sammenfletning.
 
 ```bash
-.venv/bin/python -m ruff check src tests
-.venv/bin/python -m ruff format --check src tests
+.venv/bin/python -m ruff check src tests deploy
+.venv/bin/python -m ruff format --check src tests deploy
+.venv/bin/python -m compileall -q src deploy
+bash -n deploy/*.sh
 .venv/bin/python -m pytest --junitxml=test-results/pytest.xml
+node --test tests/nav_alerts.test.cjs
 .venv/bin/python -m build --wheel --no-isolation
 ```
 
-Brug `.venv/bin/python -m ruff format src tests` til bevidst formatering, og
+Brug `.venv/bin/python -m ruff format src tests deploy` til bevidst formatering, og
 gennemgå diffen bagefter. CI udfører ovenstående kontroller på Ubuntu 24.04 med
 Python 3.11 og 3.13. En vellykket CI-kørsel dokumenterer softwarekontrollerne;
 den erstatter ikke afprøvning af journaladgang og drift på en konkret Pi.
@@ -52,5 +55,6 @@ også screenshots, testoutput og nye eksempelfiler før upload. `.gitignore`
 erstatter ikke denne gennemgang.
 
 Hold demonstration og testdata adskilt fra rigtig drift. Følg
-[afprøvningen på Pi](docs/TEST_ON_PI.md), når ændringen skal prøves på serveren,
-og udfør kun kontrollerede sikkerhedstests på udstyr, du har tilladelse til at teste.
+[Pi-installationen](deploy/INSTALL_PI.md) og [acceptkontrollerne](docs/ACCEPTANCE.md),
+når ændringen skal prøves på serveren. Udfør kun kontrollerede sikkerhedstests
+på udstyr, du har tilladelse til at teste.
