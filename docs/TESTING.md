@@ -1,10 +1,14 @@
 # Automatiserede tests og releasekontrol
 
-Unit tests er en del af produktionskodenes kvalitetssikring og skal blive i
-repoet. Fjernelsen af de tidligere forsøgsprogrammer betyder, at deres
-særskilte tests fjernes eller omskrives til tests af den aktive funktion.
-Kontrollerede syntetiske fixtures i `tests/` er fortsat nødvendige: de gør
+Unit tests er en del af produktionskodens kvalitetssikring. Testene i repoet
+dækker den aktive applikation, installation og relevante fejltilstande.
+Kontrollerede syntetiske fixtures i `tests/` gør
 resultater reproducerbare uden private data, rigtig journaladgang eller Discord.
+
+En ældre databasestruktur i testdata bruges til at kontrollere migration og
+bevaring af historik. Tests af afviste forsøgsindstillinger sikrer, at de ikke
+kan aktiveres i produktion. De filer er derfor relevante, selv om de ikke
+indlæses ved almindelig drift.
 
 ## Lokal kørsel
 
