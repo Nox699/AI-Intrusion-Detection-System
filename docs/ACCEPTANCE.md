@@ -49,12 +49,32 @@ eksplicit ændret fra INFO til VERBOSE med det særskilte
 Værktøjets rapport viste bevarede nøgleloginindstillinger og en gennemført
 genindlæsning. Ingen adgangskodelogin blev aktiveret.
 
-Der er endnu ikke indsendt et referencebaseret match mellem de nye alarmers
-outbox-rækker og notifierkvitteringer. Discord-modtagelse for de nye
-portscan- og sudo-forløb er heller ikke særskilt bekræftet. Alarmdetaljer med
-den konkrete modelversion, evidens og leveringsreference bør gemmes privat.
-Der er ikke dokumenteret en ny genstart af selve Pi'en eller en måling af
-lagerforbrug og vækst efter disse tests.
+Brugeren bekræftede efterfølgende særskilt, at både portscan- og sudo-alarmen
+også blev modtaget i Discord. Dermed er modtagelse brugerbekræftet for SSH-ML,
+portscan og sudo. Der er endnu ikke indsendt et referencebaseret match mellem
+de nye alarmers outbox-rækker og notifierkvitteringer. Alarmdetaljer med den
+konkrete modelversion, evidens og leveringsreference bør gemmes privat.
+Der er ikke dokumenteret en ny genstart af selve Pi'en efter disse tests.
+
+## Målt lagerforbrug efter liveforløbene
+
+Brugerens efterfølgende måling med `du`, `journalctl --disk-usage` og `df`
+viste nedenstående afrundede værdier. Det er det samlede forbrug ved én
+måling, ikke en måling af vækst pr. døgn.
+
+| Placering | Rapporteret forbrug |
+| --- | --- |
+| Produktionsdata og model | 2,7 MiB |
+| Privat sudo-historik | 236 KiB |
+| Notifierens leveringshistorik | 20 KiB |
+| IDS-backups | 278 MiB |
+| Arkiveret og aktiv systemjournal | 49,5 MiB |
+| Rodfilsystem | 1,8 TiB i alt; 22 GiB brugt; 1,7 TiB ledigt; 2 % anvendt |
+
+Målingen gav ikke anledning til yderligere sletning. Anbefalingen var at
+beholde 30 dages retention og produktionsdatabasebudgettet på 512 MiB
+foreløbig. Den viste mængde dashboardposter og én lagermåling fastslår ikke
+væksten ved senere større trafikmængder.
 
 ## Accept på målsystemet
 

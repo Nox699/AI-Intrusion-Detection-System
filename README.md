@@ -36,8 +36,8 @@ Sudo og portscanning anvender ingen ML-model.
 
 Den samlede release blev installeret på Yggdrasil den 4. november 2026.
 Kontrollerede liveforløb viste SSH-ML, SSH-regler, preauth, TCP-portscanalarmer
-og sudo-regelalarmer i det fælles dashboard. Discord-modtagelse er bekræftet
-for SSH-ML-testen. Resultater og resterende beviskontroller fremgår af
+og sudo-regelalarmer i det fælles dashboard. Discord-modtagelse er brugerbekræftet
+for SSH-ML-, portscan- og sudo-testene. Resultater og resterende beviskontroller fremgår af
 [ACCEPTANCE.md](docs/ACCEPTANCE.md); de er ikke en måling af generel
 detektionsrate eller falsk-positiv-rate.
 
