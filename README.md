@@ -34,10 +34,12 @@ samlede Pi-opgradering kontrollerer den eksisterende models identitet og
 bevarer dens træningsgrundlag og tærskel; den træner ikke på nye livehændelser.
 Sudo og portscanning anvender ingen ML-model.
 
-Den tidligere installation og dens sudo→alarm→Discord-kæde er afprøvet på
-Yggdrasil. Accept af den nye samlede installation dokumenteres særskilt i
-[ACCEPTANCE.md](docs/ACCEPTANCE.md); softwaretests er ikke i sig selv bevis for,
-at en ny release er installeret på serveren.
+Den samlede release blev installeret på Yggdrasil den 4. november 2026.
+Kontrollerede liveforløb viste SSH-ML, SSH-regler, preauth, TCP-portscanalarmer
+og sudo-regelalarmer i det fælles dashboard. Discord-modtagelse er bekræftet
+for SSH-ML-testen. Resultater og resterende beviskontroller fremgår af
+[ACCEPTANCE.md](docs/ACCEPTANCE.md); de er ikke en måling af generel
+detektionsrate eller falsk-positiv-rate.
 
 ## Installation og drift
 

@@ -6,16 +6,55 @@ også bevare det loginbeskyttede dashboard og den eksisterende Discord-kæde.
 
 ## Status for den samlede release
 
-Softwaretests og validering af opgraderingsforløbet udføres på den nye gren.
-**Den samlede release er ikke dokumenteret som installeret og accepteret på
-Pi'en endnu.** Installeret commit, ny SSH-modelstatus og kontrollerede
-alarm-/leveringsresultater skal registreres efter den konkrete opgradering.
+Den 4. november 2026 blev release
+`3ca24a114c52d2ac0ea24fe013d7c469db5b83e4` installeret på Yggdrasil.
+Den indsendte opgraderingsrapport viste `status=ready`, SSH-model
+`ssh-if-7cc1f15288d0c73b` med ML-alarmer aktiveret, aktive portscan- og
+sudo-regler og bevaret notifier-identitet. Modellen blev ikke genoplært.
+
+Efterfølgende indsendte skærmbilleder viste alle de valgte detektionsområder
+i det fælles dashboard. Tabellen nedenfor skelner mellem disse observationer
+og kontroller, der endnu ikke er dokumenteret med konkret evidens.
 Der oplyses ingen gættet generel recall eller falsk-positiv-rate.
 
 De tidligere forsøg og Pi-målinger er bevaret på den
 [fastlåste udviklingsreference](https://github.com/Nox699/AI-Intrusion-Detection-System/tree/6abbc5d849973a9b15b2565ec7d25d66cc4effd8).
 De dokumenterer tidligere versioner og kan ikke alene godkende den samlede
 produktionsrelease.
+
+## Observerede liveforløb den 4. november 2026
+
+Alle klokkeslæt er Europe/Copenhagen (CET). Grundlaget er brugerens indsendte
+terminalresultater og skærmbilleder; private journalposter og databaser er
+ikke uploadet til GitHub.
+
+| Tidspunkt | Forløb | Observeret resultat |
+| --- | --- | --- |
+| 02:22:37 | Almindeligt SSH-nøglelogin | Dashboardets modelobservation viste score 0,444 mod grænse 0,616: inden for grænsen. |
+| 03:04:58 | Én forbindelse med en midlertidig, ikke-autoriseret testnøgle til den eksisterende konto | Modelobservationen viste score 0,647 mod grænse 0,616 og afvigelse. Dashboardet viste alarmen “Usædvanligt SSH-mønster”. Brugeren bekræftede modtagelse i Discord. |
+| 03:10:48 | Forløb med fem nye afviste nøgleforbindelser | Dashboardet viste “Mange fejlede SSH-loginforsøg”, “Gentagne SSH-afbrud før login” og “Usædvanligt SSH-mønster”. Det er flere detektorfund under samme testforløb. |
+| 03:16:02, teststart | TCP-connect-scanning af ti høje porte med 2 sekunders afstand | Nmap rapporterede ti filtrerede porte. Der blev ikke observeret en portscanalarm. Det efterfølgende diagram viste tre forskellige porte i det valgte udsnit; det er ikke en fuld audit af testens pakker. |
+| 03:19:49, alarmtid | Ny scanning af 40 andre høje TCP-porte med 1 sekunds afstand | Dashboardet viste “Mulig TCP-portscanning”, med to fund samlet i ét alarmforløb. Antallet af fund er ikke antallet af forskellige porte. |
+| 03:24:32, alarmtid | Sudo-test med tre afviste servicekontoprocesser | Dashboardet viste “Gentagne sudo-autentificeringsfejl”. |
+
+Netværkskonfigurationen var fem forskellige destinationsporte inden for
+60 sekunder. UFW var aktiv med logniveau `low`. Logbegrænsning er en mulig
+forklaring på manglende synlighed i den mindre scanning; en sammenligning af
+pakker på interfacet, kerneljournal og database er endnu ikke udført.
+
+Før SSH-fejltestene blev laptopens enkelte Tailscale-adresse undtaget fra
+Fail2bans `sshd`-jail. IDS-overvågningen fortsatte. OpenSSH-logning blev
+eksplicit ændret fra INFO til VERBOSE med det særskilte
+[vedligeholdelsesværktøj](https://github.com/Nox699/AI-Intrusion-Detection-System/tree/cb5e3a7f81e65be006552a98d500f6417aea5167).
+Værktøjets rapport viste bevarede nøgleloginindstillinger og en gennemført
+genindlæsning. Ingen adgangskodelogin blev aktiveret.
+
+Der er endnu ikke indsendt et referencebaseret match mellem de nye alarmers
+outbox-rækker og notifierkvitteringer. Discord-modtagelse for de nye
+portscan- og sudo-forløb er heller ikke særskilt bekræftet. Alarmdetaljer med
+den konkrete modelversion, evidens og leveringsreference bør gemmes privat.
+Der er ikke dokumenteret en ny genstart af selve Pi'en eller en måling af
+lagerforbrug og vækst efter disse tests.
 
 ## Accept på målsystemet
 
@@ -58,11 +97,10 @@ unitfilen, genstartede ingen tjenester, migrerede ingen database og fremkaldte
 intet nyt testforsøg. Den tidligere sudo-model var kun en sideløbende
 forsøgsvurdering og indgår ikke i dette produkt.
 
-Den sidst dokumenterede SSH-model var `ssh-if-7cc1f15288d0c73b`, baseret på
+Før samlingen var den dokumenterede SSH-model `ssh-if-7cc1f15288d0c73b`, baseret på
 312 syntetiske normale og 12 gennemgåede virkelige observationer. Den havde
-scoret et legitimt live-login, men sendte endnu ikke ML-alarmer. Den nye
-installation skal derfor dokumentere bevidst aktivering og en efterfølgende
-ML-alarm, før denne del beskrives som live-accepteret.
+scoret et legitimt live-login, men sendte endnu ikke ML-alarmer. Den samlede
+releases efterfølgende aktivering og observerede ML-alarm er beskrevet ovenfor.
 
 ## Prioriterede skærmbilleder til eksamen
 

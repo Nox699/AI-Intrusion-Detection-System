@@ -69,6 +69,13 @@ fra før integrationsaktiveringen er ikke en ny registreret produktionsalarm.
 
 ## SSH-modellen
 
+Ved nøglelogin kan OpenSSH udelade afviste nøgletilbud fra journalen ved
+`LogLevel INFO`. Gennemgå behovet for `VERBOSE`, og kontroller en faktisk
+`Failed publickey`-post og dens observation ved accepttest. Logniveau ændres
+som en eksplicit driftsbeslutning; adgangskodelogin er ikke nødvendigt for
+testen. En mislykket SSH-klientproces beviser ikke i sig selv en analyseret
+autentificering.
+
 Den samlede driftskontrol skal kræve en indlæst og trænet SSH-model, der kan
 udløse alarmer. `untrained` eller `error` må ikke præsenteres som et færdigt
 regelsæt-plus-ML-produkt. Reglerne kan fortsætte ved en modelfejl, men fejlen
@@ -140,3 +147,15 @@ Retention og databasebudget sættes i konfigurationen. Sletning af gamle
 alarmforløb må ikke genbruge en leveringsidentitet eller afvikle notifierens
 egen historik. Undersøg diskforbrug og datakvalitet, hvis budgettet nås.
 Private backups skal beskyttes som de oprindelige driftsdata.
+
+Collector rydder normalt poster ældre end `retention_days` op omtrent én gang
+i timen. SQLite kan genbruge frigjorte sider, så filen behøver ikke blive mindre
+straks efter oprydning. Sudo-jobbet rydder også sin private historik efter den
+konfigurerede retention. Standarderne er 30 dage og et produktionsdatabasebudget
+på 512 MiB; kontroller altid den installerede konfiguration.
+
+Budgetkontrollen medregner produktionsdatabasen og dens WAL-fil. Ved en
+overskridelse stopper collector med en synlig fejl; budgettet sletter ikke
+automatisk nyere data for at fortsætte indsamlingen. Systemjournal, sudo-database,
+notifierhistorik og backups har separat pladsforbrug. Mål størrelser og vækst
+før grænser ændres. Antal sider i dashboardet er ikke et mål for diskforbrug.
