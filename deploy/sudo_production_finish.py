@@ -221,6 +221,32 @@ def atomic_unit(path: Path, data: bytes) -> None:
         Path(temporary).unlink(missing_ok=True)
 
 
+def require_no_start_conditions() -> None:
+    """Read the typed array, not systemctl show's unsupported-property text.
+
+    systemctl show can print `Conditions=[unprintable]`, even with --value and
+    an empty array. LoadUnit only loads the definition; it creates no start job.
+    """
+    bus = ["busctl", "--system", "--no-pager", "--timeout=10s"]
+    service = "org.freedesktop.systemd1"
+    manager = "/org/freedesktop/systemd1"
+    loaded = deployment.command(
+        bus + ["call", service, manager, service + ".Manager", "LoadUnit", "s", deployment.SERVICE]
+    ).stdout
+    path = manager + "/unit/yggdrasil_2dsudo_2dintegration_2eservice"
+    if shlex.split(loaded) != ["o", path]:
+        raise deployment.DeployError("Cannot verify the loaded sudo unit identity")
+    conditions = deployment.command(
+        bus + ["get-property", service, path, service + ".Unit", "Conditions"]
+    ).stdout.split()
+    if conditions == ["a(sbbsi)", "0"]:
+        return
+    if len(conditions) >= 2 and conditions[0] == "a(sbbsi)" and conditions[1].isdigit():
+        if int(conditions[1]) > 0:
+            raise deployment.DeployError("Effective sudo unit still has a start condition")
+    raise deployment.DeployError("Cannot verify the sudo unit condition list")
+
+
 def finish_unit(candidate: Path, sha: str, *, check_only: bool = False) -> bool:
     updated = candidate.read_bytes()
     # Exact two-line runtime change only; refuse other unit edits in this runner.
@@ -272,11 +298,7 @@ def finish_unit(candidate: Path, sha: str, *, check_only: bool = False) -> bool:
                 atomic_unit(target, current)
                 deployment.command(["systemctl", "daemon-reload"], check=False)
             raise
-    conditions = deployment.command(
-        ["systemctl", "show", deployment.SERVICE, "--property=Conditions", "--value"]
-    ).stdout.strip()
-    if conditions:
-        raise deployment.DeployError("Effective sudo unit still has a start condition")
+    require_no_start_conditions()
     return changed
 
 

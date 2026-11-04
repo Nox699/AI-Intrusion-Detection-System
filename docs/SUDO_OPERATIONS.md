@@ -57,6 +57,26 @@ efter unitudskiftningen kan afsluttes ved samme kommando igen. Fejl under
 daemon-reload gendanner den tidligere unit; en senere fejlet sundhedskontrol
 bevarer rettelsen og skriver STOP. Den gendanner aldrig en gammel database.
 
+Afslutningsversion `11b565e683e9b12c12b146a770a3138e34c1d351` stoppede på
+Pi'en med `Effective sudo unit still has a start condition`, efter at den nye
+unit var gemt og genindlæst. Slutkontrollen behandlede enhver tekst fra
+`systemctl show --property=Conditions --value` som en konfigureret betingelse.
+Systemd's generiske formatter kan imidlertid vise `Conditions=[unprintable]`
+for denne sammensatte datatype, også når listen er tom. Pi'ens konkrete rå
+property-output blev ikke indsamlet, så STOP-beskeden alene dokumenterer ikke
+den faktiske liste.
+
+Den rettede kontrol henter den typede `a(sbbsi)`-liste via `busctl`. Kun svaret
+`a(sbbsi) 0` accepteres; reelle betingelser, ukendt format og mislykket opslag
+afvises. `LoadUnit` indlæser definitionen uden at starte jobbet. Genkør den nye
+pinnede wrapper: den genkender den allerede opdaterede unit, bevarer den første
+versions backup og fortsætter med en ny timerbaseret acceptkontrol. En
+afbrudt afslutning kræver ingen databasereparation eller ny installation.
+
+Datatypen er dokumenteret i [systemd's D-Bus-interface](https://www.freedesktop.org/software/systemd/man/257/org.freedesktop.systemd1.html).
+Formatterens fallback findes i [systemd v257's kildekode](https://github.com/systemd/systemd/blob/v257/src/shared/bus-print-properties.c).
+Det typed output er beskrevet i [busctl-manualen](https://www.freedesktop.org/software/systemd/man/257/busctl.html).
+
 Samme wrapper med andet argument `check` udfører kontrol uden unitændring,
 daemon-reload eller venten på et nyt timerresultat. Den kræver, at rettelsen
 allerede er installeret. Kontrollen sender ikke beskeder til Discord og beviser
@@ -130,3 +150,8 @@ er kontrolleret. Systemd validerede unitens syntaks med en lokal Python-sti som
 erstatning for Pi'ens utilgængelige venv-sti; den eneste forskel fra den tidligere
 installerede unit er de beskrevne modelafhængigheder. Det er forberedelse og
 softwaretest; den afsluttende Pi-kontrol er endnu ikke dokumenteret som kørt.
+
+Formatteringsrettelsen bestod derefter 890 Python-tests med de samme 14
+udeladelser. De nye regressioner dækker den tomme typede liste, en reel
+betingelse, ukendt eller manglende output, forkert unit-identitet og genkørsel
+med den allerede opdaterede unit og den første backups bytes bevaret.

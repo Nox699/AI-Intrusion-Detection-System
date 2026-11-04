@@ -57,7 +57,17 @@ def finish(monkeypatch, tmp_path):
 
     def command(args, **kwargs):
         calls.append(tuple(args))
-        return SimpleNamespace(stdout="", returncode=0)
+        output = ""
+        if args[0] == "busctl":
+            output = (
+                'o "/org/freedesktop/systemd1/unit/yggdrasil_2dsudo_2dintegration_2eservice"\n'
+                if "LoadUnit" in args
+                else "a(sbbsi) 0\n"
+            )
+        elif args[:2] == ["systemctl", "show"]:
+            # Actual systemd generic-property rendering is not an empty string.
+            output = "Conditions=[unprintable]\n"
+        return SimpleNamespace(stdout=output, returncode=0)
 
     monkeypatch.setattr(module.deployment, "command", command)
     return SimpleNamespace(
@@ -81,7 +91,7 @@ def test_unit_upgrade_is_backed_up_idempotent_and_does_not_restart_services(fini
     assert not m.finish_unit(finish.candidate, finish.sha)
     assert not m.finish_unit(finish.candidate, finish.sha, check_only=True)
     assert all(
-        call[:2] in (("systemctl", "daemon-reload"), ("systemctl", "show")) for call in finish.calls
+        call[:2] == ("systemctl", "daemon-reload") or call[0] == "busctl" for call in finish.calls
     )
     assert b"ConditionPathExists" not in finish.updated
     assert b"-/var/lib/yggdrasil-sudo-integration-private" in finish.updated
@@ -117,13 +127,58 @@ def test_reload_failure_restores_only_original_unit_without_touching_other_state
 
 def test_effective_condition_override_is_not_accepted(finish, monkeypatch):
     m = finish.module
-    monkeypatch.setattr(
-        m.deployment,
-        "command",
-        lambda *a, **kw: SimpleNamespace(stdout="ConditionPathExists=secret"),
-    )
+    original = m.deployment.command
+
+    def command(args, **kwargs):
+        if "get-property" in args:
+            return SimpleNamespace(
+                stdout='a(sbbsi) 1 "ConditionPathExists" false false "/private-model" 1\n'
+            )
+        return original(args, **kwargs)
+
+    monkeypatch.setattr(m.deployment, "command", command)
     with pytest.raises(m.deployment.DeployError, match="still has a start condition"):
         m.finish_unit(finish.candidate, finish.sha)
+
+
+@pytest.mark.parametrize(
+    "output", ["", "Conditions=[unprintable]\n", "a(sbbsi)\n", "as 0\n", "a(sbbsi) 0 unexpected\n"]
+)
+def test_unreadable_typed_conditions_never_pass(finish, monkeypatch, output):
+    m = finish.module
+    original = m.deployment.command
+
+    def command(args, **kwargs):
+        return (
+            SimpleNamespace(stdout=output) if "get-property" in args else original(args, **kwargs)
+        )
+
+    monkeypatch.setattr(m.deployment, "command", command)
+    with pytest.raises(m.deployment.DeployError, match="Cannot verify.*condition list"):
+        m.require_no_start_conditions()
+
+
+def test_wrong_loaded_unit_cannot_pass_conditions_check(finish, monkeypatch):
+    m = finish.module
+    monkeypatch.setattr(
+        m.deployment, "command", lambda *a, **kw: SimpleNamespace(stdout='o "/wrong/unit"\n')
+    )
+    with pytest.raises(m.deployment.DeployError, match="unit identity"):
+        m.require_no_start_conditions()
+
+
+def test_resume_after_previous_false_rejection_uses_existing_unit_and_backup(finish, monkeypatch):
+    m = finish.module
+    finish.target.write_bytes(finish.updated)
+    backup = m.deployment.BACKUP_ROOT / ("sudo-production-finish-before-" + "b" * 40)
+    backup.mkdir(parents=True, mode=0o700)
+    saved = backup / m.deployment.SERVICE
+    saved.write_bytes(finish.old)
+    assert not m.finish_unit(finish.candidate, finish.sha)
+    assert finish.target.read_bytes() == finish.updated
+    assert saved.read_bytes() == finish.old
+    assert not (m.deployment.BACKUP_ROOT / ("sudo-production-finish-before-" + finish.sha)).exists()
+    assert not any("--property=Conditions" in call for call in finish.calls)
 
 
 def test_retry_after_reload_failure_reuses_verified_backup(finish, monkeypatch):
