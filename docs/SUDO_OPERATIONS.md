@@ -132,7 +132,7 @@ estimater af generel recall eller falsk-positiv-rate.
 
 Gem disse skærmbilleder til rapport/bilag:
 
-- Terminalens beståede live-test og den afsluttende driftskontrol, når den er kørt.
+- Terminalens beståede live-test og den beståede afsluttende driftskontrol.
 - Den registrerede sudo-alarm med tidspunkt, regel og tre processer.
 - Den tilsvarende Discord-besked; reference `7ed92c291071761580e50cbbebbcfb39`.
 - Sudo-sidens aktive regelintegration og ML-panelets modelversion, tærskel og shadow-status.
@@ -148,10 +148,38 @@ og ikke kan skifte brugeridentitet; deres produktionskontrol mod root er bevaret
 Ruff lint/formatering, Python- og shellsyntaks samt de indlejrede rolleprogrammer
 er kontrolleret. Systemd validerede unitens syntaks med en lokal Python-sti som
 erstatning for Pi'ens utilgængelige venv-sti; den eneste forskel fra den tidligere
-installerede unit er de beskrevne modelafhængigheder. Det er forberedelse og
-softwaretest; den afsluttende Pi-kontrol er endnu ikke dokumenteret som kørt.
+installerede unit er de beskrevne modelafhængigheder. Dette er softwaretest;
+Pi-accepten er dokumenteret særskilt nedenfor.
 
 Formatteringsrettelsen bestod derefter 890 Python-tests med de samme 14
 udeladelser. De nye regressioner dækker den tomme typede liste, en reel
 betingelse, ukendt eller manglende output, forkert unit-identitet og genkørsel
 med den allerede opdaterede unit og den første backups bytes bevaret.
+
+### Bestået Pi-accept, 4. november 2026
+
+Brugeren kørte afslutningswrapperen fra
+`e12d3f874e23382e8bcc3d7661b178fafda46903`. Den ventede på den normale timer
+og afsluttede med `PASS`. Snapshot-tidspunktet var **01:11:04 Europe/Copenhagen**
+(`generated_at=1793751064.8906538`). Resultatet var:
+
+| Kontrol | Observeret resultat |
+| --- | --- |
+| Samlet status | `ready` |
+| Sudo-regler | `rules_active=true` |
+| Registrerede sudo-evidensrækker | 2 |
+| Notifier/outbox-identitet | Matcher |
+| ML-tilstand | `shadow`, ingen ML-alarmer udsendt |
+| Model | `sudo-if-15207a3b77b40fe2` |
+| Tærskel | `0.6616139517267046` |
+| Unit ændret i denne genkørsel | Nej; den tidligere kørsel havde allerede opdateret den |
+| Tjenester genstartet / database migreret | Nej / nej |
+| Nyt testforsøg fremkaldt | Nej |
+
+Dette afslutter sudo-delen som **regler i drift og frossen ML i shadow**.
+Accepten omfatter den kendte installation og dens friske timerresultat. De to
+evidensrækker er et samlet databaseresultat, ikke to nye testalarmer eller et
+bevis på levering af begge. Det særskilte leveringsbevis er fortsat den tidligere
+kontrollerede live-test med alarm 4 og dens matchede Discord-kvittering.
+Rettelsens adfærd ved manglende/ødelagt model er softwaretestet; acceptkørslen
+fjernede ikke modellen fra den aktive installation.

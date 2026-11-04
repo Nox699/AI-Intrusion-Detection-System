@@ -8,10 +8,13 @@ ML alarm. The separate web update at
 `614579ca2ab6fb246c363a8a95dc9a15a7135db3` is installed; the user confirmed its
 navigation warning clears after viewing the relevant section.
 
-The final unit-only reliability fix is prepared in this branch; its Pi
-activation remains a separate step. See [sudo operations](SUDO_OPERATIONS.md)
-for the finish runner, operating limits and exam evidence. This branch has not
-been merged into `main`; repository-wide consolidation is separate work.
+The final unit-only reliability fix passed Pi acceptance on 4 November 2026
+with runner `e12d3f874e23382e8bcc3d7661b178fafda46903`. A fresh normal timer
+result confirmed active rules, the expected frozen shadow model, web/role
+access and the matching notifier identity. No new probe, service restart or
+database migration was performed. See [sudo operations](SUDO_OPERATIONS.md)
+for the recorded result, operating limits and exam evidence. This branch has
+not been merged into `main`; repository-wide consolidation is separate work.
 
 ## Behavior after coordinated deployment
 
