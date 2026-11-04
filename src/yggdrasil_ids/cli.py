@@ -55,54 +55,6 @@ def _json(value: object) -> None:
     print(json.dumps(value, ensure_ascii=False, indent=2, default=str, allow_nan=False))
 
 
-def demo(directory: Path) -> dict:
-    from .lab import evaluate_lab, generate_lab
-
-    directory = directory.resolve()
-    if directory.exists() and any(directory.iterdir()):
-        raise FileExistsError(
-            "Demomappen er ikke tom; vælg en ny mappe for at bevare eksisterende data"
-        )
-    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    config_path = directory / "config.toml"
-    config_path.write_text(
-        """[app]
-mode = "demo"
-host_label = "Yggdrasil · demonstration"
-timezone = "Europe/Copenhagen"
-[paths]
-database = "events.sqlite3"
-model = "lab/lab-model.json"
-credentials = "web-secrets.json"
-[rules]
-expected_sources = ["192.0.2.10/32", "192.0.2.11/32"]
-expected_users = ["labuser", "backup"]
-""",
-        encoding="utf-8",
-    )
-    cfg = load_config(config_path)
-    fixture_paths = generate_lab(directory / "lab")
-    report = evaluate_lab(directory / "lab", rules=cfg.rules, ml=cfg.ml)
-    write_credentials(cfg.credentials_path, "demo-yggdrasil")
-    with CollectorLock(cfg.database_path):
-        engine = AnalysisEngine(cfg, namespace="demo")
-        engine.replay(Path(fixture_paths["test_path"]))
-    return {
-        "mode": "demo",
-        "config": str(config_path),
-        "password": "demo-yggdrasil",
-        "url": "http://127.0.0.1:8765",
-        "start": f"yggdrasil-ids serve --config {config_path}",
-        "evaluation": {
-            "events": report["test"]["event_count"],
-            "rule_alert_events": report["test"]["rules"]["predicted_positive"],
-            "ml_alert_events": report["test"]["ml"]["predicted_positive"],
-            "report": str(directory / "lab" / "report.md"),
-        },
-        "message": "Syntetisk demonstration. Ingen forbindelse til Pi eller SSH-tjeneste.",
-    }
-
-
 def serve(config: AppConfig) -> None:
     from gunicorn.app.base import BaseApplication
 
@@ -137,7 +89,9 @@ def serve(config: AppConfig) -> None:
     LocalServer().run()
 
 
-def doctor(config: AppConfig, check_journal: bool = False, role: str = "all") -> dict:
+def doctor(
+    config: AppConfig, check_journal: bool = False, role: str = "all", require_ready: bool = False
+) -> dict:
     if role not in {"all", "collector", "web"}:
         raise ValueError("Ukendt driftsrolle")
     result = {
@@ -148,6 +102,7 @@ def doctor(config: AppConfig, check_journal: bool = False, role: str = "all") ->
         "checks": {},
     }
     checks = result["checks"]
+    model_metadata = None
     try:
         repo = Repository(config.database_path, readonly=True)
         with repo.reader() as db:
@@ -173,7 +128,11 @@ def doctor(config: AppConfig, check_journal: bool = False, role: str = "all") ->
                 model = IsolationForestDetector.load(config.model_path)
                 if model.metadata["window_seconds"] != config.ml.window_seconds:
                     raise ValueError("Modelvinduet matcher ikke konfigurationen")
-                checks["model"] = {"ok": True, "message": model.metadata["version"]}
+                model_metadata = model.metadata
+                checks["model"] = {
+                    "ok": config.ml.alert_mode == "alert",
+                    "message": model.metadata["version"],
+                }
             else:
                 checks["model"] = {
                     "ok": None,
@@ -183,31 +142,79 @@ def doctor(config: AppConfig, check_journal: bool = False, role: str = "all") ->
             checks["model"] = {"ok": False, "message": str(exc)}
     if check_journal:
         checks["journal"] = probe_journal(config)
+    if require_ready:
+        status = result.get("status", {})
+        collector = status.get("collector", {})
+        if not isinstance(collector, dict):
+            collector = {}
+        heartbeat = collector.get("heartbeat_at")
+        current_model = status.get("model", {})
+        if not isinstance(current_model, dict):
+            current_model = {}
+        stored_metadata = current_model.get("metadata", {})
+        if not isinstance(stored_metadata, dict):
+            stored_metadata = {}
+        stored_version = stored_metadata.get("version")
+        checks["production"] = {
+            "ok": (
+                config.mode == "live"
+                and config.ml.alert_mode == "alert"
+                and status.get("mode") == "live"
+                and status.get("namespace") == "live"
+                and status.get("database", {}).get("schema_version") == 5
+                and current_model.get("state") == "ready"
+                and current_model.get("alert_mode") == "alert"
+                and isinstance(stored_version, str)
+                and (model_metadata is None if role == "web" else model_metadata is not None)
+                and (model_metadata is None or model_metadata["version"] == stored_version)
+                and config.network.enabled
+                and getattr(getattr(config, "sudo", None), "enabled", False)
+                and collector.get("state") == "running"
+                and type(heartbeat) in (int, float)
+                and math.isfinite(heartbeat)
+                and 0 <= time.time() - heartbeat <= max(30, 3 * config.collector.heartbeat_seconds)
+            ),
+            "message": "Samlet drift kræver aktiv SSH-model, netværk, sudo og en frisk collector",
+        }
+        try:
+            from .sudo_integration_dashboard import read_integration
+
+            sudo = read_integration(config.sudo_public_directory / "sudo-integration.json")
+            checks["sudo"] = {
+                "ok": sudo.get("state") == "ready" and sudo.get("rules_active") is True,
+                "message": "Frisk sudo-regelintegration",
+            }
+        except (OSError, ValueError, TypeError, AttributeError):
+            checks["sudo"] = {"ok": False, "message": "Sudo-regelintegrationen er utilgængelig"}
+    result["ready"] = require_ready and all(c.get("ok") is True for c in checks.values())
     result["ok"] = all(c.get("ok") is not False for c in checks.values())
     return result
 
 
 def parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="yggdrasil-ids", description="Yggdrasil IDS · SSH-overvågning")
+    p = argparse.ArgumentParser(
+        prog="yggdrasil-ids", description="Yggdrasil IDS · SSH, portscanning og sudo"
+    )
     p.add_argument("--version", action="version", version=__version__)
     commands = p.add_subparsers(dest="command", required=True)
     for name, help_text in [
         ("init", "Opret lokal database"),
         ("credentials", "Opret eller skift dashboardets adgangskode"),
-        ("collect", "Læs SSH-journalen løbende"),
+        ("collect", "Læs SSH og UFW fra journalen løbende"),
         ("serve", "Start privat Gunicorn-dashboard"),
         ("doctor", "Kontrollér opsætningen uden at ændre serverindstillinger"),
-        ("replay", "Genafspil JSONL i en separat demo-database"),
         ("train", "Træn på udvalgte normale observationer"),
         ("prepare-training", "Beregn observationer fra et gennemgået SSH-JSONL-forløb"),
         ("export-features", "Eksportér gemte observationer fra en udvalgt periode"),
         ("backup", "Tag en konsistent SQLite-backup"),
         ("prune", "Håndhæv retention"),
         ("notify", "Send alarmer fra en separat Discord-tjeneste"),
+        ("sudo-arm", "Aktivér sudo-regler fra dette tidspunkt uden historiske alarmer"),
+        ("sudo-poll", "Indsaml sudo, registrér regelalarmer og opdatér dashboardet"),
     ]:
         sub = commands.add_parser(name, help=help_text)
         sub.add_argument("--config", type=Path, default=None)
-        if name in {"replay", "train", "prepare-training"}:
+        if name in {"train", "prepare-training"}:
             sub.add_argument("file", type=Path)
         if name == "credentials":
             sub.add_argument(
@@ -218,11 +225,13 @@ def parser() -> argparse.ArgumentParser:
         if name == "notify":
             sub.add_argument("--state-file", type=Path, required=True)
             sub.add_argument("--webhook-file", type=Path)
-            sub.add_argument("--test", action="store_true")
             sub.add_argument("--status", action="store_true")
             sub.add_argument("--bootstrap", action="store_true")
         if name == "doctor":
             sub.add_argument("--journal", action="store_true")
+            sub.add_argument(
+                "--require-ready", action="store_true", help="Kræv fuld produktionsparathed"
+            )
             sub.add_argument(
                 "--role",
                 choices=("all", "collector", "web"),
@@ -230,6 +239,11 @@ def parser() -> argparse.ArgumentParser:
                 help="Kontrollér kun de adgangskrav, som denne servicebruger har",
             )
         if name == "train":
+            sub.add_argument(
+                "--approve-reviewed-normal",
+                action="store_true",
+                help="Bekræft at alle træningsrækker er gennemgået som normal aktivitet",
+            )
             sub.add_argument(
                 "--provenance",
                 required=True,
@@ -245,10 +259,6 @@ def parser() -> argparse.ArgumentParser:
             sub.add_argument(
                 "--until", required=True, type=float, help="Slut som UTC Unix-sekunder"
             )
-    d = commands.add_parser("demo", help="Generér isoleret demonstration og målt labrapport")
-    d.add_argument("--directory", type=Path, default=Path(".demo"))
-    lab = commands.add_parser("lab", help="Kør det reproducerbare laboratorieforsøg")
-    lab.add_argument("--directory", type=Path, default=Path(".lab"))
     return p
 
 
@@ -257,28 +267,10 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     args = parser().parse_args(argv)
     try:
-        if args.command == "demo":
-            _json(demo(args.directory))
-            return 0
-        if args.command == "lab":
-            from .lab import evaluate_lab
-
-            report = evaluate_lab(args.directory)
-            _json(
-                {
-                    "kind": report["kind"],
-                    "report": str(args.directory.resolve() / "report.md"),
-                    "details": str(args.directory.resolve() / "report.json"),
-                    "test_events": report["test"]["event_count"],
-                    "rules": report["test"]["rules"],
-                    "ml": report["test"]["ml"],
-                }
-            )
-            return 0
         config = load_config(args.config)
         if args.command == "init":
             with CollectorLock(config.database_path):
-                engine = AnalysisEngine(config, "demo" if config.mode == "demo" else "live")
+                engine = AnalysisEngine(config)
                 engine.heartbeat(
                     "stopped", "Initialiseret. Start collector for løbende overvågning."
                 )
@@ -307,15 +299,14 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "serve":
             serve(config)
         elif args.command == "doctor":
-            report = doctor(config, args.journal, args.role)
+            report = doctor(config, args.journal, args.role, args.require_ready)
             _json(report)
             return 0 if report["ok"] else 1
-        elif args.command == "replay":
-            if config.mode != "demo":
-                raise ValueError("Genafspilning kræver app.mode='demo' og en separat database")
-            with CollectorLock(config.database_path):
-                _json(AnalysisEngine(config, namespace="demo").replay(args.file))
         elif args.command == "train":
+            if not args.approve_reviewed_normal:
+                raise ValueError(
+                    "Træning kræver --approve-reviewed-normal efter gennemgang af normaldata"
+                )
             if config.model_path.exists() and not args.replace:
                 raise FileExistsError(
                     "Modellen findes allerede. Brug --replace efter gennemgang af det nye datagrundlag."
@@ -334,7 +325,7 @@ def main(argv: list[str] | None = None) -> int:
             _json(model.metadata)
             print("Genstart collector for bevidst aktivering af den nye model.")
         elif args.command == "prepare-training":
-            from .lab import prepare_rows
+            from .training import prepare_rows
 
             rows = prepare_rows(args.file, config.ml.window_seconds)
             args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -393,9 +384,6 @@ def main(argv: list[str] | None = None) -> int:
             )
             if args.status:
                 _json(notifier.status())
-            elif args.test:
-                notifier.test()
-                print("Discord kvitterede for testbeskeden.")
             elif args.bootstrap:
                 _json(notifier.bootstrap())
             else:
@@ -403,6 +391,14 @@ def main(argv: list[str] | None = None) -> int:
                 for sig in (signal.SIGTERM, signal.SIGINT):
                     signal.signal(sig, lambda *_: stop.set())
                 notifier.run(stop)
+        elif args.command == "sudo-arm":
+            from .sudo_service import arm
+
+            _json(arm(config))
+        elif args.command == "sudo-poll":
+            from .sudo_service import run_once
+
+            _json(run_once(config))
         elif args.command == "prune":
             with CollectorLock(config.database_path):
                 _json(

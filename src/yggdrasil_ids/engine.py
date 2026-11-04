@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import math
 import time
-from pathlib import Path
 
 from .config import AppConfig
 from .domain import Finding
@@ -26,6 +24,8 @@ COUNTERS = ("records", "events", "ignored", "malformed", "duplicates", "late", "
 
 class AnalysisEngine:
     def __init__(self, config: AppConfig, namespace: str = "live"):
+        if config.mode != "live" or config.ml.alert_mode != "alert":
+            raise ValueError("Produktionsindsamling kræver live og ml.alert_mode=alert")
         self.config = config
         self.namespace = namespace
         self.repository = Repository(config.database_path)
@@ -34,14 +34,14 @@ class AnalysisEngine:
             old_mode = self.repository.state_in(db, "mode")
             old_namespace = self.repository.state_in(db, "namespace")
             if old_mode is not None and old_mode != config.mode:
-                raise ValueError("Demo- og driftsdata må ikke blandes i samme database")
+                raise ValueError("Databasens driftsmiljø matcher ikke konfigurationen")
             if old_namespace is not None and old_namespace != namespace:
                 raise ValueError(
                     "Databasen tilhører et andet datagrundlag; brug en separat database"
                 )
             self.repository.put_state(db, "mode", config.mode)
             self.repository.put_state(db, "namespace", namespace)
-            if config.network.enabled and config.mode == "live":
+            if config.network.enabled:
                 # The first opt-in must not backfill or alert on old kernel logs.
                 if self.repository.state_in(db, "firewall_started_at") is None:
                     self.repository.put_state(db, "firewall_started_at", time.time())
@@ -88,12 +88,7 @@ class AnalysisEngine:
                 state = {
                     "state": "ready",
                     "metadata": candidate.metadata,
-                    "message": (
-                        "Eksperimentel shadow-tilstand: model scorer SSH-hændelser, "
-                        "men sender ingen ML-alarmer."
-                        if self.config.ml.alert_mode == "shadow"
-                        else "Model indlæst; score viser afvigelse, ikke angrebssandsynlighed."
-                    ),
+                    "message": "Model indlæst; score viser afvigelse, ikke angrebssandsynlighed.",
                     "alert_mode": self.config.ml.alert_mode,
                 }
             except (OSError, ValueError, TypeError, KeyError) as exc:
@@ -208,7 +203,7 @@ class AnalysisEngine:
                     counters["events"] += 1
                     max_seen = self.repository.state_in(db, "max_seen_timestamp", 0)
                     late = event.timestamp < max_seen
-                    future = self.config.mode == "live" and event.timestamp > received_at + 60
+                    future = event.timestamp > received_at + 60
                     if late or future:
                         counters["late"] += 1
                         why = (
@@ -277,11 +272,7 @@ class AnalysisEngine:
                                     observation_state,
                                 ),
                             )
-                            if (
-                                scored
-                                and scored["is_anomaly"]
-                                and self.config.ml.alert_mode == "alert"
-                            ):
+                            if scored and scored["is_anomaly"]:
                                 findings.append(
                                     Finding(
                                         detector_id="ssh.isolation_forest",
@@ -331,7 +322,7 @@ class AnalysisEngine:
                     **collector,
                     "last_record_at": received_at,
                     "heartbeat_at": received_at,
-                    "state": "replay" if self.config.mode == "demo" else "running",
+                    "state": "running",
                     "namespace": self.namespace,
                 },
             )
@@ -356,13 +347,13 @@ class AnalysisEngine:
             status = parsed.status
             if parsed.event is not None:
                 activation = self.repository.state_in(db, "firewall_started_at", 0)
-                if self.config.mode == "live" and stamp < activation:
+                if stamp < activation:
                     status = "historical"
                 elif self.repository.insert_firewall_event(db, parsed.event):
                     counters["events"] += 1
                     event = parsed.event
                     previous = self.repository.state_in(db, "firewall_max_seen", 0)
-                    future = self.config.mode == "live" and stamp > received_at + 60
+                    future = stamp > received_at + 60
                     if stamp < previous or future:
                         status = "late"
                         counters["late"] = counters.get("late", 0) + 1
@@ -413,32 +404,8 @@ class AnalysisEngine:
                     **collector,
                     "last_record_at": received_at,
                     "heartbeat_at": received_at,
-                    "state": "replay" if self.config.mode == "demo" else "running",
+                    "state": "running",
                     "namespace": self.namespace,
                 },
             )
         return {"status": status, "findings": result_findings}
-
-    def replay(self, path: Path) -> dict:
-        if self.config.mode != "demo":
-            raise ValueError("Genafspilning kræver app.mode='demo' og en separat database")
-        with path.open("rb") as handle:
-            while True:
-                line = handle.readline(self.config.collector.max_record_bytes + 1)
-                if not line:
-                    break
-                if len(line) > self.config.collector.max_record_bytes:
-                    while line and not line.endswith(b"\n"):
-                        line = handle.readline(self.config.collector.max_record_bytes + 1)
-                    self.invalid_line("En testpost var for stor og blev sprunget over")
-                    continue
-                if not line.strip():
-                    continue
-                try:
-                    record = json.loads(line)
-                except (UnicodeDecodeError, json.JSONDecodeError, ValueError, RecursionError):
-                    self.invalid_line("Ugyldig JSON i genafspilning")
-                    continue
-                self.process(record)
-        self.heartbeat("replay", "Genafspilning afsluttet. Disse data er ikke live overvågning.")
-        return self.repository.get_state("counters", {})

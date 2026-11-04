@@ -1,79 +1,103 @@
-# Arkitektur · sprint 1
+# Arkitektur
 
-Yggdrasil IDS består af en collector og et privat dashboard. Collectoren kører
-uafhængigt af browseren. Dashboardet læser de gemte resultater; HTTP-forespørgsler
-kan hverken træne modeller eller udføre systemkommandoer.
+Yggdrasil IDS er ét produkt med adskilte driftsroller: løbende SSH/UFW-
+indsamling, et periodisk sudo-job, et læsende dashboard og en Discord-notifier.
+Rollerne deler konfiguration og alarmdatabase. Browserforespørgsler kan ikke
+træne modeller, udføre systemkommandoer eller skrive kvitteringer i databasen.
 
 ```mermaid
 flowchart TD
-    J["Systemjournal"] --> P["SSHParser"]
-    P --> R["SSHRuleDetector"]
-    P --> F["SSHFeatureBuilder"]
-    F --> M["IsolationForestDetector"]
-    P --> T["AnalysisEngine og SQLite"]
-    R --> T
-    M --> T
-    T --> W["Flask og Plotly"]
+    J["Journald"] --> C["SSH- og UFW-collector"]
+    J --> S["Privat sudo-indsamling og regler"]
+    C --> R["SSH/preauth/netværksregler"]
+    C --> M["SSH-features og Isolation Forest"]
+    R --> D["Produktions-SQLite"]
+    M --> D
+    S --> P["Privat normaliseret sudo-lager"]
+    P --> B["Sudo-alarmoverførsel"]
+    B --> D
+    P --> E["Anonym sudo-eksport"]
+    D --> W["Loginbeskyttet dashboard"]
+    E --> W
+    D --> N["Outbox og Discord-notifier"]
 ```
 
 ## Ansvar og objektorientering
 
 | Komponent | Ansvar |
 | --- | --- |
-| `JournalCollector` | Læse journalen, kontrollere adgang og genoptage fra en gemt position. |
-| `SSHParser` | Oversætte en journalpost til højst ét autentificeringsresultat. |
-| `SSHRuleDetector` | Anvende eksplicitte regler og forklare fund. |
-| `SSHFeatureBuilder` | Beregne den faste numeriske featuredefinition. |
-| `IsolationForestDetector` | Træne, validere, indlæse og vurdere en model. |
-| `AnalysisEngine` | Samordne behandling og håndtere fejltilstande. |
-| `Repository` | Transaktioner, historik, alarmer, læseposition og backup. |
-| Flask-applikationen | Login, filtrering og læseadgang til historikken. |
+| `JournalCollector` | Afgrænset læsning af SSH/UFW, journalposition, genoptagelse og heartbeat |
+| `SSHParser`, `UFWParser`, `parse_preauth`, `parse_sudo` | Normalisere understøttede poster og afvise ugyldige eller uvedkommende input |
+| `SSHRuleDetector`, `TCPPortScanDetector`, `SudoRuleDetector` | Vurdere eksplicitte regler med forklarlige grænser |
+| `SSHFeatureBuilder` | Beregne den faste seksdimensionelle SSH-observation |
+| `IsolationForestDetector` | Validere, indlæse og score den valgte SSH-model |
+| `AnalysisEngine` | Samordne SSH/UFW-behandling med hændelsestid, model og transaktioner |
+| `SudoStagingStore` og sudo-service | Privat normalisering, overlappende genlæsning, regeltilstand og offentlig eksport |
+| `Repository` | Historik, observationsrækker, alarmgruppering, evidens, outbox, retention og backup |
+| Flask-applikationen | Login, filtre og læsning af produktionshistorik og anonyme sudo-eksporter |
+| `DiscordNotifier` | Læse nye outbox-referencer og gemme leveringsstatus separat |
 
-De uforanderlige `SSHEvent`- og `Finding`-objekter overfører data mellem lagene.
-Se [kildekoden](../src/yggdrasil_ids) og de målrettede [tests](../tests).
+Uforanderlige dataklasser, blandt andet `SSHEvent`, `Finding`, `FirewallEvent`
+og `SudoSignal`, flytter veldefinerede data mellem lagene. Detektorerne udfører
+ikke selv netværkskald eller webarbejde. Denne opdeling gør regler og features
+testbare uden en levende journal eller Discord-forbindelse.
 
-## Tid og tællinger
+## Data og transaktioner
 
-Vinduer beregnes ud fra hændelsestid i UTC: `(tid − vindue, tid]`, pr. kilde.
-Hver autentificering udløser en vurdering. Fejlede autentificeringer er ikke et
-antal TCP-forbindelser. PAM-sessionsposter og separate `Invalid user`-meddelelser
-bliver ikke ekstra loginforsøg.
+Produktionsdatabasen er schema5. SSH-historik, firewallhændelser, preauth-
+evidens, sudo-evidens og alarmer er adskilte tabeller. En autentificering er
+ikke en TCP-forbindelse; flere sudo-loglinjer kan beskrive samme proces.
 
-Kildepost, hændelse, analyse og journalposition gemmes i samme transaktion.
-SQLite bruger `DELETE`-journaltilstand med korte transaktioner og ventetid ved
-låsning, så dashboardets separate konto også kan læse databasen uden
-skriverettighed, når collector er stoppet.
-Gentagne kildeposter genkendes via deres identitet. Fund bevarer detektor og
-modelversion, mens beslægtede fund grupperes til alarmforløb. Allerede behandlede
-poster bliver ikke vurderet igen med en ny model ved genstart. Sammenligning af
-andre modeller kræver en separat demo-database.
+SSH-kildepost, analyse og journalposition gemmes transaktionelt. Identiteter
+bruges til deduplikering ved genlæsning og genstart. Forsinkede eller for langt
+fremtidige hændelser kan gemmes uden at blive analyseret bagudrettet. En mistet
+journalposition giver en synlig datamangelsadvarsel og genoptagelse med overlap.
 
-Forsinkede hændelser gemmes, men udelades fra den løbende analyse med synlig
-status. Fremtidige driftshændelser over den tilladte urforskel behandles tilsvarende.
-En mistet journalposition giver en advarsel om datamangler og genoptagelse med overlap.
+Sudo-jobbet læser journalen med `--all` og filteret `_EXE=/usr/bin/sudo`.
+Den private database gemmer kun kategorier og metadata til procesgruppering;
+ingen rå kommandolinjer, brugernavne eller journalcursors. En ny kandidat
+overføres som afgrænset evidens, alarm og outbox i samme destinationstransaktion.
+Gentagne læsninger genbruger samme evidensidentitet. Den oprindelige
+aktiveringsgrænse bevares ved opgradering, så gamle kandidater ikke bliver nye
+alarmer. Den private schema2-checkpointtabel har et historisk navn af hensyn til
+datakompatibilitet; der er ingen særskilt forsøgsfunktion i runtime.
 
-## Model og forsøg
+Outboxens kildeidentitet og notifierens private leveringsdatabase overlever
+opgraderingen. En ny alarmgruppe opretter et outbox-job; gentagne fund i samme
+gruppe kan opdatere alarmen uden en ny besked for hvert fund. En outbox-række
+alene beviser ikke, at Discord har kvitteret for levering.
 
-Features er antal fejl, succeser og brugernavne, fejlratio samt UTC-tidens sinus
-og cosinus. Score er `-score_samples`: højere betyder mere afvigende. Den er ikke
-en angrebssandsynlighed.
+## Tid, regler og ML
 
-Træning er en manuel handling på gennemgået normalaktivitet. Utilstrækkelige eller
-ensartede data afvises. Modellen gemmes som valideret JSON og genopbygges med samme
-scikit-learn-version og seed; ingen pickle indlæses. Genstart af collectoren
-aktiverer modellen. Labforsøgets træning, validering og afsluttende test består
-af hele scenarier med tidsafstand større end to analysevinduer. Tærskler ændres
-ikke efter testresultater; labels er uden for modelinput. Syntetiske resultater
-viser programmets opførsel, ikke dokumenteret sikkerhed på en rigtig server.
+Vinduer beregnes fra hændelsestid i UTC, almindeligvis `(tid − vindue, tid]`.
+Dashboardets danske tidszone ændrer kun visningen. SSH-regler og netværksregler
+grupperer relevante poster pr. kilde og sensor; sudo tæller forskellige
+processer pr. boot/proces-UID. UID er en intern grupperingsnøgle, ikke en
+verificeret identitet for den person, der startede sudo.
 
-## Kvalitet og videre udvikling
+SSH-modellens features er `failed_count`, `success_count`, `unique_users`,
+`failure_ratio`, `hour_sin` og `hour_cos`. Preauth-poster bliver ikke gjort til
+autentificeringer eller sendt ind i SSH-modellens features. Sudo og netværk
+bruger heller ikke denne model.
 
-Unit tests dækker parser, tidsvinduer, regler og modelvalidering. Integrationstests
-dækker blandt andet transaktioner, genstart, CLI og webadgang. Den faktiske
-verifikation står i [VERIFICATION.md](VERIFICATION.md); rettigheder, logdækning
-og ydeevne på målsystemet kontrolleres med [Pi-accepttesten](TEST_ON_PI.md).
+Modellen scorer med `-score_samples`: højere score er mere afvigende. Et
+resultat over den gemte tærskel kan blive et ML-fund med modelversion og
+evidens. Det er ikke en sandsynlighed for et angreb. Tærsklens
+`contamination`-parameter er ikke en målt angrebsrate.
 
-Sprint 1 analyserer SSH. Discord-notifikationer er planlagt til sprint 2. Andre
-hændelsestyper kræver egne datakilder, normalisering og evaluering; de eksisterende
-SSH-features bliver ikke automatisk brugbare til netværkstrafik eller filændringer.
-Se [roadmap](ROADMAP.md) for den aktuelle afgrænsning.
+Modelfilen er afgrænset JSON med fingerprint, featuredefinition, oprindelige
+normale træningsobservationer og versionsoplysninger. Indlæsning genopbygger
+skoven fra de gemte rækker med den samme scikit-learn-version og seed.
+Nye livehændelser bruges ikke til automatisk træning eller tærskelændring.
+Manuel modeludskiftning kræver gennemgået datagrundlag og bevidst aktivering.
+
+## Dashboard og fejlsynlighed
+
+Webrollen åbner produktions-SQLite skrivebeskyttet. Sudo vises gennem små,
+validerede JSON-filer; webbrugeren kan ikke læse den private sudo-database.
+Forældede eller ugyldige eksporter vises som utilgængelige, ikke som nul fund.
+Manglende SSH-model skal være synlig og kan ikke bestå samlet produktionsaccept.
+
+Menuens advarselstrekant angiver nye eller opdaterede registrerede alarmforløb
+fra de sidste 24 timer, som browseren endnu ikke har set. Læstmarkeringer gemmes
+lokalt i browseren. De sletter ikke historik og ændrer ikke Discord-levering.

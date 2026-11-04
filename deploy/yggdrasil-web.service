@@ -6,12 +6,14 @@ StartLimitIntervalSec=60
 StartLimitBurst=5
 
 [Service]
+Environment=PYTHONPATH=/opt/yggdrasil-ids/current/src
+Environment=PYTHONDONTWRITEBYTECODE=1
 Type=simple
 User=yggdrasil-web
 Group=yggdrasil-web
 SupplementaryGroups=yggdrasil-data
 WorkingDirectory=/opt/yggdrasil-ids
-ExecStart=/opt/yggdrasil-ids/venv/bin/yggdrasil-ids serve --config /etc/yggdrasil-ids/config.toml
+ExecStart=/opt/yggdrasil-ids/venv/bin/python -m yggdrasil_ids serve --config /etc/yggdrasil-ids/config.toml
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=15
@@ -30,7 +32,7 @@ ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-ReadOnlyPaths=/var/lib/yggdrasil-ids
+ReadOnlyPaths=/var/lib/yggdrasil-ids /var/lib/yggdrasil-sudo-public
 MemoryMax=768M
 TasksMax=64
 

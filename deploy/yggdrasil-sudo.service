@@ -1,0 +1,36 @@
+[Unit]
+Description=Yggdrasil IDS sudo collection and rule alarms
+After=systemd-journald.service yggdrasil-collector.service
+
+[Service]
+Type=oneshot
+User=yggdrasil-worker
+Group=yggdrasil-data
+SupplementaryGroups=systemd-journal
+StateDirectory=yggdrasil-sudo
+StateDirectoryMode=0700
+WorkingDirectory=/opt/yggdrasil-ids
+Environment=PYTHONPATH=/opt/yggdrasil-ids/current/src
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=OPENBLAS_NUM_THREADS=1
+Environment=OMP_NUM_THREADS=1
+ExecStart=/opt/yggdrasil-ids/venv/bin/python -m yggdrasil_ids sudo-poll --config /etc/yggdrasil-ids/config.toml
+UMask=0077
+TimeoutStartSec=60
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX
+ReadWritePaths=/var/lib/yggdrasil-sudo /var/lib/yggdrasil-sudo-public /var/lib/yggdrasil-ids
+CapabilityBoundingSet=
+AmbientCapabilities=
+MemoryMax=512M
+TasksMax=32

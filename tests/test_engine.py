@@ -1,6 +1,5 @@
 """End-to-end journal ingestion invariants across detectors and SQLite."""
 
-import json
 import sqlite3
 from dataclasses import replace
 
@@ -21,7 +20,7 @@ def config(tmp_path, monkeypatch):
         database_path=tmp_path / "events.sqlite3",
         model_path=tmp_path / "model.json",
         credentials_path=tmp_path / "credentials.json",
-        mode="demo",
+        mode="live",
         rules=RulesConfig(failure_threshold=2),
     )
 
@@ -223,101 +222,6 @@ def test_escaped_surrogate_in_json_is_a_data_error_not_a_collector_crash(config)
     assert engine.process(record(2))["status"] == "event"
 
 
-def test_demo_live_and_replay_namespaces_cannot_mix_in_existing_database(config):
-    engine = AnalysisEngine(config, "replay-one")
-    engine.process(record(1))
-    with pytest.raises(ValueError, match="Demo"):
-        AnalysisEngine(replace(config, mode="live"), "replay-one")
-    with pytest.raises(ValueError, match="datagrundlag"):
-        AnalysisEngine(config, "replay-two")
-    assert engine.repository.get_state("namespace") == "replay-one"
-    assert engine.repository.get_state("mode") == "demo"
-    assert table_count(engine.repository, "events") == 1
-
-
-def test_live_engine_refuses_replay_before_opening_file(config, tmp_path):
-    engine = AnalysisEngine(replace(config, mode="live"), "live")
-    with pytest.raises(ValueError, match="Genafspilning"):
-        engine.replay(tmp_path / "missing.jsonl")
-
-
-def test_replay_recovers_after_bad_oversized_and_deep_json_lines(config, tmp_path):
-    engine = AnalysisEngine(config, "test")
-    source = tmp_path / "events.jsonl"
-    source.write_bytes(
-        json.dumps(record(1)).encode()
-        + b"\n"
-        + b"{broken}\n"
-        + b"x" * (config.collector.max_record_bytes * 2)
-        + b"\n"
-        + b"[" * 1500
-        + b"0"
-        + b"]" * 1500
-        + b"\n"
-        + json.dumps(record(2)).encode()
-        + b"\n"
-    )
-    counts = engine.replay(source)
-    assert counts["events"] == 2
-    assert counts["malformed"] == 3
-    assert table_count(engine.repository, "findings") == 1
-    assert engine.repository.get_state("collector")["state"] == "replay"
-
-
-def test_replaying_same_file_again_only_increments_duplicates(config, tmp_path):
-    engine = AnalysisEngine(config, "test")
-    source = tmp_path / "events.jsonl"
-    source.write_text("\n".join(json.dumps(record(i)) for i in (1, 2)) + "\n")
-    first = engine.replay(source)
-    second = engine.replay(source)
-    assert second["records"] == first["records"] == 2
-    assert second["events"] == first["events"] == 2
-    assert second["duplicates"] == 2
-    assert table_count(engine.repository, "findings") == 1
-
-
-def test_ml_shadow_scores_real_collector_events_without_ml_alerts(config):
-    """Experimental IF can score live SSH without creating ML findings or Discord outbox."""
-    cfg = replace(
-        config,
-        ml=MLConfig(alert_mode="shadow"),
-        rules=RulesConfig(failure_threshold=2),
-    )
-    engine = AnalysisEngine(cfg, "test")
-
-    class ExperimentalModel:
-        def score(self, vector):
-            return {
-                "score": 0.8,
-                "threshold": 0.6,
-                "is_anomaly": True,
-                "model_version": "test-experimental",
-            }
-
-    engine.model = ExperimentalModel()
-    first = record(
-        1,
-        message="Accepted publickey for labuser from 192.0.2.10 port 54321 ssh2",
-    )
-    assert engine.process(first)["findings"] == 0
-    with engine.repository.reader() as db:
-        observation = db.execute(
-            "SELECT state,is_anomaly,score,threshold FROM observations"
-        ).fetchone()
-    assert observation["state"] == "scored"
-    assert observation["is_anomaly"] == 1
-    assert observation["score"] == 0.8
-    assert observation["threshold"] == 0.6
-    assert table_count(engine.repository, "findings") == 0
-    assert table_count(engine.repository, "discord_outbox") == 0
-
-    # Pre-existing rule detections still work when the experimental model is shadowed.
-    assert engine.process(record(2))["findings"] == 0
-    assert engine.process(record(3))["findings"] == 1
-    assert engine.repository.list_alerts()["items"][0]["detector_id"] == "ssh.failed_burst"
-    assert table_count(engine.repository, "findings") == 1
-
-
 def test_default_ml_alert_mode_remains_active(config):
     cfg = replace(config, ml=MLConfig(alert_mode="alert"), rules=RulesConfig(failure_threshold=100))
     engine = AnalysisEngine(cfg, "test")
@@ -334,3 +238,53 @@ def test_default_ml_alert_mode_remains_active(config):
     engine.model = ExperimentalModel()
     assert engine.process(record(1))["findings"] == 1
     assert engine.repository.list_alerts()["items"][0]["detector_id"] == "ssh.isolation_forest"
+
+
+def test_nonproduction_modes_are_refused_before_database_creation(config):
+    for cfg in (replace(config, mode="demo"), replace(config, ml=MLConfig(alert_mode="shadow"))):
+        with pytest.raises(ValueError, match="Produktionsindsamling"):
+            AnalysisEngine(cfg)
+        assert not cfg.database_path.exists()
+
+
+def test_existing_namespace_and_environment_cannot_be_relabelled(config):
+    engine = AnalysisEngine(config, "test")
+    engine.process(record(1))
+    with pytest.raises(ValueError, match="datagrundlag"):
+        AnalysisEngine(config, "other")
+    assert engine.repository.get_state("namespace") == "test"
+    engine.repository.set_state("mode", "foreign")
+    with pytest.raises(ValueError, match="driftsmiljø"):
+        AnalysisEngine(config, "test")
+    assert engine.repository.get_state("mode") == "foreign"
+    assert table_count(engine.repository, "events") == 1
+
+
+def test_model_anomaly_and_rule_case_have_independent_outbox_entries(config):
+    cfg = replace(config, rules=RulesConfig(failure_threshold=2))
+    engine = AnalysisEngine(cfg)
+
+    class Model:
+        def score(self, vector):
+            return {
+                "score": 0.8,
+                "threshold": 0.6,
+                "is_anomaly": True,
+                "model_version": "fixture-active",
+            }
+
+    engine.model = Model()
+    assert engine.process(record(1))["findings"] == 1
+    assert engine.process(record(2))["findings"] == 2
+    with engine.repository.reader() as db:
+        cases = db.execute(
+            "SELECT detector_id,count,score FROM alerts ORDER BY detector_id"
+        ).fetchall()
+        entries = db.execute("SELECT COUNT(*) FROM discord_outbox").fetchone()[0]
+    assert [(r["detector_id"], r["count"]) for r in cases] == [
+        ("ssh.failed_burst", 1),
+        ("ssh.isolation_forest", 2),
+    ]
+    assert cases[1]["score"] == 0.8
+    assert entries == 2
+    assert table_count(engine.repository, "observations") == 2

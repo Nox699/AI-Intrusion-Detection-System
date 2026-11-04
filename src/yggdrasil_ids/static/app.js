@@ -16,6 +16,8 @@
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") setNav(false); });
   document.querySelectorAll(".refresh-page").forEach(button => button.addEventListener("click", () => window.location.reload()));
 
+  window.YggdrasilNavAlerts?.start(document, window);
+
   const chart = document.getElementById("activity-chart");
   if (!chart) return;
   const zone = document.body.dataset.timezone || "Europe/Copenhagen";

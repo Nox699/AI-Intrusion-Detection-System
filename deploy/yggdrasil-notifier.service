@@ -6,6 +6,8 @@ StartLimitIntervalSec=120
 StartLimitBurst=3
 
 [Service]
+Environment=PYTHONPATH=/opt/yggdrasil-ids/current/src
+Environment=PYTHONDONTWRITEBYTECODE=1
 Type=simple
 User=yggdrasil-notifier
 Group=yggdrasil-notifier
@@ -13,7 +15,7 @@ SupplementaryGroups=yggdrasil-data
 StateDirectory=yggdrasil-notifier
 StateDirectoryMode=0700
 WorkingDirectory=/var/lib/yggdrasil-notifier
-ExecStart=/opt/yggdrasil-ids/venv/bin/yggdrasil-ids notify --config /etc/yggdrasil-ids/config.toml --state-file /var/lib/yggdrasil-notifier/delivery.sqlite3
+ExecStart=/opt/yggdrasil-ids/venv/bin/python -m yggdrasil_ids notify --config /etc/yggdrasil-ids/config.toml --state-file /var/lib/yggdrasil-notifier/delivery.sqlite3
 LoadCredential=discord-webhook.url:/etc/yggdrasil-ids/discord-webhook.url
 Restart=no
 TimeoutStopSec=15

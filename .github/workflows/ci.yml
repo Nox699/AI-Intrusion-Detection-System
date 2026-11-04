@@ -21,57 +21,30 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.13"]
-
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Install locked dependencies and editable package
+      - name: Install locked dependencies and package
         run: |
           python -m pip install --disable-pip-version-check -r requirements-dev.txt
           python -m pip install --no-build-isolation --no-deps --editable .
-
-      - name: Validate safe Pi deployment scripts syntax
-        run: bash -n deploy/sprint3_prepare.sh deploy/sprint3_upgrade.sh deploy/sprint3_resume_after_permissions.sh deploy/sprint3_enable_network.sh deploy/sprint3_charts_prepare.sh deploy/sprint3_charts_deploy.sh
-
-      - name: Verify scan observation helper syntax
-        run: python -m py_compile deploy/sprint3_network_observe.py
-
-      - name: Validate threshold tuning script syntax
-        run: bash -n deploy/sprint3_tune_threshold5.sh
-
-      - name: Validate Sprint 4 isolated ML tooling
-        run: |
-          bash -n deploy/sprint4_run_synthetic_lab.sh deploy/sprint4_ml_demo_dashboard.sh
-          python -m py_compile deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py
-
-      - name: Validate Sprint 4 shadow ML tooling
-        run: python -m py_compile deploy/sprint4_real_ml_export.py deploy/sprint4_hybrid_ml_preview.py
-
-      - name: Validate gated shadow stage/deploy/rollback syntax
-        run: bash -n deploy/sprint4_shadow_prepare.sh deploy/sprint4_shadow_deploy.sh deploy/sprint4_shadow_rollback.sh
-
-      - name: Validate read-only SSH preauth audit tool
-        run: python -m py_compile deploy/sprint4_preauth_signal_audit.py deploy/sprint4_preauth_ml_lab.py deploy/sprint4_preauth_hybrid_diagnostics.py deploy/sprint4_preauth_clock_sensitivity.py deploy/sprint4_preauth_robustness_audit.py
-
-      - name: Validate isolated preauth lab shell runner syntax
-        run: bash -n deploy/sprint4_run_preauth_ml_lab.sh
-
-      - name: Lint
-        run: python -m ruff check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py deploy/sprint4_real_ml_export.py deploy/sprint4_hybrid_ml_preview.py deploy/sprint4_preauth_signal_audit.py deploy/sprint4_preauth_ml_lab.py deploy/sprint4_preauth_hybrid_diagnostics.py deploy/sprint4_preauth_clock_sensitivity.py deploy/sprint4_preauth_robustness_audit.py
-
+      - name: Lint production code, deployment and tests
+        run: python -m ruff check src tests deploy
       - name: Check formatting
-        run: python -m ruff format --check src tests deploy/sprint4_ml_readiness.py deploy/sprint4_verify_lab.py deploy/sprint4_ssh_journal_history.py deploy/sprint4_real_ml_export.py deploy/sprint4_hybrid_ml_preview.py deploy/sprint4_preauth_signal_audit.py deploy/sprint4_preauth_ml_lab.py deploy/sprint4_preauth_hybrid_diagnostics.py deploy/sprint4_preauth_clock_sensitivity.py deploy/sprint4_preauth_robustness_audit.py
-
-      - name: Run tests
+        run: python -m ruff format --check src tests deploy
+      - name: Validate Python and shell syntax
+        run: |
+          python -m compileall -q src deploy
+          bash -n deploy/*.sh
+      - name: Run production tests
         run: python -m pytest --junitxml=test-results/pytest.xml
-
-      - name: Build wheel
+      - name: Test navigation seen markers
+        run: node --test tests/nav_alerts.test.cjs
+      - name: Build production wheel
         run: python -m build --wheel --no-isolation

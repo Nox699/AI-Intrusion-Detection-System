@@ -41,7 +41,7 @@ def test_valid_profile_preserves_explicit_networks_users_and_timezone(tmp_path):
         tmp_path,
         """
 [app]
-mode = "demo"
+mode = "live"
 timezone = "UTC"
 [rules]
 expected_sources = ["192.0.2.0/24", "2001:db8::/32"]
@@ -52,7 +52,7 @@ trusted_hosts = ["[::1]"]
 """,
     )
     config = load_config(path)
-    assert config.mode == "demo"
+    assert config.mode == "live"
     assert config.timezone == "UTC"
     assert config.rules.expected_sources == ("192.0.2.0/24", "2001:db8::/32")
     assert config.rules.expected_users == ("labuser",)
@@ -161,10 +161,43 @@ def test_invalid_network_config_is_rejected(tmp_path, text):
         load_config(config_file(tmp_path, text))
 
 
-def test_ml_shadow_mode_is_explicit_and_type_checked(tmp_path):
+def test_production_ml_alert_mode_is_explicit_and_type_checked(tmp_path):
     assert load_config(config_file(tmp_path)).ml.alert_mode == "alert"
-    shadow = load_config(config_file(tmp_path, '[ml]\nalert_mode="shadow"\n'))
-    assert shadow.ml.alert_mode == "shadow"
-    for value in ['"unknown"', "false", '["shadow"]']:
+    for value in ['"shadow"', '"unknown"', "false", '["shadow"]']:
         with pytest.raises(ValueError):
             load_config(config_file(tmp_path, f"[ml]\nalert_mode={value}\n"))
+
+
+def test_experiment_modes_are_not_accepted_by_production_configuration(tmp_path):
+    with pytest.raises(ValueError, match="mode='live'"):
+        load_config(config_file(tmp_path, '[app]\nmode="demo"\n'))
+
+
+def test_sudo_collection_is_explicit_with_private_separate_paths(tmp_path):
+    default = load_config(config_file(tmp_path))
+    assert default.sudo.enabled is False
+    config = load_config(
+        config_file(tmp_path, "[sudo]\nenabled=true\nfailure_process_threshold=4\n")
+    )
+    assert config.sudo.enabled is True
+    assert config.sudo.failure_process_threshold == 4
+    assert config.sudo_database_path == config.database_path.parent / "sudo-private/sudo.sqlite3"
+    assert config.sudo_public_directory == config.database_path.parent / "sudo-public"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[sudo]\nenabled=1\n",
+        "[sudo]\nwindow_seconds=59\n",
+        "[sudo]\nfailure_process_threshold=1\n",
+        "[sudo]\ncooldown_seconds=0\n",
+        '[paths]\nsudo_database=".local/events.sqlite3"\n',
+        '[paths]\nsudo_database=".local/sudo.sqlite3"\n',
+        '[paths]\nsudo_database="public/private/sudo.sqlite3"\nsudo_public_directory="public"\n',
+        '[paths]\nsudo_public_directory=".local"\n',
+    ],
+)
+def test_invalid_sudo_configuration_fails_before_data_access(tmp_path, text):
+    with pytest.raises(ValueError):
+        load_config(config_file(tmp_path, text))

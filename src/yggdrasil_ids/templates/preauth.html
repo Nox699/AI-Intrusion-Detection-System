@@ -3,9 +3,9 @@
 {% block content %}
 <section class="page-heading"><div><span class="eyebrow">SSH / JOURNAL</span>
 <h1>Afbrudt før login</h1><p>Forbindelser lukket eller nulstillet før gennemført autentificering.</p></div></section>
-<div class="notice info"><div><strong>Ikke registrerede loginfejl</strong><span>Disse journalposter dokumenterer afbrudte forbindelser, men ikke nødvendigvis forkerte nøgler, angreb eller fejlet autentificering. De påvirker ikke loginstatistik, regler eller ML.</span></div></div>
+<div class="notice info"><div><strong>Ikke registrerede loginfejl</strong><span>Disse journalposter dokumenterer afbrudte forbindelser, men ikke nødvendigvis forkerte nøgler, angreb eller fejlet autentificering. Gentagne afbrud kan udløse preauth-reglen. De indgår ikke som autentificeringsfejl eller som input til Isolation Forest.</span></div></div>
 <form class="filter-bar compact" method="get"><div class="filter-field"><label for="period">Periode</label>{{ period_select(hours) }}</div><button class="button button-primary" type="submit">Vis</button></form>
-<section class="panel"><div class="panel-heading"><div><h2>Observerede preauth-afbrud</h2><p>Læsning fra allerede gemte journalposter, også før opdateringen.</p></div><strong>{{ result.total|number }}</strong></div>
+<section class="panel"><div class="panel-heading"><div><h2>Observerede preauth-afbrud</h2><p>Observerede afbrud og mulige gentagne forbindelser før login.</p></div><strong>{{ result.total|number }}</strong></div>
 {% if result['items'] %}<div class="table-scroll"><table><thead><tr><th>Tidspunkt</th><th>Type</th><th>Journalmeddelelse</th></tr></thead><tbody>
 {% for item in result['items'] %}<tr><td class="nowrap muted">{{ item.timestamp|localtime }}</td><td><span class="badge severity-info">{{ item.connection_type }}</span></td><td class="mono">{{ item.message }}</td></tr>{% endfor %}
 </tbody></table></div>{% else %}{{ empty('Ingen observerede preauth-afbrud','Ingen tilsvarende journalposter i perioden. Det beviser ikke, at alle forbindelser lykkedes.') }}{% endif %}
