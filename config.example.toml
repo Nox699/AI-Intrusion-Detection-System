@@ -8,6 +8,8 @@ timezone = "Europe/Copenhagen"
 database = ".local/events.sqlite3"
 model = ".local/model.json"
 credentials = ".local/web-secrets.json"
+sudo_database = ".local/sudo-private/sudo.sqlite3"
+sudo_public_directory = ".local/sudo-public"
 
 [rules]
 window_seconds = 300
@@ -26,8 +28,7 @@ min_samples = 80
 contamination = 0.03 # Decision threshold parameter, NOT a measured attack rate.
 n_estimators = 128
 random_state = 42
-# Use 'shadow' for experimental models: record scores but never send ML alerts.
-# The default 'alert' preserves existing behavior for vetted production models.
+# Production requires an explicitly reviewed model with alerting enabled.
 alert_mode = "alert"
 
 [collector]
@@ -47,8 +48,15 @@ trusted_hosts = ["localhost", "127.0.0.1", "[::1]"]
 retention_days = 30
 max_database_mb = 512
 
-# Sprint 3 network history is opt-in; leave disabled in existing deployments.
+# Network and sudo collection require explicit opt-in and suitable role permissions.
+# The reviewed Pi installation enables both in deploy/config.pi.toml.
 [network]
 enabled = false
 window_seconds = 60
 distinct_ports_threshold = 6
+
+[sudo]
+enabled = false
+window_seconds = 300
+failure_process_threshold = 3
+cooldown_seconds = 300
